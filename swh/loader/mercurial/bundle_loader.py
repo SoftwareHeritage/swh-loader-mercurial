@@ -28,8 +28,8 @@
 # bundle is broken into overlayed 4KB chunks starting from byte 9, nor does it
 # describe what any of the component elements are used for.
 # Also it says "The [delta data] format is described more fully in
-# 'hg help internals.bdiff'", which is another lie. That file has never
-# existed.
+# 'hg help internals.bdiff'", which is also wrong. As far as I can tell,
+# that file has never existed.
 # ------------------------------
 #
 

@@ -38,7 +38,7 @@ import types
 from binascii import hexlify
 from functools import update_wrapper
 from io import BytesIO
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 
 """
 mkdir WORKSPACE
@@ -220,8 +220,8 @@ class Bundle20Reader(object):
         commit['manifest'] = firstpart[0]
         commit['user'] = firstpart[1]
         tstamp, tz, *extra = firstpart[2].split(b' ')
-        tz = timezone(timedelta(hours=int(tz)/3600))
-        commit['time'] = datetime.fromtimestamp(float(tstamp), tz=tz)
+        commit['time'] = datetime.fromtimestamp(float(tstamp))
+        commit['time_offset_seconds'] = int(tz)
         if extra:
             commit['extra'] = extra
         commit['changed_files'] = firstpart[3:]

@@ -34,11 +34,9 @@
 #
 
 import struct
-import types
 from binascii import hexlify
-from functools import update_wrapper
-from io import BytesIO
 from datetime import datetime
+
 
 """
 mkdir WORKSPACE
@@ -49,82 +47,20 @@ hg bundle -f -a bundle_file -t none-v2
 """
 
 
-def makeFIFO(io_cls):
-    """Factory method for convenient io stream FIFOs.
-    Pass in either StringIO or BytesIO, and get back a modified instance of
-    that type suitable for automatic use as a FIFO buffer without needing to
-    manually position the cursor.
-    """
-    # don't re-wrap a known entity
-    global_cls = globals().get(io_cls.__name__+'_FIFO')
-    if global_cls:
-        return global_cls()
-
-    def len(self):
-        return getattr(self, '_write_pos', 0) - getattr(self, '_read_pos', 0)
-
-    def peek(self, howmany):
-        num_left = self.len()
-        ret = self.read(howmany)
-        self.seek(-min(num_left, howmany), 1)
-        setattr(self, '_read_pos', self.tell())
-        return ret
-
-    def _wrap_func(func):
-        if func.__name__.startswith('read'):
-            pos_marker = '_read_pos'
-        elif func.__name__.startswith('write'):
-            pos_marker = '_write_pos'
-        else:
-            return None
-
-        def seek_first(self, *args, **kwargs):
-            self.seek(getattr(self, pos_marker, 0))
-            try:
-                return func(self, *args, **kwargs)
-            finally:
-                setattr(self, pos_marker, self.tell())
-
-        update_wrapper(seek_first, func)
-        return seek_first
-
-    # brand new subclass of io_cls
-    FIFO = types.new_class(io_cls.__name__+'_FIFO', (io_cls,))
-    for attribute in dir(FIFO):
-        # wrap some methods
-        if callable(getattr(FIFO, attribute)):
-            new_func = _wrap_func(getattr(FIFO, attribute))
-            if new_func:
-                setattr(FIFO, attribute, new_func)
-
-    # add a few new methods
-    setattr(FIFO, 'len', len)
-    setattr(FIFO, 'peek', peek)
-    # put in global namespace
-    globals()[FIFO.__name__] = FIFO
-    return FIFO()
-
-
 class ChunkedFileReader(object):
-    """A BytesIO FIFO (see the makeFIFO factory function) that gives seamless
-    read access to files such as the Mercurial bundle2 HG20 format which are
-    partitioned into chunks of [4Bytes:<length>, <length-4>Bytes:<data>].
+    """A file reader that gives seamless read access to files such as the
+    Mercurial bundle2 HG20 format which are partitioned into chunks of
+    [4Bytes:<length>, <length-4>Bytes:<data>].
 
     init args:
         file: either a filename string or pre-opened binary-read file handle.
     """
     def __init__(self, file):
         if isinstance(file, str):
-            self._file = open(file, "rb")
+            self._file = open(file, "rb", buffering=12*1024*1024)
         else:
             self._file = file
-        self._fifo = makeFIFO(BytesIO)
-
-    def _buffer_chunk(self):
-        """Load the next chunk of data into the buffer.
-        """
-        chunk_size = struct.unpack('>I', self._file.read(4))[0]
-        return self._fifo.write(self._file.read(chunk_size))
+        self._chunk_bytes_left = struct.unpack('>I', self._file.read(4))[0]
 
     def read(self, bytes_to_read):
         """Return N bytes from the file as a single block.
@@ -135,23 +71,21 @@ class ChunkedFileReader(object):
         """Return a generator that eventually yields N bytes from the file
         one file chunk at a time.
         """
-        has_data = True
-        while bytes_to_read > 0 and has_data:
-            if bytes_to_read > self._fifo.len():
-                has_data = self._buffer_chunk()
-
-            bytes_read = min(bytes_to_read, self._fifo.len())
-            yield self._fifo.read(bytes_read)
-            bytes_to_read -= bytes_read
-
-    def __getattr__(self, name):
-        """Forward all other method calls to the FIFO class.
-        """
-        return getattr(self._fifo, name)
+        while bytes_to_read > self._chunk_bytes_left:
+            yield self._file.read(self._chunk_bytes_left)
+            bytes_to_read -= self._chunk_bytes_left
+            self._chunk_bytes_left = struct.unpack('>I', self._file.read(4))[0]
+        self._chunk_bytes_left -= bytes_to_read
+        yield self._file.read(bytes_to_read)
 
 
-def DEBUG(*args, **kwargs):
+def DEBUG1(*args, **kwargs):
     print(*args, **kwargs)
+
+
+def DEBUG2(*args, **kwargs):
+    pass
+    # print(*args, **kwargs)
 
 
 def unpack(fmt_str, source):
@@ -200,7 +134,7 @@ class Bundle20Reader(object):
             start_offset = unpack(">I", self.chunkreader)
             end_offset = unpack(">I", self.chunkreader)
             sub_size = unpack(">I", self.chunkreader)
-            print("DATA SIZE:", sub_size)
+            DEBUG2("DATA SIZE:", sub_size)
             if sub_size > 0:
                 data_it = self.chunkreader.read_iterator(sub_size)
             else:
@@ -262,9 +196,7 @@ class Bundle20Reader(object):
                 commit.setdefault('new_data', []).append(
                     (data_block[0], data_block[1], data)
                 )
-        self.files.setdefault(
-            self.cur_file, []
-        ).append((header['node'], commit))
+        self.current_file.append((header['node'], commit))
 
     def loop_deltagroups(self, section_handler):
         """Bundle sections are composed of one or more groups of deltas.
@@ -273,7 +205,7 @@ class Bundle20Reader(object):
         """
         size = unpack(">I", self.chunkreader)
         while size > 0:
-            print("SIZE ", size)
+            DEBUG2("SIZE ", size)
             section_handler(
                 self.read_deltaheader(),
                 (size > 104) and self.read_deltadata(size) or []
@@ -284,26 +216,27 @@ class Bundle20Reader(object):
         """Parsing stage for the changeset section, containing metadata about
         each commit.
         """
-        DEBUG("\nREADING COMMITS\n")
+        DEBUG1("\nREADING COMMITS\n")
         self.loop_deltagroups(self.commit_handler)
 
     def process_manifest(self):
         """Parsing stage for the manifest section, containing manifest deltas
         for each changeset.
         """
-        DEBUG("\nREADING MANIFEST\n")
+        DEBUG1("\nREADING MANIFEST\n")
         self.loop_deltagroups(self.manifest_handler)
 
     def process_filelog(self):
         """Parsing stage for the filelog section, containing data deltas for
         each change to each file.
         """
-        DEBUG("\nREADING DELTAS\n")
+        DEBUG1("\nREADING DELTAS\n")
         name_size = unpack(">I", self.chunkreader)
         while name_size > 0:
             name = b''.join(self.chunkreader.read_iterator(name_size-4))
-            DEBUG("\n\nFILE", name, "\n")
-            self.cur_file = name
+            DEBUG1("\nFILE", name, "\n")
+            self.cur_file_name = name
+            self.current_file = []
             self.loop_deltagroups(self.filedelta_handler)
             name_size = unpack(">I", self.chunkreader)
 
@@ -312,7 +245,7 @@ class Bundle20Reader(object):
         parameters.
         """
         chunkreader = self.chunkreader
-        DEBUG("\nREADING BUNDLE HEADER\n")
+        DEBUG1("\nREADING BUNDLE HEADER\n")
         chg_len = unpack('>B', chunkreader)  # len('CHANGEGROUP') == 11
         chunkreader.read(chg_len)  # 'CHANGEGROUP'
         unpack('>I', chunkreader)  # probably \x00\x00\x00\x00
@@ -333,17 +266,17 @@ class Bundle20Reader(object):
             key = unpack('>%ds' % key_len, chunkreader)
             val = int(unpack('>%ds' % val_len, chunkreader))
             params[key] = val
-        DEBUG(params)
+        DEBUG1(params)
 
     def read_bundle(self):
         """Initiate loading of the bundle.
         """
         self.process_bundle_header()
         self.process_changesets()
+        self.commits = None
         self.process_manifest()
+        self.manifests = None
         self.process_filelog()
-        import code
-        code.interact(local=dict(globals(), **locals()))
 
 
 if __name__ == "__main__":

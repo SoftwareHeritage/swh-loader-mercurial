@@ -37,6 +37,7 @@ import struct
 from binascii import hexlify
 from datetime import datetime
 
+from swh.model import identifiers
 
 """
 mkdir WORKSPACE
@@ -45,6 +46,10 @@ hg init
 hg pull <SOURCE_URL>
 hg bundle -f -a bundle_file -t none-v2
 """
+
+
+BLOB_MAX_SIZE = 1024*1024*100
+ALGO = 'sha1_git'
 
 
 class ChunkedFileReader(object):
@@ -133,19 +138,19 @@ class Bundle20Reader(object):
         while read_bytes < size:
             start_offset = unpack(">I", self.chunkreader)
             end_offset = unpack(">I", self.chunkreader)
-            sub_size = unpack(">I", self.chunkreader)
-            DEBUG2("DATA SIZE:", sub_size)
-            if sub_size > 0:
-                data_it = self.chunkreader.read_iterator(sub_size)
+            data_size = unpack(">I", self.chunkreader)
+            DEBUG2("DATA SIZE:", data_size)
+            if data_size > 0:
+                data_it = self.chunkreader.read_iterator(data_size)
             else:
                 data_it = None
-            read_bytes += sub_size+12
-            yield (start_offset, end_offset, data_it)
+            read_bytes += data_size+12
+            yield (start_offset, end_offset, data_size, data_it)
 
     def commit_handler(self, header, data_block_it):
         """Handler method for changeset delta components.
         """
-        data_block = next(data_block_it)[2]
+        data_block = next(data_block_it)[3]
         data = b''.join(data_block)
         firstpart, message = data.split(b'\n\n', 1)
         firstpart = firstpart.split(b'\n')
@@ -167,35 +172,61 @@ class Bundle20Reader(object):
         commit = header
         commit['manifest'] = []
         for data_block in data_block_it:
-            data_it = data_block[2]
+            data_it = data_block[3]
             if data_it is not None:
                 data = b''.join(data_it)[:-1]
                 commit['manifest'] += [tuple(file.split(b'\x00'))
                                        for file in data.split(b'\n')]
         self.manifests.append((header['node'], commit))
 
-    def filedelta_handler(self, header, data_block_it):
+    def filedelta_handler(self, header, commits_iterator):
         """Handler method for filelog delta components.
         """
-        commit = header
-        for data_block in data_block_it:
-            data_it = data_block[2]
-            if data_it is not None:
-                data = b''.join(data_it)
-                if data.startswith(b'\x01\n'):  # has a meta-message
-                    empty, metainfo, data = data.split(b'\x01\n', 2)
-                    if metainfo.startswith(b'copy:'):  # direct file copy
-                        copyinfo = metainfo.split(b'\n')
-                        commit['copied_file'] = copyinfo[0][6:]
-                        commit['copied_filerev'] = copyinfo[1][9:]
-                    elif metainfo.startswith(b'censored:'):
-                        # censored revision deltas must be full-replacements
-                        commit['censored'] = metainfo
-                    else:
-                        commit['meta'] = metainfo
-                commit.setdefault('new_data', []).append(
-                    (data_block[0], data_block[1], data)
-                )
+        commit = {}
+        self.num_commits += 1
+        blob = None
+
+        # pieces of a commit
+        for commit_stuff in commits_iterator:
+            delta_start = commit_stuff[0]
+            delta_end = commit_stuff[1]
+            delta_data_it = commit_stuff[3]
+
+            blob = bytearray(self.last_blob[0:delta_start])
+
+            # gather all the data for the current blob
+            if delta_data_it is not None:
+                blob.extend(b''.join(delta_data_it))
+#            blob_size = delta_start
+#            for more_data in delta_data_it:
+#                part_size = len(more_data)
+#                blob_size += part_size
+#                if blob_size <= BLOB_MAX_SIZE:
+#                    blob.extend(more_data)
+#            blob_size += len(self.last_blob)-delta_end
+#            if blob_size <= BLOB_MAX_SIZE:
+            blob.extend(self.last_blob[delta_end:-1])
+
+            # remove meta garbage
+            if (delta_start == 0) and blob.startswith(b'\x01\n'):
+                empty, metainfo, blob = blob.split(b'\x01\n', 2)
+# We may not actually care about this meta stuff, but here it is anyway
+#                if metainfo.startswith(b'copy:'):  # direct file copy
+#                    copyinfo = metainfo.split(b'\n')
+#                    commit['copied_file'] = copyinfo[0][6:]
+#                    commit['copied_filerev'] = copyinfo[1][9:]
+#                elif metainfo.startswith(b'censored:'):
+#                    # censored revision deltas must be full-replacements
+#                    commit['censored'] = metainfo
+#                else:
+#                    commit['meta'] = metainfo
+
+            self.last_blob = blob
+
+        # commit['blob'] = blob
+        commit.update(
+            identifiers.content_identifier({'data': blob or bytearray()})
+        )
         self.current_file.append((header['node'], commit))
 
     def loop_deltagroups(self, section_handler):
@@ -236,8 +267,13 @@ class Bundle20Reader(object):
             name = b''.join(self.chunkreader.read_iterator(name_size-4))
             DEBUG1("\nFILE", name, "\n")
             self.cur_file_name = name
+            self.last_blob = bytearray()
             self.current_file = []
+            self.num_commits = 0
             self.loop_deltagroups(self.filedelta_handler)
+            print("NUMCOMMITS: ", self.num_commits)
+            # import code
+            # code.interact(local=dict(globals(), **locals()))
             name_size = unpack(">I", self.chunkreader)
 
     def process_bundle_header(self):

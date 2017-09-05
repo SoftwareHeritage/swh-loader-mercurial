@@ -12,10 +12,10 @@ import os
 
 import hglib
 
-from archive_extract import tmp_extract
 from swh.model import identifiers
 
 from . import base, converters
+from .archive_extract import tmp_extract
 
 # TODO: What should this be?
 # swh-model/identifiers.py:identifier_to_bytes has a restrictive length check

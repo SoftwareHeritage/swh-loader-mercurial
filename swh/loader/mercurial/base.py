@@ -82,13 +82,14 @@ class BaseLoader(config.SWHConfig):
 
     load calls several methods that must be implemented in subclasses:
 
-     - prepare(*args, **kwargs) prepares the loader for the new origin
+     - prepare(\*args, \**kwargs) prepares the loader for the new origin
      - get_origin gets the origin object associated to the current loader
      - fetch_data downloads the necessary data from the origin
-     - get_{contents,directories,revisions,releases,occurrences} retrieve each
+     - get\_{contents,directories,revisions,releases,occurrences} retrieve each
        kind of object from the origin
-     - has_* checks whether there are some objects to load for that object type
-     - get_fetch_history_result retrieves the data to insert in the
+     - has\_* checks whether there are some objects to load for that object
+       type
+     - get\_fetch\_history\_result retrieves the data to insert in the
        fetch_history table once the load was successful
      - cleanup cleans up an eventual state installed for computations
      - eventful returns whether the load was eventful or not

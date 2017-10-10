@@ -4,55 +4,60 @@
 # See top-level LICENSE file for more information
 
 
-from swh.model import hashutil, identifiers
+from swh.model import hashutil
 
 
-def data_size_too_big(data, id_hash, max_content_size, logger=None,
-                      origin_id=None):
-    if logger:
-        size = len(data)
-        id_hash = hashutil.hash_to_hex(id_hash)
-        logger.info('Skipping content %s, too large (%s > %s)' %
-                    (id_hash, size, max_content_size),
-                    extra={
-                        'swh_type': 'loader_content_skip',
-                        'swh_id': id_hash,
-                        'swh_size': size
-                    })
-    return {
-        'status': 'absent',
-        'reason': 'Content too large',
-        'origin': origin_id
-    }
+# TODO: What should this be set to?
+# swh-model/identifiers.py:identifier_to_bytes has a restrictive length check
+# in it which prevents using blake2 with hashutil.hash_to_hex
+PRIMARY_ALGO = 'sha1_git'
 
 
-def data_to_content_id(data):
+def blob_to_content_dict(data, existing_hashes=None, max_size=None,
+                         logger=None):
+    """Convert blob data to a SWH Content. If the blob already
+    has hashes computed, don't recompute them.
+    TODO: This should be unified with similar functions in other places.
+
+    args:
+        existing_hashes: dict of hash algorithm:value pairs
+        max_size: size over which blobs should be rejected
+        logger: logging class instance
+    returns:
+        A Software Heritage "content".
+    """
+    existing_hashes = existing_hashes or {}
+
     size = len(data)
-    ret = {
+    content = {
         'length': size,
     }
-    ret.update(identifiers.content_identifier({'data': data}))
-    return ret
+    content.update(existing_hashes)
 
+    hash_types = list(existing_hashes.keys())
+    hashes_to_do = hashutil.DEFAULT_ALGORITHMS.difference(hash_types)
+    content.update(hashutil.hash_data(data, algorithms=hashes_to_do))
 
-def blob_to_content_dict(data, ident, max_content_size=None, logger=None,
-                         origin_id=None):
-    """Convert blob data to a Software Heritage content"""
-    ret = data_to_content_id(data)
-    if max_content_size and (len(data) > max_content_size):
-        ret.update(
-             data_size_too_big(data, ident, max_content_size, logger=logger,
-                               origin_id=origin_id)
-        )
+    if max_size and (size > max_size):
+        content.update({
+            'status': 'absent',
+            'reason': 'Content too large',
+        })
+        if logger:
+            id_hash = hashutil.hash_to_hex(content[PRIMARY_ALGO])
+            logger.info(
+                'Skipping content %s, too large (%s > %s)'
+                % (id_hash, size, max_size),
+                extra={
+                    'swh_type': 'loader_content_skip',
+                    'swh_id': id_hash,
+                    'swh_size': size
+                }
+            )
     else:
-        ret.update(
-            {
-                'data': data,
-                'status': 'visible'
-            }
-        )
+        content.update({'data': data, 'status': 'visible'})
 
-    return ret
+    return content
 
 
 def parse_author(name_email):

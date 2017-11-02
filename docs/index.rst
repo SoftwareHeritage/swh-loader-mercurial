@@ -1,3 +1,5 @@
+.. _swh-loader-mercurial:
+
 Software Heritage - Development Documentation
 =============================================
 

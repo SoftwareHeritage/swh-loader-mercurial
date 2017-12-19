@@ -137,7 +137,7 @@ class BaseLoader(config.SWHConfig):
         self.storage = get_storage(**self.config['storage'])
 
         self.log = logging.getLogger('swh.loader.hg.BulkLoader')
-        self.fetch_date = None  # possibly overridden in self.prepare method
+        self.visit_date = None  # possibly overridden in self.prepare method
 
     def prepare(self, *args, **kwargs):
         """Prepare the data source to be loaded"""
@@ -211,7 +211,7 @@ class BaseLoader(config.SWHConfig):
         """The path to which we save the data"""
         if not hasattr(self, '__save_data_path'):
             origin_id = self.origin_id
-            year = str(self.fetch_date.year)
+            year = str(self.visit_date.year)
 
             path = os.path.join(
                 self.config['save_data_path'],
@@ -411,8 +411,8 @@ class BaseLoader(config.SWHConfig):
         self.origin_id = self.send_origin(origin)
 
         fetch_history_id = self.open_fetch_history()
-        if self.fetch_date:  # overwriting the visit_date the fetching date
-            date_visit = self.fetch_date
+        if self.visit_date:  # overwriting the visit_date the fetching date
+            date_visit = self.visit_date
         else:
             date_visit = datetime.datetime.now(tz=datetime.timezone.utc)
 

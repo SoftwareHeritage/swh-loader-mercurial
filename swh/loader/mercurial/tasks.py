@@ -14,7 +14,7 @@ class LoadMercurialTsk(Task):
     """
     task_queue = 'swh_loader_mercurial'
 
-    def run_task(self, *, origin_url, directory, fetch_date):
+    def run_task(self, *, origin_url, directory, visit_date):
         """Import a mercurial tarball into swh.
 
         Args: see :func:`DepositLoader.load`.
@@ -24,4 +24,4 @@ class LoadMercurialTsk(Task):
         loader.log = self.log
         loader.load(origin_url=origin_url,
                     directory=directory,
-                    fetch_date=fetch_date)
+                    visit_date=visit_date)

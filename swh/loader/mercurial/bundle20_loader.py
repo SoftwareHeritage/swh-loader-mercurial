@@ -36,17 +36,17 @@ MAX_BLOB_SIZE = 100*1024*1024  # bytes
 
 
 class HgBundle20Loader(BaseLoader):
-    CONFIG_BASE_FILENAME = 'loader/hg-loader'
+    CONFIG_BASE_FILENAME = 'loader/hg'
     BUNDLE_FILENAME = 'HG20_none_bundle'
 
     def __init__(self):
         self.hg = None
         self.tags = []
 
-    def prepare(self, origin_url, directory, fetch_date):
+    def prepare(self, origin_url, directory, visit_date):
         """see base.BaseLoader.prepare"""
         self.origin_url = origin_url
-        self.fetch_date = fetch_date
+        self.visit_date = visit_date
         self.hgdir = directory
         bundle_path = os.path.join(directory, HgBundle20Loader.BUNDLE_FILENAME)
 

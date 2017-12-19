@@ -80,11 +80,11 @@ class HgLoader(base.BaseLoader):
 
     CONFIG_BASE_FILENAME = 'loader/hg-loader'
 
-    def prepare(self, origin_url, directory, fetch_date):
+    def prepare(self, origin_url, directory, visit_date):
         """see base.BaseLoader.prepare"""
         self.origin_url = origin_url
         self.repo = hglib.open(directory)
-        self.fetch_date = fetch_date
+        self.visit_date = visit_date
         self.node_to_blob_hash = {}
         self.blob_hash_to_file_rev = {}
         self.commit_trees = {}
@@ -391,11 +391,11 @@ class HgLoader(base.BaseLoader):
 class HgLoaderFromArchive(HgLoader):
     """Load an HG repository from a compressed archive.
     """
-    def prepare(self, origin_url, archive_path, fetch_date):
+    def prepare(self, origin_url, archive_path, visit_date):
         tmpdir = tmp_extract(archive_path,
                              tmpdir_prefix='swh.loader.hg.',
                              log=self.log, source=origin_url)
-        super().prepare(origin_url, tmpdir.name, fetch_date)
+        super().prepare(origin_url, tmpdir.name, visit_date)
 
 
 if __name__ == '__main__':
@@ -410,6 +410,6 @@ if __name__ == '__main__':
 
     origin_url = sys.argv[1]
     directory = sys.argv[2]
-    fetch_date = datetime.datetime.now(tz=datetime.timezone.utc)
+    visit_date = datetime.datetime.now(tz=datetime.timezone.utc)
 
-    print(loader.load(origin_url, directory, fetch_date))
+    print(loader.load(origin_url, directory, visit_date))

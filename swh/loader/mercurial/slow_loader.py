@@ -8,9 +8,8 @@
 # python3 library for mercurial as of this writing. - Avi
 
 import datetime
-import os
-
 import hglib
+import os
 
 from swh.model import identifiers
 

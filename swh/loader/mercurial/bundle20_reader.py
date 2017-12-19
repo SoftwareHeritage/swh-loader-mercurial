@@ -133,12 +133,13 @@ version 2 bundle file. It is referenced by bundle20_loader.py
 
 import itertools
 import struct
+
 from binascii import unhexlify
 from collections import OrderedDict
 from datetime import datetime
 
-from chunked_reader import ChunkedFileReader
-from objects import SelectiveCache
+from .chunked_reader import ChunkedFileReader
+from .objects import SelectiveCache
 
 
 def unpack(fmt_str, source):

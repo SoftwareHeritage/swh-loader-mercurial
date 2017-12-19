@@ -11,8 +11,8 @@ import binascii
 import copy
 import os
 import sys
-from collections import OrderedDict
 
+from collections import OrderedDict
 from sqlitedict import SqliteDict
 
 from swh.model import identifiers

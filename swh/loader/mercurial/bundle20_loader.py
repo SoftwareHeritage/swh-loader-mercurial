@@ -19,19 +19,23 @@ import os
 
 import hglib
 
-import base
-import converters
-from bundle20_reader import Bundle20Reader
-from converters import PRIMARY_ALGO as ALGO
-from objects import SelectiveCache, SimpleTree
+
 from swh.model import hashutil, identifiers
+
+
+from . import converters
+from .bundle20_reader import Bundle20Reader
+from .converters import PRIMARY_ALGO as ALGO
+from .objects import SelectiveCache, SimpleTree
+from .base import BaseLoader
+
 
 DEBUG = True
 MAX_BLOB_SIZE = 100*1024*1024  # bytes
 # TODO: What should MAX_BLOB_SIZE be?
 
 
-class HgBundle20Loader(base.BaseLoader):
+class HgBundle20Loader(BaseLoader):
     CONFIG_BASE_FILENAME = 'loader/hg-loader'
     BUNDLE_FILENAME = 'HG20_none_bundle'
 

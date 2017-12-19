@@ -4,18 +4,19 @@
 # See top-level LICENSE file for more information
 
 import code
+import hglib
 import os
 import random
 import sys
 import time
+
 from binascii import hexlify, unhexlify
 
-import hglib
-
-from bundle20_loader import HgBundle20Loader
-from converters import PRIMARY_ALGO as ALGO
-from objects import SimpleTree
 from swh.model import hashutil
+
+from .bundle20_loader import HgBundle20Loader
+from .converters import PRIMARY_ALGO as ALGO
+from .objects import SimpleTree
 
 
 class HgLoaderValidater(HgBundle20Loader):

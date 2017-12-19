@@ -7,9 +7,13 @@ Build-Depends: debhelper (>= 9),
                python3-all,
                python3-nose,
                python3-setuptools,
+               python3-vcversioner,
+               python3-retrying,
+               python3-hglib,
+               patool,
                python3-swh.core (>= 0.0.36~),
                python3-swh.storage (>= 0.0.95~),
-               python3-vcversioner
+               python-sqlitedict
 Standards-Version: 3.9.6
 Homepage: https://forge.softwareheritage.org/source/swh-loader-mercurial/
 
@@ -17,6 +21,9 @@ Package: python3-swh.loader.mercurial
 Architecture: all
 Depends: python3-swh.core (>= 0.0.36~),
          python3-swh.storage (>= 0.0.95~),
+         patool,
+         python-sqlitedict,
+         python3-hglib,
          ${misc:Depends}, ${python3:Depends}
 Description: Software Heritage Mercurial Loader
   Module in charge of loading hg/mercurial repositories into

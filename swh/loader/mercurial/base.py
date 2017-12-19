@@ -137,6 +137,8 @@ class BaseLoader(config.SWHConfig):
         self.storage = get_storage(**self.config['storage'])
 
         self.log = logging.getLogger('swh.loader.hg.BulkLoader')
+        l = logging.getLogger('requests.packages.urllib3.connectionpool')
+        l.setLevel(logging.WARN)
         self.visit_date = None  # possibly overridden in self.prepare method
 
     def prepare(self, *args, **kwargs):

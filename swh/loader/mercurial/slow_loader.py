@@ -78,7 +78,7 @@ class HgLoader(base.BaseLoader):
     """Load a mercurial repository from a directory.
     """
 
-    CONFIG_BASE_FILENAME = 'loader/hg-loader'
+    CONFIG_BASE_FILENAME = 'loader/hg'
 
     def prepare(self, origin_url, directory, visit_date):
         """see base.BaseLoader.prepare"""
@@ -167,7 +167,7 @@ class HgLoader(base.BaseLoader):
             file_path, rev = self.blob_hash_to_file_rev[oid]
             data = self.repo.cat([file_path], rev)
             yield converters.blob_to_content_dict(
-                data, max_content_size, self.log, self.origin_id
+                data, max_size=max_content_size, logger=self.log
             )
 
     def has_directories(self):
@@ -392,8 +392,8 @@ class HgLoaderFromArchive(HgLoader):
     """Load an HG repository from a compressed archive.
     """
     def prepare(self, origin_url, archive_path, visit_date):
-        tmpdir = tmp_extract(archive_path,
-                             tmpdir_prefix='swh.loader.hg.',
+        tmpdir = tmp_extract(archive=archive_path,
+                             prefix='swh.loader.hg.',
                              log=self.log, source=origin_url)
         super().prepare(origin_url, tmpdir.name, visit_date)
 

@@ -9,12 +9,12 @@ import tempfile
 import patoolib
 
 
-def tmp_extract(self, archive, tmpdir_prefix=None, log=None, source=None):
+def tmp_extract(archive, prefix=None, log=None, source=None):
     """Extract an archive to a temporary location with optional logs.
 
     Args:
         archive (string): Absolute path of the archive to be extracted
-        tmpdir_prefix (string): Optional modifier to the temporary storage
+        prefix (string): Optional modifier to the temporary storage
             directory name. (I guess in case something
             goes wrong and you want to go look?)
         log (python logging instance): Optional for recording extractions.
@@ -30,10 +30,10 @@ def tmp_extract(self, archive, tmpdir_prefix=None, log=None, source=None):
     else:
         package = archive_base.split('.')[0]
 
-    tmpdir = tempfile.TemporaryDirectory(prefix=tmpdir_prefix)
+    tmpdir = tempfile.TemporaryDirectory(prefix=prefix)
     patoolib.extract_archive(archive, interactive=False, outdir=tmpdir)
 
-    repo_path = os.path.join(tmpdir, package)
+    repo_path = os.path.join(tmpdir.name, package)
 
     if log is not None:
         logstr = ''

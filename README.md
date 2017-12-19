@@ -29,10 +29,48 @@ occurrence_packet_size: 1000
 
 From python3's toplevel:
 
+## local directory (failure)
+
+Only origin and contents are filled.
+
+Remaining objects are empty (directory, revision, release,
+occurrence).
+
 ``` Python
 project = '756015-ipv6'
 directory = '/home/storage/hg/repo/%s' % project
 origin_url = 'https://%s.googlecode.com' % project
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+from swh.loader.mercurial.tasks import SlowLoadMercurialTsk
+
+t = SlowLoadMercurialTsk()
+t.run(origin_url=origin_url, directory=directory, visit_date='2016-05-03T15:16:32+00:00')
+```
+
+## local archive
+
+``` Python
+project = '756015-ipv6-source-archive.zip'
+archive_path = '/home/storage/hg/repo/%s' % project
+origin_url = 'https://%s-archive.googlecode.com' % project
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+from swh.loader.mercurial.tasks import SlowLoadMercurialArchiveTsk
+
+t = SlowLoadMercurialArchiveTsk()
+t.run(origin_url=origin_url, archive_path=archive_path, visit_date='2016-05-03T15:16:32+00:00')
+```
+
+## Remote (failure)
+
+``` Python
+origin_url = 'https://code.launchpad.net/~bzr-svn/bzr-svn/1.2'
+directory = '/tmp/'
 
 import logging
 logging.basicConfig(level=logging.DEBUG)

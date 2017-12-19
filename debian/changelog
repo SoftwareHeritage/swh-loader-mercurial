@@ -1,5 +1,5 @@
-<module-name> (0.0.1-1) unstable; urgency=low
+swh-loader-mercurial (0.0.1-1) unstable; urgency=low
 
-  *
+  * Initial package
 
- -- AUTHOR-NAME <AUTHOR-EMAIL>  <UTC-DATE>
+ -- Antoine R. Dumont (@ardumont) <antoine.romain.dumont@gmail.com>  Tue, 19 Dec 2017 10:45:24 +0200

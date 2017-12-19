@@ -13,14 +13,12 @@ def parse_requirements():
     return requirements
 
 
-# Edit this part to match your module
-# full sample: https://forge.softwareheritage.org/diffusion/DCORE/browse/master/setup.py
 setup(
-    name='swh.<module-name>',
-    description='Software Heritage <Module\'s intent>',
+    name='swh.loader.mercurial',
+    description='Software Heritage Mercurial Loader',
     author='Software Heritage developers',
     author_email='swh-devel@inria.fr',
-    url='https://forge.softwareheritage.org/diffusion/<module-git-code>',
+    url='https://forge.softwareheritage.org/diffusion/DLDHG/',
     packages=find_packages(),  # packages's modules
     scripts=[],   # scripts to package
     install_requires=parse_requirements(),

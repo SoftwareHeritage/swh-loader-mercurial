@@ -40,6 +40,7 @@ class HgBundle20Loader(BaseLoader):
     BUNDLE_FILENAME = 'HG20_none_bundle'
 
     def __init__(self):
+        super().__init__()
         self.hg = None
         self.tags = []
 

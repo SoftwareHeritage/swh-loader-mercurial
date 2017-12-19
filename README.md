@@ -29,12 +29,28 @@ occurrence_packet_size: 1000
 
 From python3's toplevel:
 
+## Remote (failure)
+
+``` Python
+# remote repository
+origin_url = 'https://www.mercurial-scm.org/repo/hello'
+# local clone
+directory = '/home/storage/hg/repo/hello'
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+from swh.loader.mercurial.tasks import LoadMercurialTsk
+
+t = LoadMercurialTsk()
+t.run(origin_url=origin_url, directory=directory, visit_date='2016-05-03T15:16:32+00:00')
+```
+
 ## local directory (failure)
 
-Only origin and contents are filled.
+Only origin, contents, and directories are filled so far.
 
-Remaining objects are empty (directory, revision, release,
-occurrence).
+Remaining objects are empty (revision, release, occurrence).
 
 ``` Python
 project = '756015-ipv6'
@@ -50,7 +66,7 @@ t = SlowLoadMercurialTsk()
 t.run(origin_url=origin_url, directory=directory, visit_date='2016-05-03T15:16:32+00:00')
 ```
 
-## local archive
+## local archive (failure)
 
 ``` Python
 project = '756015-ipv6-source-archive.zip'
@@ -64,19 +80,4 @@ from swh.loader.mercurial.tasks import SlowLoadMercurialArchiveTsk
 
 t = SlowLoadMercurialArchiveTsk()
 t.run(origin_url=origin_url, archive_path=archive_path, visit_date='2016-05-03T15:16:32+00:00')
-```
-
-## Remote (failure)
-
-``` Python
-origin_url = 'https://code.launchpad.net/~bzr-svn/bzr-svn/1.2'
-directory = '/tmp/'
-
-import logging
-logging.basicConfig(level=logging.DEBUG)
-
-from swh.loader.mercurial.tasks import LoadMercurialTsk
-
-t = LoadMercurialTsk()
-t.run(origin_url=origin_url, directory=directory, visit_date='2016-05-03T15:16:32+00:00')
 ```

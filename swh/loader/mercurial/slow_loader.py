@@ -12,8 +12,9 @@ import hglib
 import os
 
 from swh.model import identifiers
+from swh.loader.core.loader import SWHStatelessLoader
 
-from . import base, converters
+from . import converters
 from .archive_extract import tmp_extract
 
 # TODO: What should this be?
@@ -74,11 +75,14 @@ class SimpleTree(dict):
         node[fbase] = SimpleBlob(file_hash, file_mode)
 
 
-class HgLoader(base.BaseLoader):
+class HgLoader(SWHStatelessLoader):
     """Load a mercurial repository from a directory.
-    """
 
+    """
     CONFIG_BASE_FILENAME = 'loader/hg'
+
+    def __init__(self, logging_class='swh.loader.mercurial.HgLoader'):
+        super().__init__(logging_class=logging_class)
 
     def prepare(self, origin_url, directory, visit_date):
         """see base.BaseLoader.prepare"""
@@ -390,7 +394,12 @@ class HgLoader(base.BaseLoader):
 
 class HgLoaderFromArchive(HgLoader):
     """Load an HG repository from a compressed archive.
+
     """
+    def __init__(self):
+        super().__init__(
+            logging_class='swh.loader.mercurial.HgLoaderFromArchive')
+
     def prepare(self, origin_url, archive_path, visit_date):
         tmpdir = tmp_extract(archive=archive_path,
                              prefix='swh.loader.hg.',

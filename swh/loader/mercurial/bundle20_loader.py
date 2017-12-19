@@ -21,13 +21,12 @@ import hglib
 
 
 from swh.model import hashutil, identifiers
-
+from swh.loader.core.loader import SWHStatelessLoader
 
 from . import converters
 from .bundle20_reader import Bundle20Reader
 from .converters import PRIMARY_ALGO as ALGO
 from .objects import SelectiveCache, SimpleTree
-from .base import BaseLoader
 
 
 DEBUG = True
@@ -35,20 +34,22 @@ MAX_BLOB_SIZE = 100*1024*1024  # bytes
 # TODO: What should MAX_BLOB_SIZE be?
 
 
-class HgBundle20Loader(BaseLoader):
+class HgBundle20Loader(SWHStatelessLoader):
     CONFIG_BASE_FILENAME = 'loader/hg'
     BUNDLE_FILENAME = 'HG20_none_bundle'
 
     def __init__(self):
-        super().__init__()
+        super().__init__(logging_class='swh.loader.mercurial.Bundle20Loader')
         self.hg = None
         self.tags = []
 
     def prepare(self, origin_url, directory, visit_date):
         """see base.BaseLoader.prepare"""
         self.origin_url = origin_url
+        self.origin = self.get_origin()
         self.visit_date = visit_date
         self.hgdir = directory
+
         bundle_path = os.path.join(directory, HgBundle20Loader.BUNDLE_FILENAME)
 
         if DEBUG and not os.path.isfile(bundle_path):

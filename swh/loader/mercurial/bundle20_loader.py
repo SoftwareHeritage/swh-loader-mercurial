@@ -29,7 +29,6 @@ from .converters import PRIMARY_ALGO as ALGO
 from .objects import SelectiveCache, SimpleTree
 
 
-DEBUG = True
 MAX_BLOB_SIZE = 100*1024*1024  # bytes
 # TODO: What should MAX_BLOB_SIZE be?
 
@@ -38,8 +37,13 @@ class HgBundle20Loader(SWHStatelessLoader):
     CONFIG_BASE_FILENAME = 'loader/hg'
     BUNDLE_FILENAME = 'HG20_none_bundle'
 
+    ADDITIONAL_CONFIG = {
+        'debug': ('bool', False),
+    }
+
     def __init__(self):
         super().__init__(logging_class='swh.loader.mercurial.Bundle20Loader')
+        self.debug = self.config['debug']
         self.hg = None
         self.tags = []
 
@@ -52,7 +56,7 @@ class HgBundle20Loader(SWHStatelessLoader):
 
         bundle_path = os.path.join(directory, HgBundle20Loader.BUNDLE_FILENAME)
 
-        if DEBUG and not os.path.isfile(bundle_path):
+        if self.debug and not os.path.isfile(bundle_path):
             # generate a bundle from the given directory if needed (testing)
             with hglib.open(directory) as repo:
                 repo.bundle(
@@ -95,7 +99,7 @@ class HgBundle20Loader(SWHStatelessLoader):
                 # https://www.mercurial-scm.org/wiki/GitConcepts#Tag_model
                 self.tags = blob.split(b'\n')  # overwrite until the last one
 
-        if not DEBUG:
+        if not self.debug:
             missing_contents = set(
                 self.storage.content_missing(iter(missing_contents), ALGO)
             )
@@ -181,7 +185,7 @@ class HgBundle20Loader(SWHStatelessLoader):
                 missing_dirs.append(d['id'])
         missing_dirs = set(missing_dirs)
 
-        if not DEBUG:
+        if not self.debug:
             missing_dirs = set(
                 self.storage.directory_missing(missing_dirs)
             )
@@ -243,7 +247,7 @@ class HgBundle20Loader(SWHStatelessLoader):
 
         missing_revs = revisions.keys()
 
-        if not DEBUG:
+        if not self.debug:
             missing_revs = set(
                 self.storage.revision_missing(missing_revs)
             )

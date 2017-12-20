@@ -249,6 +249,8 @@ class HgBundle20Loader(SWHStatelessLoader):
     def get_releases(self):
         """Get the releases that need to be loaded."""
         self.num_releases = 0
+        releases = {}
+        missing_releases = []
         for t in self.tags:
             self.num_releases += 1
             node, name = t.split(b' ')
@@ -265,8 +267,13 @@ class HgBundle20Loader(SWHStatelessLoader):
             id_hash = hashutil.hash_to_bytes(
                 identifiers.release_identifier(release))
             release['id'] = id_hash
+            missing_releases.append(id_hash)
+            releases[id_hash] = release
 
-            yield release
+        missing_releases = self.storage.release_missing(missing_releases)
+
+        for _id in missing_releases:
+            yield releases[_id]
 
     def get_occurrences(self):
         """Get the occurrences that need to be loaded."""

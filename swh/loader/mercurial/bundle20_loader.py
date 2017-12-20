@@ -270,7 +270,7 @@ class HgBundle20Loader(SWHStatelessLoader):
             missing_releases.append(id_hash)
             releases[id_hash] = release
 
-        missing_releases = self.storage.release_missing(missing_releases)
+        missing_releases = set(self.storage.release_missing(missing_releases))
 
         for _id in missing_releases:
             yield releases[_id]

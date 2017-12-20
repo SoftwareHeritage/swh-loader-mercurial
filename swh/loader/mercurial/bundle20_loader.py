@@ -98,7 +98,8 @@ class HgBundle20Loader(SWHStatelessLoader):
 
             if file_name == b'.hgtags':
                 # https://www.mercurial-scm.org/wiki/GitConcepts#Tag_model
-                self.tags = blob.split(b'\n')  # overwrite until the last one
+                # overwrite until the last one
+                self.tags = (t for t in blob.split(b'\n') if t != b'')
 
         missing_contents = set(
             self.storage.content_missing(
@@ -247,26 +248,25 @@ class HgBundle20Loader(SWHStatelessLoader):
 
     def get_releases(self):
         """Get the releases that need to be loaded."""
-        releases = {}
         self.num_releases = 0
         for t in self.tags:
             self.num_releases += 1
             node, name = t.split(b' ')
             release = {
                 'name': name,
-                'target': node,
+                'target': hashutil.hash_to_bytes(node.decode()),
                 'target_type': 'revision',
                 'message': None,
                 'metadata': None,
                 'synthetic': False,
-                'author': None,
+                'author': {'name': None, 'email': None, 'fullname': b''},
                 'date': None
             }
-            id_hash = identifiers.release_identifier(release)
+            id_hash = hashutil.hash_to_bytes(
+                identifiers.release_identifier(release))
             release['id'] = id_hash
-            releases[id_hash] = release
 
-        yield from releases.values()
+            yield release
 
     def get_occurrences(self):
         """Get the occurrences that need to be loaded."""

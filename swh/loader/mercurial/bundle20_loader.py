@@ -282,7 +282,7 @@ class HgBundle20Loader(SWHStatelessLoader):
             self.num_occurrences += 1
             yield {
                 'branch': name,
-                'origin': self.origin_url,
+                'origin': self.origin_id,
                 'target': target,
                 'target_type': 'revision',
                 'visit': self.visit,

@@ -30,16 +30,15 @@ def tmp_extract(archive, prefix=None, log=None, source=None):
     else:
         package = archive_base.split('.')[0]
 
-    tmpdir = tempfile.TemporaryDirectory(prefix=prefix)
+    tmpdir = tempfile.mkdtemp(prefix=prefix)
     patoolib.extract_archive(archive, interactive=False, outdir=tmpdir)
-
-    repo_path = os.path.join(tmpdir.name, package)
+    repo_path = os.path.join(tmpdir, package)
 
     if log is not None:
         logstr = ''
         if source is not None:
             logstr = 'From %s - ' % source
-        log.info(logstr + 'Uncompressing archive %s at %s' % (
-            archive_base, repo_path))
+        log.info('%sUncompressing archive %s at %s' % (
+            logstr, archive_base, repo_path))
 
     return tmpdir

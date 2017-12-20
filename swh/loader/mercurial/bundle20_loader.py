@@ -27,56 +27,85 @@ from swh.loader.core.loader import SWHStatelessLoader
 from swh.loader.core.converters import content_for_storage
 
 from . import converters
+from .archive_extract import tmp_extract
 from .bundle20_reader import Bundle20Reader
 from .converters import PRIMARY_ALGO as ALGO
 from .objects import SelectiveCache, SimpleTree
 
 
 class HgBundle20Loader(SWHStatelessLoader):
+    """Mercurial loader able to deal with remote or local repository.
+
+    """
     CONFIG_BASE_FILENAME = 'loader/hg'
 
     ADDITIONAL_CONFIG = {
         'bundle_filename': ('str', 'HG20_none_bundle'),
     }
 
-    def __init__(self):
-        super().__init__(logging_class='swh.loader.mercurial.Bundle20Loader')
+    def __init__(self, logging_class='swh.loader.mercurial.Bundle20Loader'):
+        super().__init__(logging_class=logging_class)
         self.content_max_size_limit = self.config['content_size_limit']
         self.bundle_filename = self.config['bundle_filename']
         self.hg = None
         self.tags = []
-        self.working_directory = mkdtemp(suffix='.tmp',
-                                         prefix='swh.loader.mercurial.',
-                                         dir='/tmp')
 
     def cleanup(self):
         """Clean temporary working directory
 
         """
-        if os.path.exists(self.working_directory):
+        if self.bundle_path and os.path.exists(self.bundle_path):
+            self.log.debug('Cleanup up working bundle %s' % self.bundle_path)
+            os.unlink(self.bundle_path)
+        if self.working_directory and os.path.exists(self.working_directory):
+            self.log.debug('Cleanup up working directory %s' % (
+                self.working_directory, ))
             rmtree(self.working_directory)
 
-    def prepare(self, origin_url, directory, visit_date):
-        """see base.BaseLoader.prepare"""
+    def prepare(self, origin_url, visit_date, directory=None):
+        """Prepare the necessary steps to load an actual remote or local
+           repository.
+
+           To load a local repository, pass the optional directory
+           parameter as filled with a path to a real local folder.
+
+           To load a remote repository, pass the optional directory
+           parameter as None.
+
+        """
         self.origin_url = origin_url
         self.origin = self.get_origin()
         self.visit_date = visit_date
+        self.working_directory = None
+        self.bundle_path = None
 
-        wd = os.path.join(self.working_directory, directory)
-        os.makedirs(wd, exist_ok=True)
-        self.hgdir = wd
+        try:
+            if not directory:  # remote repository
+                self.working_directory = mkdtemp(
+                    suffix='.tmp',
+                    prefix='swh.loader.mercurial.',
+                    dir='/tmp')
+                os.makedirs(self.working_directory, exist_ok=True)
+                self.hgdir = self.working_directory
 
-        bundle_path = os.path.join(self.hgdir, self.bundle_filename)
-        self.log.debug('Cloning %s to %s' % (self.origin_url, self.hgdir))
-        hglib.clone(source=self.origin_url, dest=self.hgdir)
+                self.log.debug('Cloning %s to %s' % (
+                    self.origin_url, self.hgdir))
+                hglib.clone(source=self.origin_url, dest=self.hgdir)
+            else:  # local repository
+                self.working_directory = None
+                self.hgdir = directory
 
-        self.log.debug('Bundling at %s' % bundle_path)
-        with hglib.open(directory) as repo:
-            repo.bundle(bytes(bundle_path, 'utf-8'),
-                        all=True,
-                        type=b'none')
+            self.bundle_path = os.path.join(self.hgdir, self.bundle_filename)
+            self.log.debug('Bundling at %s' % self.bundle_path)
+            with hglib.open(self.hgdir) as repo:
+                repo.bundle(bytes(self.bundle_path, 'utf-8'),
+                            all=True,
+                            type=b'none')
+        except:
+            self.cleanup()
+            raise
 
-        self.br = Bundle20Reader(bundle_path)
+        self.br = Bundle20Reader(self.bundle_path)
 
     def get_origin(self):
         """Get the origin that is currently being loaded in format suitable for
@@ -311,3 +340,31 @@ class HgBundle20Loader(SWHStatelessLoader):
             'releases': self.num_releases,
             'occurrences': self.num_occurrences
         }
+
+
+class HgArchiveBundle20Loader(HgBundle20Loader):
+    """Mercurial loader for repository wrapped within archives.
+
+    """
+    def __init__(self):
+        super().__init__(
+            logging_class='swh.loader.mercurial.HgArchiveBundle20Loader')
+
+    def prepare(self, origin_url, archive_path, visit_date):
+        self.temp_dir = tmp_extract(archive=archive_path,
+                                    prefix='swh.loader.mercurial.',
+                                    log=self.log,
+                                    source=origin_url)
+
+        repo_name = os.listdir(self.temp_dir)[0]
+        directory = os.path.join(self.temp_dir, repo_name)
+        try:
+            super().prepare(origin_url, visit_date, directory=directory)
+        except:
+            self.cleanup()
+            raise
+
+    def cleanup(self):
+        if os.path.exists(self.temp_dir):
+            rmtree(self.temp_dir)
+        super().cleanup()

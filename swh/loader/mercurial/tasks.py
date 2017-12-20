@@ -5,8 +5,7 @@
 
 from swh.scheduler.task import Task
 
-from .bundle20_loader import HgBundle20Loader
-from .slow_loader import HgLoader, HgLoaderFromArchive
+from .bundle20_loader import HgBundle20Loader, HgArchiveBundle20Loader
 
 
 class LoadMercurialTsk(Task):
@@ -15,7 +14,7 @@ class LoadMercurialTsk(Task):
     """
     task_queue = 'swh_loader_mercurial'
 
-    def run_task(self, *, origin_url, directory, visit_date):
+    def run_task(self, *, origin_url, visit_date, directory):
         """Import a mercurial tarball into swh.
 
         Args: see :func:`DepositLoader.load`.
@@ -28,30 +27,8 @@ class LoadMercurialTsk(Task):
                     visit_date=visit_date)
 
 
-class SlowLoadMercurialTsk(Task):
-    """Mercurial repository loading
-
-    """
-    task_queue = 'swh_loader_mercurial_slow'
-
-    def run_task(self, *, origin_url, directory, visit_date):
-        """Import a mercurial tarball into swh.
-
-        Args: see :func:`DepositLoader.load`.
-
-        """
-        loader = HgLoader()
-        loader.log = self.log
-        loader.load(origin_url=origin_url,
-                    directory=directory,
-                    visit_date=visit_date)
-
-
-class SlowLoadMercurialArchiveTsk(Task):
-    """Mercurial repository loading
-
-    """
-    task_queue = 'swh_loader_mercurial_slow_archive'
+class LoadArchiveMercurialTsk(Task):
+    task_queue = 'swh_loader_mercurial_archive'
 
     def run_task(self, *, origin_url, archive_path, visit_date):
         """Import a mercurial tarball into swh.
@@ -59,7 +36,7 @@ class SlowLoadMercurialArchiveTsk(Task):
         Args: see :func:`DepositLoader.load`.
 
         """
-        loader = HgLoaderFromArchive()
+        loader = HgArchiveBundle20Loader()
         loader.log = self.log
         loader.load(origin_url=origin_url,
                     archive_path=archive_path,

@@ -14,7 +14,6 @@ import os
 from swh.model import identifiers, hashutil
 from swh.loader.core.loader import SWHStatelessLoader
 
-from .archive_extract import tmp_extract
 from .converters import parse_author, PRIMARY_ALGO as ALGO
 
 
@@ -442,21 +441,6 @@ class HgLoader(SWHStatelessLoader):
     def eventful(self):
         """Whether the load was eventful"""
         return True
-
-
-class HgLoaderFromArchive(HgLoader):
-    """Load an HG repository from a compressed archive.
-
-    """
-    def __init__(self):
-        super().__init__(
-            logging_class='swh.loader.mercurial.HgLoaderFromArchive')
-
-    def prepare(self, origin_url, archive_path, visit_date):
-        tmpdir = tmp_extract(archive=archive_path,
-                             prefix='swh.loader.hg.',
-                             log=self.log, source=origin_url)
-        super().prepare(origin_url, tmpdir.name, visit_date)
 
 
 if __name__ == '__main__':

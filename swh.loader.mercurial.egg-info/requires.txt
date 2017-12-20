@@ -1,0 +1,9 @@
+hglib
+retrying
+sqlitedict
+swh.core>=0.0.36
+swh.loader.core>=0.0.28
+swh.model>=0.0.20
+swh.scheduler>=0.0.19
+swh.storage>=0.0.95
+vcversioner

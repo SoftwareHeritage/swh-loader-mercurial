@@ -226,9 +226,10 @@ class HgBundle20Loader(SWHStatelessLoader):
                 'directory': directory_id,
                 'message': commit['message'],
                 'metadata': {
-                    'node': header['node'],
+                    'node': hashutil.hash_to_hex(header['node']),
                     'extra_headers': [
-                        ['time_offset_seconds', commit['time_offset_seconds']],
+                        ['time_offset_seconds',
+                         str(commit['time_offset_seconds']).encode('utf-8')],
                     ] + extra_meta
                 },
                 'synthetic': False,
@@ -248,7 +249,9 @@ class HgBundle20Loader(SWHStatelessLoader):
             )
 
         for r in missing_revs:
-            yield revisions[r]
+            rev = revisions[r]
+            rev['id'] = hashutil.hash_to_bytes(rev['id'])
+            yield rev
         self.mnode_to_tree_id = None
 
     def get_releases(self):

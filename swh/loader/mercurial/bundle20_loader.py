@@ -31,16 +31,17 @@ from .objects import SelectiveCache, SimpleTree
 
 class HgBundle20Loader(SWHStatelessLoader):
     CONFIG_BASE_FILENAME = 'loader/hg'
-    BUNDLE_FILENAME = 'HG20_none_bundle'
 
     ADDITIONAL_CONFIG = {
         'debug': ('bool', False),
+        'bundle_filename': ('str', 'HG20_none_bundle'),
     }
 
     def __init__(self):
         super().__init__(logging_class='swh.loader.mercurial.Bundle20Loader')
         self.debug = self.config['debug']
         self.content_max_size_limit = self.config['content_size_limit']
+        self.bundle_filename = self.config['bundle_filename']
         self.hg = None
         self.tags = []
 
@@ -51,7 +52,7 @@ class HgBundle20Loader(SWHStatelessLoader):
         self.visit_date = visit_date
         self.hgdir = directory
 
-        bundle_path = os.path.join(directory, HgBundle20Loader.BUNDLE_FILENAME)
+        bundle_path = os.path.join(directory, self.bundle_filename)
 
         if self.debug and not os.path.isfile(bundle_path):
             # generate a bundle from the given directory if needed (testing)

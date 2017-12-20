@@ -173,17 +173,14 @@ class HgBundle20Loader(SWHStatelessLoader):
         """Get the directories that need to be loaded."""
         missing_dirs = []
         self.num_directories = 0
-
         for header, tree, new_dirs in self.load_directories():
             for d in new_dirs:
                 self.num_directories += 1
                 missing_dirs.append(d['id'])
-        missing_dirs = set(missing_dirs)
 
-        if not self.debug:
-            missing_dirs = set(
-                self.storage.directory_missing(missing_dirs)
-            )
+        missing_dirs = set(
+            self.storage.directory_missing(missing_dirs)
+        )
 
         for header, tree, new_dirs in self.load_directories():
             for d in new_dirs:

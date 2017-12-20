@@ -4,60 +4,10 @@
 # See top-level LICENSE file for more information
 
 
-from swh.model import hashutil, identifiers
+from swh.model import identifiers
 
 
-# TODO: What should this be set to?
-# swh-model/identifiers.py:identifier_to_bytes has a restrictive length check
-# in it which prevents using blake2 with hashutil.hash_to_hex
 PRIMARY_ALGO = 'sha1_git'
-
-
-def blob_to_content_dict(data, existing_hashes=None, max_size=None,
-                         logger=None):
-    """Convert blob data to a SWH Content. If the blob already
-    has hashes computed, don't recompute them.
-    TODO: This should be unified with similar functions in other places.
-
-    args:
-        existing_hashes: dict of hash algorithm:value pairs
-        max_size: size over which blobs should be rejected
-        logger: logging class instance
-    returns:
-        A Software Heritage "content".
-    """
-    existing_hashes = existing_hashes or {}
-
-    size = len(data)
-    content = {
-        'length': size,
-    }
-    content.update(existing_hashes)
-
-    hash_types = list(existing_hashes.keys())
-    hashes_to_do = hashutil.DEFAULT_ALGORITHMS.difference(hash_types)
-    content.update(hashutil.hash_data(data, algorithms=hashes_to_do))
-
-    if max_size and (size > max_size):
-        content.update({
-            'status': 'absent',
-            'reason': 'Content too large',
-        })
-        if logger:
-            id_hash = hashutil.hash_to_hex(content[PRIMARY_ALGO])
-            logger.info(
-                'Skipping content %s, too large (%s > %s)'
-                % (id_hash, size, max_size),
-                extra={
-                    'swh_type': 'loader_content_skip',
-                    'swh_id': id_hash,
-                    'swh_size': size
-                }
-            )
-    else:
-        content.update({'data': data, 'status': 'visible'})
-
-    return content
 
 
 def parse_author(name_email):

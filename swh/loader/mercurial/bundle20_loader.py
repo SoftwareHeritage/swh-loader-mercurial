@@ -22,6 +22,7 @@ import hglib
 
 from swh.model import hashutil, identifiers
 from swh.loader.core.loader import SWHStatelessLoader
+from swh.loader.core.converters import content_for_storage
 
 from . import converters
 from .bundle20_reader import Bundle20Reader
@@ -83,24 +84,30 @@ class HgBundle20Loader(SWHStatelessLoader):
         missing_contents = set()
         hash_to_info = {}
         self.num_contents = 0
+        contents = {}
 
         for blob, node_info in self.br.yield_all_blobs():
             self.num_contents += 1
             file_name = node_info[0]
             header = node_info[2]
-            blob_hash = hashutil.hash_data(blob, algorithms=set([ALGO]))[ALGO]
+            content = hashutil.hash_data(blob, with_length=True)
+            content['data'] = blob
+            blob_hash = content[ALGO]
             self.file_node_to_hash[header['node']] = blob_hash
             hash_to_info[blob_hash] = node_info
             missing_contents.add(blob_hash)
+            contents[blob_hash] = content
 
             if file_name == b'.hgtags':
                 # https://www.mercurial-scm.org/wiki/GitConcepts#Tag_model
                 self.tags = blob.split(b'\n')  # overwrite until the last one
 
-        if not self.debug:
-            missing_contents = set(
-                self.storage.content_missing(iter(missing_contents), ALGO)
+        missing_contents = set(
+            self.storage.content_missing(
+                (contents[h] for h in missing_contents),
+                key_hash=ALGO
             )
+        )
 
         # Clusters needed blobs by file offset and then only fetches the
         # groups at the needed offsets.
@@ -117,23 +124,13 @@ class HgBundle20Loader(SWHStatelessLoader):
             ):
                 node = header['node']
                 if node in node_hashes:
-                    blob, meta = self.br.extract_meta_from_blob(data)
-                    yield converters.blob_to_content_dict(
-                            data=blob,
-                            existing_hashes={ALGO: node_hashes[node]},
-                            max_size=self.content_max_size_limit
+                    h = node_hashes[node]
+                    yield content_for_storage(
+                        contents[h],
+                        log=self.log,
+                        max_content_size=self.content_max_size_limit,
+                        origin_id=self.origin_id
                     )
-        # NOTE: This is a slower but cleaner version of the code above.
-        # for blob, node_info in self.br.yield_all_blobs():
-        #     header = node_info[2]
-        #     node = header['node']
-        #     blob_hash = self.file_node_to_hash[node]
-        #     if blob_hash in missing_contents:
-        #         yield converters.blob_to_content_dict(
-        #             data=blob,
-        #             existing_hashes={ALGO: blob_hash},
-        #             max_size=self.content_max_size_limit
-        #         )
 
     def load_directories(self):
         """This is where the work is done to convert manifest deltas from the

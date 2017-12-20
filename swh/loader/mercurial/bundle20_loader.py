@@ -3,8 +3,9 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-"""This document contains a SWH loader for ingesting repository data from
-Mercurial version 2 bundle files.
+"""This document contains a SWH loader for ingesting repository data
+from Mercurial version 2 bundle files.
+
 """
 
 # NOTE: The code here does expensive work twice in places because of the

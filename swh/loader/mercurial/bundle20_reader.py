@@ -3,8 +3,10 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-"""This document contains code for extracting all of the data from Mercurial
-version 2 bundle file. It is referenced by bundle20_loader.py
+"""This document contains code for extracting all of the data from
+Mercurial version 2 bundle file. It is referenced by
+bundle20_loader.py
+
 """
 
 # =============================================================================

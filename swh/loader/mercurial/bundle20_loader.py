@@ -234,20 +234,17 @@ class HgBundle20Loader(SWHStatelessLoader):
                     header['p2']
                 ]
             }
-            revision['id'] = identifiers.revision_identifier(revision)
+            revision['id'] = hashutil.hash_to_bytes(
+                identifiers.revision_identifier(revision))
             revisions[revision['id']] = revision
 
         missing_revs = revisions.keys()
-
-        if not self.debug:
-            missing_revs = set(
-                self.storage.revision_missing(missing_revs)
-            )
+        missing_revs = set(
+            self.storage.revision_missing(list(missing_revs))
+        )
 
         for r in missing_revs:
-            rev = revisions[r]
-            rev['id'] = hashutil.hash_to_bytes(rev['id'])
-            yield rev
+            yield revisions[r]
         self.mnode_to_tree_id = None
 
     def get_releases(self):

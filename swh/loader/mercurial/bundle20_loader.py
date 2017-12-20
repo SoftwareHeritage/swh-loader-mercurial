@@ -16,10 +16,11 @@ from Mercurial version 2 bundle files.
 #       from there. Maybe only for very large repos and fast drives.
 # - Avi
 
+import hglib
 import os
 
-import hglib
-
+from shutil import rmtree
+from tempfile import mkdtemp
 
 from swh.model import hashutil, identifiers
 from swh.loader.core.loader import SWHStatelessLoader
@@ -44,24 +45,36 @@ class HgBundle20Loader(SWHStatelessLoader):
         self.bundle_filename = self.config['bundle_filename']
         self.hg = None
         self.tags = []
+        self.working_directory = mkdtemp(suffix='.tmp',
+                                         prefix='swh.loader.mercurial.',
+                                         dir='/tmp')
+
+    def cleanup(self):
+        """Clean temporary working directory
+
+        """
+        if os.path.exists(self.working_directory):
+            rmtree(self.working_directory)
 
     def prepare(self, origin_url, directory, visit_date):
         """see base.BaseLoader.prepare"""
         self.origin_url = origin_url
         self.origin = self.get_origin()
         self.visit_date = visit_date
-        self.hgdir = directory
 
-        bundle_path = os.path.join(directory, self.bundle_filename)
+        wd = os.path.join(self.working_directory, directory)
+        os.makedirs(wd, exist_ok=True)
+        self.hgdir = wd
 
-        if not os.path.isfile(bundle_path):
-            # generate a bundle from the given directory if needed (testing)
-            with hglib.open(directory) as repo:
-                repo.bundle(
-                    bytes(bundle_path, 'utf-8'),
-                    all=True,
-                    type=b'none'
-                )
+        bundle_path = os.path.join(self.hgdir, self.bundle_filename)
+        self.log.debug('Cloning %s to %s' % (self.origin_url, self.hgdir))
+        hglib.clone(source=self.origin_url, dest=self.hgdir)
+
+        self.log.debug('Bundling at %s' % bundle_path)
+        with hglib.open(directory) as repo:
+            repo.bundle(bytes(bundle_path, 'utf-8'),
+                        all=True,
+                        type=b'none')
 
         self.br = Bundle20Reader(bundle_path)
 

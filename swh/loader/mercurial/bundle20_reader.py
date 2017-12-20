@@ -182,7 +182,7 @@ class Bundle20Reader(object):
         bfile.read(4)  # '\x00\x00\x00\x00'
 
         self.params = self.read_bundle_header(bfile)
-        print('PARAMETERS', self.params)
+        # print('PARAMETERS', self.params)
         self.num_commits = self.params[b'nbchanges']
 
         self.filereader = ChunkedFileReader(bfile)

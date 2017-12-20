@@ -29,10 +29,6 @@ from .converters import PRIMARY_ALGO as ALGO
 from .objects import SelectiveCache, SimpleTree
 
 
-MAX_BLOB_SIZE = 100*1024*1024  # bytes
-# TODO: What should MAX_BLOB_SIZE be?
-
-
 class HgBundle20Loader(SWHStatelessLoader):
     CONFIG_BASE_FILENAME = 'loader/hg'
     BUNDLE_FILENAME = 'HG20_none_bundle'
@@ -44,6 +40,7 @@ class HgBundle20Loader(SWHStatelessLoader):
     def __init__(self):
         super().__init__(logging_class='swh.loader.mercurial.Bundle20Loader')
         self.debug = self.config['debug']
+        self.content_max_size_limit = self.config['content_size_limit']
         self.hg = None
         self.tags = []
 
@@ -123,9 +120,9 @@ class HgBundle20Loader(SWHStatelessLoader):
                     yield converters.blob_to_content_dict(
                             data=blob,
                             existing_hashes={ALGO: node_hashes[node]},
-                            max_size=MAX_BLOB_SIZE
+                            max_size=self.content_max_size_limit
                     )
-        # # NOTE: This is a slower but cleaner version of the code above.
+        # NOTE: This is a slower but cleaner version of the code above.
         # for blob, node_info in self.br.yield_all_blobs():
         #     header = node_info[2]
         #     node = header['node']
@@ -134,7 +131,7 @@ class HgBundle20Loader(SWHStatelessLoader):
         #         yield converters.blob_to_content_dict(
         #             data=blob,
         #             existing_hashes={ALGO: blob_hash},
-        #             max_size=MAX_BLOB_SIZE
+        #             max_size=self.content_max_size_limit
         #         )
 
     def load_directories(self):

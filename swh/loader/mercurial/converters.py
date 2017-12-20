@@ -4,9 +4,6 @@
 # See top-level LICENSE file for more information
 
 
-from swh.model import identifiers
-
-
 PRIMARY_ALGO = 'sha1_git'
 
 
@@ -43,12 +40,3 @@ def parse_author(name_email):
         'email': email,
         'fullname': name_email,
     }
-
-
-def data_to_content_id(data):
-    size = len(data)
-    ret = {
-        'length': size,
-    }
-    ret.update(identifiers.content_identifier({'data': data}))
-    return ret

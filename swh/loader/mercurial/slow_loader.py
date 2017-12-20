@@ -11,18 +11,70 @@ import datetime
 import hglib
 import os
 
-from swh.model import identifiers
+from swh.model import identifiers, hashutil
 from swh.loader.core.loader import SWHStatelessLoader
 
-from . import converters
 from .archive_extract import tmp_extract
+from .converters import parse_author, PRIMARY_ALGO as ALGO
 
-# TODO: What should this be?
-# swh-model/identifiers.py:identifier_to_bytes has a restrictive length check
-# in it which prevents using blake2 with hashutil.hash_to_hex
-ALGO = 'sha1_git'
 
 OS_PATH_SEP = os.path.sep.encode('utf-8')
+
+
+def data_to_content_id(data):
+    size = len(data)
+    ret = {
+        'length': size,
+    }
+    ret.update(identifiers.content_identifier({'data': data}))
+    return ret
+
+
+def blob_to_content_dict(data, existing_hashes=None, max_size=None,
+                         logger=None):
+    """Convert blob data to a SWH Content. If the blob already
+    has hashes computed, don't recompute them.
+    TODO: This should be unified with similar functions in other places.
+
+    args:
+        existing_hashes: dict of hash algorithm:value pairs
+        max_size: size over which blobs should be rejected
+        logger: logging class instance
+    returns:
+        A Software Heritage "content".
+    """
+    existing_hashes = existing_hashes or {}
+
+    size = len(data)
+    content = {
+        'length': size,
+    }
+    content.update(existing_hashes)
+
+    hash_types = list(existing_hashes.keys())
+    hashes_to_do = hashutil.DEFAULT_ALGORITHMS.difference(hash_types)
+    content.update(hashutil.hash_data(data, algorithms=hashes_to_do))
+
+    if max_size and (size > max_size):
+        content.update({
+            'status': 'absent',
+            'reason': 'Content too large',
+        })
+        if logger:
+            id_hash = hashutil.hash_to_hex(content[ALGO])
+            logger.info(
+                'Skipping content %s, too large (%s > %s)'
+                % (id_hash, size, max_size),
+                extra={
+                    'swh_type': 'loader_content_skip',
+                    'swh_id': id_hash,
+                    'swh_size': size
+                }
+            )
+    else:
+        content.update({'data': data, 'status': 'visible'})
+
+    return content
 
 
 class SimpleBlob:
@@ -153,7 +205,7 @@ class HgLoader(SWHStatelessLoader):
                 blob_hash, data = self.get_node_file_if_new(f, rev, node_hash)
                 if data is not None:  # new blob
                     self.num_contents += 1
-                    yield converters.data_to_content_id(data)
+                    yield data_to_content_id(data)
 
     def get_contents(self):
         """Get the contents that need to be loaded"""
@@ -170,7 +222,7 @@ class HgLoader(SWHStatelessLoader):
         for oid in missing_contents:
             file_path, rev = self.blob_hash_to_file_rev[oid]
             data = self.repo.cat([file_path], rev)
-            yield converters.blob_to_content_dict(
+            yield blob_to_content_dict(
                 data, max_size=max_content_size, logger=self.log
             )
 
@@ -281,7 +333,7 @@ class HgLoader(SWHStatelessLoader):
             date_dict = identifiers.normalize_timestamp(
                 int(c.date().timestamp())
             )
-            author_dict = converters.parse_author(c.author())
+            author_dict = parse_author(c.author())
 
             revision = {
                 'author': author_dict,

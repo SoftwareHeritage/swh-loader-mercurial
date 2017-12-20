@@ -1,8 +1,10 @@
-swh-loader-mercurial (0.0.1-1~swh1~bpo9+1) stretch-swh; urgency=medium
+swh-loader-mercurial (0.0.2-1~swh1) unstable-swh; urgency=medium
 
-  * Rebuild for stretch-backports.
+  * v0.0.2
+  * swh.loader.mercurial: Add archive loader mercurial
+  * swh.loader.mercurial: Clone local repository prior to load
 
- -- Antoine R. Dumont (@ardumont) <antoine.romain.dumont@gmail.com>  Wed, 20 Dec 2017 15:37:06 +0100
+ -- Antoine R. Dumont (@ardumont) <antoine.romain.dumont@gmail.com>  Wed, 20 Dec 2017 18:21:04 +0100
 
 swh-loader-mercurial (0.0.1-1~swh1) unstable-swh; urgency=medium
 

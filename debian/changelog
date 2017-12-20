@@ -1,5 +1,7 @@
-swh-loader-mercurial (0.0.1-1) unstable; urgency=low
+swh-loader-mercurial (0.0.1-1~swh1) unstable-swh; urgency=medium
 
-  * Initial package
+  * Initial release
+  * v0.0.1
+  * First swh.loader.mercurial ready to run on swh infra
 
- -- Antoine R. Dumont (@ardumont) <antoine.romain.dumont@gmail.com>  Tue, 19 Dec 2017 10:45:24 +0200
+ -- Antoine R. Dumont (@ardumont) <antoine.romain.dumont@gmail.com>  Wed, 20 Dec 2017 15:37:06 +0100

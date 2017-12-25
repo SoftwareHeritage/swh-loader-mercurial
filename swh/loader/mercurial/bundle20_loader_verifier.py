@@ -165,7 +165,7 @@ class HgLoaderValidater(HgBundle20Loader):
         """
         HgLoaderValidater().runtest('/home/avi/SWH/mozilla-unified')
         """
-        self.prepare('nil', hgdir, 'nil')
+        self.prepare('nil', 'nil', hgdir)
 
         self.file_node_to_hash = {}
 

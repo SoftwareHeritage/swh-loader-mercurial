@@ -100,7 +100,7 @@ class HgBundle20Loader(SWHStatelessLoader):
             with hglib.open(self.hgdir) as repo:
                 repo.bundle(bytes(self.bundle_path, 'utf-8'),
                             all=True,
-                            type=b'none')
+                            type=b'none-v2')
         except:
             self.cleanup()
             raise

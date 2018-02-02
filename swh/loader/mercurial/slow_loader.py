@@ -434,9 +434,6 @@ class HgLoader(SWHStatelessLoader):
             identifiers.snapshot_identifier(snap))
         return snap
 
-    def flush(self):
-        pass
-
     def get_fetch_history_result(self):
         """Return the data to store in fetch_history for the current loader"""
         return {

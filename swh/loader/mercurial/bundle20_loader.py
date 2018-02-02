@@ -1,4 +1,4 @@
-# Copyright (C) 2017  The Software Heritage developers
+# Copyright (C) 2017-2018  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -318,18 +318,22 @@ class HgBundle20Loader(SWHStatelessLoader):
         for _id in missing_releases:
             yield releases[_id]
 
-    def get_occurrences(self):
-        """Get the occurrences that need to be loaded."""
-        self.num_occurrences = 0
-        for name, target in self.branches.items():
-            self.num_occurrences += 1
-            yield {
-                'branch': name,
-                'origin': self.origin_id,
-                'target': target,
-                'target_type': 'revision',
-                'visit': self.visit,
+    def get_snapshot(self):
+        """Get the snapshot that need to be loaded."""
+        self.num_snapshot = 1
+        snap = {
+            'id': None,
+            'branches': {
+                name: {
+                    'target': target,
+                    'target_type': 'revision',
+                }
+                for name, target in self.branches.items()
             }
+        }
+        snap['id'] = identifiers.identifier_to_bytes(
+            identifiers.snapshot_identifier(snap))
+        return snap
 
     def get_fetch_history_result(self):
         """Return the data to store in fetch_history."""
@@ -338,7 +342,7 @@ class HgBundle20Loader(SWHStatelessLoader):
             'directories': self.num_directories,
             'revisions': self.num_revisions,
             'releases': self.num_releases,
-            'occurrences': self.num_occurrences
+            'snapshot': self.num_snapshot
         }
 
 

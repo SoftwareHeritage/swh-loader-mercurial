@@ -1,4 +1,4 @@
-# Copyright (C) 2017  The Software Heritage developers
+# Copyright (C) 2017-2018  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -137,7 +137,10 @@ class HgLoader(SWHStatelessLoader):
 
     def prepare(self, origin_url, directory, visit_date):
         """see base.BaseLoader.prepare"""
-        self.origin_url = origin_url
+        self.origin = {
+            'type': 'hg',
+            'url': origin_url
+        }
         self.repo = hglib.open(directory)
         self.visit_date = visit_date
         self.node_to_blob_hash = {}
@@ -149,10 +152,7 @@ class HgLoader(SWHStatelessLoader):
     def get_origin(self):
         """Get the origin that is currently being loaded in format suitable for
            swh.storage"""
-        return {
-            'type': 'hg',
-            'url': self.origin_url
-        }
+        return self.origin
 
     def fetch_data(self):
         """Fetch the data from the data source"""
@@ -334,35 +334,42 @@ class HgLoader(SWHStatelessLoader):
             )
             author_dict = parse_author(c.author())
 
+            parents = []
+            for p in c.parents():
+                if p.rev() >= 0:
+                    parents.append(self.revisions[p.node()]['id'])
+
+            phase = c.phase()  # bytes
+            rev = str(rev).encode('utf-8')
+            hidden = str(c.hidden()).encode('utf-8')
+            hg_headers = [['phase', phase], ['rev', rev], ['hidden', hidden]]
+
             revision = {
                 'author': author_dict,
                 'date': date_dict,
                 'committer': author_dict,
                 'committer_date': date_dict,
                 'type': 'hg',
-                'directory': commit_tree.hash,
+                'directory': identifiers.identifier_to_bytes(commit_tree.hash),
                 'message': c.description(),
                 'metadata': {
-                    'extra_headers': [
-                        ['phase', c.phase()],
-                        ['rev', rev],
-                        ['hidden', c.hidden()]
-                    ]
+                    'extra_headers': hg_headers
                 },
                 'synthetic': False,
-                'parents': [
-                    self.revisions[p.node()]['id'] for p in c.parents()
-                    if p.rev() >= 0
-                ]
+                'parents': parents,
             }
-            revision['id'] = identifiers.revision_identifier(revision)
+            revision['id'] = identifiers.identifier_to_bytes(
+                identifiers.revision_identifier(revision))
             self.revisions[c.node()] = revision
         for n, r in self.revisions.items():
             yield {'node': n, 'id': r['id']}
 
     def get_revisions(self):
         """Get the revision identifiers from the repository"""
-        revs = {r['id']: r['node'] for r in self.get_revision_ids()}
+        revs = {
+            r['id']: r['node']
+            for r in self.get_revision_ids()
+        }
         missing_revs = set(self.storage.revision_missing(revs.keys()))
         for r in missing_revs:
             yield self.revisions[revs[r]]
@@ -392,7 +399,7 @@ class HgLoader(SWHStatelessLoader):
                     'date': None
                 }
                 id_hash = identifiers.release_identifier(release)
-                release['id'] = id_hash
+                release['id'] = identifiers.identifier_to_bytes(id_hash)
                 releases[id_hash] = release
 
         missing_rels = set(self.storage.release_missing(
@@ -401,28 +408,34 @@ class HgLoader(SWHStatelessLoader):
 
         yield from (releases[r] for r in missing_rels)
 
-    def has_occurrences(self):
-        """Checks whether we need to load occurrences"""
-        self.num_occurrences = len(
-            self.repo.tags() + self.repo.branches() + self.repo.bookmarks()[0]
-        )
-        return self.num_occurrences > 0
+    def get_snapshot(self):
+        """Get the snapshot that need to be loaded"""
+        self.num_snapshot = 1
 
-    def get_occurrences(self):
-        """Get the occurrences that need to be loaded"""
-        for t in (
-            self.repo.tags() + self.repo.branches() + self.repo.bookmarks()[0]
-        ):
-            name = t[0]
-            short_hash = t[2]
-            target = self.revisions[self.repo[short_hash].node()]['id']
-            yield {
-                'branch': name,
-                'origin': self.origin_id,
-                'target': target,
-                'target_type': 'revision',
-                'visit': self.visit,
+        def _get_branches(repo=self.repo):
+            for t in (
+                    repo.tags() + repo.branches() + repo.bookmarks()[0]
+            ):
+                name = t[0]
+                short_hash = t[2]
+                node = self.repo[short_hash].node()
+                yield name, {
+                    'target': self.revisions[node]['id'],
+                    'target_type': 'revision'
+                }
+
+        snap = {
+            'branches': {
+                name: branch
+                for name, branch in _get_branches()
             }
+        }
+        snap['id'] = identifiers.identifier_to_bytes(
+            identifiers.snapshot_identifier(snap))
+        return snap
+
+    def flush(self):
+        pass
 
     def get_fetch_history_result(self):
         """Return the data to store in fetch_history for the current loader"""
@@ -431,7 +444,7 @@ class HgLoader(SWHStatelessLoader):
             'directories': len(self.unique_trees),
             'revisions': self.num_revisions,
             'releases': self.num_releases,
-            'occurrences': self.num_occurrences,
+            'snapshot': self.num_snapshot,
         }
 
     def save_data(self):

@@ -101,7 +101,7 @@ class HgBundle20Loader(SWHStatelessLoader):
                 repo.bundle(bytes(self.bundle_path, 'utf-8'),
                             all=True,
                             type=b'none-v2')
-        except:
+        except Exception:
             self.cleanup()
             raise
 
@@ -360,7 +360,7 @@ class HgArchiveBundle20Loader(HgBundle20Loader):
         directory = os.path.join(self.temp_dir, repo_name)
         try:
             super().prepare(origin_url, visit_date, directory=directory)
-        except:
+        except Exception:
             self.cleanup()
             raise
 

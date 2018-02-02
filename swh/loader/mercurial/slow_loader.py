@@ -387,7 +387,8 @@ class HgLoader(SWHStatelessLoader):
             name = t[0]
             if (name != b'tip' and not islocal):
                 short_hash = t[2]
-                target = self.revisions[self.repo[short_hash].node()]['id']
+                node_id = self.repo[short_hash].node()
+                target = self.revisions[node_id]['id']
                 release = {
                     'name': name,
                     'target': target,
@@ -395,12 +396,13 @@ class HgLoader(SWHStatelessLoader):
                     'message': None,
                     'metadata': None,
                     'synthetic': False,
-                    'author': None,
+                    'author': {'name': None, 'email': None, 'fullname': b''},
                     'date': None
                 }
-                id_hash = identifiers.release_identifier(release)
-                release['id'] = identifiers.identifier_to_bytes(id_hash)
-                releases[id_hash] = release
+                id_bytes = identifiers.identifier_to_bytes(
+                    identifiers.release_identifier(release))
+                release['id'] = id_bytes
+                releases[id_bytes] = release
 
         missing_rels = set(self.storage.release_missing(
             sorted(releases.keys())

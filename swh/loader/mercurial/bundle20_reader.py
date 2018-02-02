@@ -563,6 +563,7 @@ class Bundle20Reader(object):
         for header in self.skim_headers():
             basenode = header['basenode']
             if (basenode != self.NAUGHT_NODE) and (basenode != prev_node):
+                # If the base isn't immediately prior, then cache it once more.
                 hints[basenode] = hints.get(basenode, 0) + 1
             prev_node = header['node']
         self.filereader.seek(cur_pos)

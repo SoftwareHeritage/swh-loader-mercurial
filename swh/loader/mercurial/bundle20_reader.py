@@ -162,6 +162,9 @@ def unpack(fmt_str, source):
 
 class Bundle20Reader(object):
     """Parser for extracting data from Mercurial Bundle20 files.
+    NOTE: Currently only works on uncompressed HG20 bundles, but checking for
+    COMPRESSION=<2chars> and loading the appropriate stream decompressor
+    at that point would be trivial to add if necessary.
 
     args:
         bundlefile: string name of the binary repository bundle file

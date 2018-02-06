@@ -1,4 +1,4 @@
-# Copyright (C) 2017  The Software Heritage developers
+# Copyright (C) 2017-2018  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -22,9 +22,9 @@ class LoadMercurialTsk(Task):
         """
         loader = HgBundle20Loader()
         loader.log = self.log
-        loader.load(origin_url=origin_url,
-                    directory=directory,
-                    visit_date=visit_date)
+        return loader.load(origin_url=origin_url,
+                           directory=directory,
+                           visit_date=visit_date)
 
 
 class LoadArchiveMercurialTsk(Task):
@@ -38,6 +38,6 @@ class LoadArchiveMercurialTsk(Task):
         """
         loader = HgArchiveBundle20Loader()
         loader.log = self.log
-        loader.load(origin_url=origin_url,
-                    archive_path=archive_path,
-                    visit_date=visit_date)
+        return loader.load(origin_url=origin_url,
+                           archive_path=archive_path,
+                           visit_date=visit_date)

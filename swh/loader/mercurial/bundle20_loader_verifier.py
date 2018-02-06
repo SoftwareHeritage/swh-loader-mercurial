@@ -131,8 +131,8 @@ class HgLoaderValidater(HgBundle20Loader):
                 keys = [k['name'] for k in a['entries']]
                 return b''.join(sorted(keys))
 
-            tree_dirs = [d for d in tree.yield_SWH_directories()]
-            base_dirs = [d for d in base_tree.yield_SWH_directories()]
+            tree_dirs = [d for d in tree.yield_swh_directories()]
+            base_dirs = [d for d in base_tree.yield_swh_directories()]
             tree_dirs.sort(key=so1)
             base_dirs.sort(key=so1)
 
@@ -165,7 +165,7 @@ class HgLoaderValidater(HgBundle20Loader):
         """
         HgLoaderValidater().runtest('/home/avi/SWH/mozilla-unified')
         """
-        self.prepare('nil', hgdir, 'nil')
+        self.prepare('nil', 'nil', hgdir)
 
         self.file_node_to_hash = {}
 

@@ -144,7 +144,7 @@ class SimpleTree(dict):
         node[fbase] = SimpleBlob(file_hash, is_symlink, file_perms)
         return root
 
-    def yield_SWH_directories(self):
+    def yield_swh_directories(self):
         """Converts nested SimpleTrees into a stream of SWH Directories.
 
         yields:
@@ -152,7 +152,7 @@ class SimpleTree(dict):
         """
         for k, v in sorted(self.items()):
             if isinstance(v, SimpleTree):
-                yield from v.yield_SWH_directories()
+                yield from v.yield_swh_directories()
 
         yield {
             'id': self.hash,

@@ -21,6 +21,7 @@ import datetime
 import hglib
 import os
 
+from dateutil import parser
 from shutil import rmtree
 from tempfile import mkdtemp
 
@@ -74,9 +75,17 @@ class HgBundle20Loader(SWHStatelessLoader):
            To load a remote repository, pass the optional directory
            parameter as None.
 
+        Args:
+            origin_url (str): Origin url to load
+            visit_date (str/datetime): Date of the visit
+            directory (str/None): The local directory to load
+
         """
         self.origin_url = origin_url
         self.origin = self.get_origin()
+        if isinstance(visit_date, str):  # visit_date
+            visit_date = parser.parse(visit_date)
+
         self.visit_date = visit_date
         self.working_directory = None
         self.bundle_path = None

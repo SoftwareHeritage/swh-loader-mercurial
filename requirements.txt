@@ -4,4 +4,5 @@
 vcversioner
 hglib
 retrying
+python-dateutil
 sqlitedict

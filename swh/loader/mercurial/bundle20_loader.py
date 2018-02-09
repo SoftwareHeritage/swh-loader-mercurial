@@ -156,9 +156,10 @@ class HgBundle20Loader(SWHStatelessLoader):
             header = node_info[2]
 
             if header['linknode'] in self.reduce_effort:
-                content = hashutil.hash_data(blob, algorithms=[ALGO])
+                content = hashutil.hash_data(blob, algorithms=[ALGO],
+                                             with_length=True)
             else:
-                content = hashutil.hash_data(blob)
+                content = hashutil.hash_data(blob, with_length=True)
 
             blob_hash = content[ALGO]
             self.file_node_to_hash[header['node']] = blob_hash

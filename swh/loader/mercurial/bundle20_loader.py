@@ -16,9 +16,12 @@ from Mercurial version 2 bundle files.
 #       from there. Maybe only for very large repos and fast drives.
 # - Avi
 
+
+import datetime
 import hglib
 import os
 
+from dateutil import parser
 from shutil import rmtree
 from tempfile import mkdtemp
 
@@ -72,9 +75,17 @@ class HgBundle20Loader(SWHStatelessLoader):
            To load a remote repository, pass the optional directory
            parameter as None.
 
+        Args:
+            origin_url (str): Origin url to load
+            visit_date (str/datetime): Date of the visit
+            directory (str/None): The local directory to load
+
         """
         self.origin_url = origin_url
         self.origin = self.get_origin()
+        if isinstance(visit_date, str):  # visit_date
+            visit_date = parser.parse(visit_date)
+
         self.visit_date = visit_date
         self.working_directory = None
         self.bundle_path = None
@@ -106,6 +117,15 @@ class HgBundle20Loader(SWHStatelessLoader):
             raise
 
         self.br = Bundle20Reader(self.bundle_path)
+        now = datetime.datetime.now(tz=datetime.timezone.utc)
+        self.reduce_effort = set()
+        if (now - self.visit_date).days > 1:
+            # Assuming that self.visit_date would be today for a new visit,
+            # treat older visit dates as indication of wanting to skip some
+            # processing effort.
+            for header, commit in self.br.yield_all_changesets():
+                if commit['time'].timestamp() < self.visit_date.timestamp():
+                    self.reduce_effort.add(header['node'])
 
     def get_origin(self):
         """Get the origin that is currently being loaded in format suitable for
@@ -121,23 +141,35 @@ class HgBundle20Loader(SWHStatelessLoader):
 
     def get_contents(self):
         """Get the contents that need to be loaded."""
+
+        # NOTE: This method generates blobs twice to reduce memory usage
+        # without generating disk writes.
         self.file_node_to_hash = {}
-        missing_contents = set()
         hash_to_info = {}
         self.num_contents = 0
         contents = {}
+        missing_contents = set()
 
         for blob, node_info in self.br.yield_all_blobs():
             self.num_contents += 1
             file_name = node_info[0]
             header = node_info[2]
-            content = hashutil.hash_data(blob, with_length=True)
-            content['data'] = blob
+
+            if header['linknode'] in self.reduce_effort:
+                content = hashutil.hash_data(blob, algorithms=[ALGO],
+                                             with_length=True)
+            else:
+                content = hashutil.hash_data(blob, with_length=True)
+
             blob_hash = content[ALGO]
             self.file_node_to_hash[header['node']] = blob_hash
+
+            if header['linknode'] in self.reduce_effort:
+                continue
+
             hash_to_info[blob_hash] = node_info
-            missing_contents.add(blob_hash)
             contents[blob_hash] = content
+            missing_contents.add(blob_hash)
 
             if file_name == b'.hgtags':
                 # https://www.mercurial-scm.org/wiki/GitConcepts#Tag_model
@@ -146,7 +178,7 @@ class HgBundle20Loader(SWHStatelessLoader):
 
         missing_contents = set(
             self.storage.content_missing(
-                (contents[h] for h in missing_contents),
+                contents.values(),
                 key_hash=ALGO
             )
         )
@@ -166,30 +198,34 @@ class HgBundle20Loader(SWHStatelessLoader):
             ):
                 node = header['node']
                 if node in node_hashes:
-                    h = node_hashes[node]
-                    yield content_for_storage(
-                        contents[h],
-                        log=self.log,
-                        max_content_size=self.content_max_size_limit,
-                        origin_id=self.origin_id
-                    )
+                    blob, meta = self.br.extract_meta_from_blob(data)
+                    content = contents.pop(node_hashes[node], None)
+                    if content:
+                        content['data'] = blob
+                        content['length'] = len(blob)
+                        yield content_for_storage(
+                            content,
+                            log=self.log,
+                            max_content_size=self.content_max_size_limit,
+                            origin_id=self.origin_id
+                        )
 
     def load_directories(self):
         """This is where the work is done to convert manifest deltas from the
         repository bundle into SWH directories.
         """
         self.mnode_to_tree_id = {}
-        base_manifests = self.br.build_manifest_hints()
+        cache_hints = self.br.build_manifest_hints()
 
         def tree_size(t):
             return t.size()
 
-        self.trees = SelectiveCache(cache_hints=base_manifests,
+        self.trees = SelectiveCache(cache_hints=cache_hints,
                                     size_function=tree_size)
 
         tree = SimpleTree()
         for header, added, removed in self.br.yield_all_manifest_deltas(
-            base_manifests
+            cache_hints
         ):
             node = header['node']
             basenode = header['basenode']
@@ -206,10 +242,13 @@ class HgBundle20Loader(SWHStatelessLoader):
                     perms_code
                 )
 
-            new_dirs = []
-            self.mnode_to_tree_id[node] = tree.hash_changed(new_dirs)
-            self.trees.store(node, tree)
-            yield header, tree, new_dirs
+            if header['linknode'] in self.reduce_effort:
+                self.trees.store(node, tree)
+            else:
+                new_dirs = []
+                self.mnode_to_tree_id[node] = tree.hash_changed(new_dirs)
+                self.trees.store(node, tree)
+                yield header, tree, new_dirs
 
     def get_directories(self):
         """Get the directories that need to be loaded."""
@@ -219,6 +258,9 @@ class HgBundle20Loader(SWHStatelessLoader):
             for d in new_dirs:
                 self.num_directories += 1
                 missing_dirs.append(d['id'])
+
+        # NOTE: This method generates directories twice to reduce memory usage
+        # without generating disk writes.
 
         missing_dirs = set(
             self.storage.directory_missing(missing_dirs)
@@ -235,6 +277,9 @@ class HgBundle20Loader(SWHStatelessLoader):
         revisions = {}
         self.num_revisions = 0
         for header, commit in self.br.yield_all_changesets():
+            if header['node'] in self.reduce_effort:
+                continue
+
             self.num_revisions += 1
             date_dict = identifiers.normalize_timestamp(
                 int(commit['time'].timestamp())

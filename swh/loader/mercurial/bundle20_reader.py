@@ -162,6 +162,9 @@ def unpack(fmt_str, source):
 
 class Bundle20Reader(object):
     """Parser for extracting data from Mercurial Bundle20 files.
+    NOTE: Currently only works on uncompressed HG20 bundles, but checking for
+    COMPRESSION=<2chars> and loading the appropriate stream decompressor
+    at that point would be trivial to add if necessary.
 
     args:
         bundlefile: string name of the binary repository bundle file
@@ -560,6 +563,7 @@ class Bundle20Reader(object):
         for header in self.skim_headers():
             basenode = header['basenode']
             if (basenode != self.NAUGHT_NODE) and (basenode != prev_node):
+                # If the base isn't immediately prior, then cache it once more.
                 hints[basenode] = hints.get(basenode, 0) + 1
             prev_node = header['node']
         self.filereader.seek(cur_pos)

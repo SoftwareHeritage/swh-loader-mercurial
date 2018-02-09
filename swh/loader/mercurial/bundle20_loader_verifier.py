@@ -4,6 +4,7 @@
 # See top-level LICENSE file for more information
 
 import code
+import datetime
 import hglib
 import os
 import random
@@ -141,7 +142,7 @@ class HgLoaderValidater(HgBundle20Loader):
             #         print(i)
             #         code.interact(local=dict(globals(), **locals()))
 
-            print("Program will quit after your next Ctrl-D")
+            print('Program will quit after your next Ctrl-D')
             code.interact(local=dict(globals(), **locals()))
             quit()
         else:
@@ -161,46 +162,75 @@ class HgLoaderValidater(HgBundle20Loader):
         print('ELAPSED', time.time()-start)
 
     def runtest(self, hgdir, validate_blobs=False, validate_trees=False,
-                frequency=1.0):
+                frequency=1.0, test_iterative=False):
         """
         HgLoaderValidater().runtest('/home/avi/SWH/mozilla-unified')
         """
-        self.prepare('nil', 'nil', hgdir)
+        self.origin_id = 'test'
 
-        self.file_node_to_hash = {}
+        dt = datetime.datetime.now(tz=datetime.timezone.utc)
+        if test_iterative:
+            dt = dt - datetime.timedelta(10)
 
-        # blobs_pickle = 'blob_hashes.' + os.path.basename(hgdir) + '.pickle'
-        # if os.path.exists(blobs_pickle):
-        #     with open(blobs_pickle, 'rb') as pfile:
-        #         self.file_node_to_hash = pickle.load(pfile)
+        hgrepo = None
+        if (hgdir.lower().startswith('http:')
+                or hgdir.lower().startswith('https:')):
+            hgrepo, hgdir = hgdir, hgrepo
 
-        # if not self.file_node_to_hash:
-        #     self.generate_all_blobs(validate=validate_blobs,
-        #                             frequency=frequency)
+        self.hgdir = hgdir
 
-        # with open(blobs_pickle, 'wb') as pfile:
-        #     pickle.dump(self.file_node_to_hash, pfile)
+        try:
+            print('preparing')
+            self.prepare(hgrepo, dt, hgdir)
+
+            self.file_node_to_hash = {}
+
+        # self.generate_all_blobs(validate=validate_blobs,
+        #                        frequency=frequency)
 
         # self.generate_all_trees(validate=validate_trees, frequency=frequency)
         # self.generate_all_commits()
-        for c in self.get_contents():
-            pass
-        for d in self.get_directories():
-            pass
-        for rev in self.get_revisions():
-            pass
-        for rel in self.get_releases():
-            print(rel)
-        self.visit = 'foo'
-        for o in self.get_occurrences():
-            print(o)
+            print('getting contents')
+            cs = 0
+            for c in self.get_contents():
+                cs += 1
+                pass
+
+            print('getting directories')
+            ds = 0
+            for d in self.get_directories():
+                ds += 1
+                pass
+
+            revs = 0
+            print('getting revisions')
+            for rev in self.get_revisions():
+                revs += 1
+                pass
+
+            print('getting releases')
+            rels = 0
+            for rel in self.get_releases():
+                rels += 1
+                print(rel)
+
+            self.visit = 'foo'
+            print('getting snapshot')
+            o = self.get_snapshot()
+            print(o['branches'].keys())
+
+        finally:
+            self.cleanup()
+
+        print('final count: ',
+              'cs', cs, 'ds', ds, 'revs', revs, 'rels', rels)
 
 
 def main():
     if len(sys.argv) > 1:
         test_repo = sys.argv[1]
     else:
-        print("Please pass in the path to an HG repository.")
+        print('Please pass in the path to an HG repository.')
         quit()
 
     while test_repo[-1] == '/':
@@ -211,7 +241,13 @@ def main():
     else:
         validate_frequency = 0.001
 
-    HgLoaderValidater().runtest(test_repo, True, True, validate_frequency)
+    if len(sys.argv) > 3:
+        test_iterative = True
+    else:
+        test_iterative = False
+
+    HgLoaderValidater().runtest(test_repo, True, True, validate_frequency,
+                                test_iterative)
 
 
 if __name__ == '__main__':

@@ -1,3 +1,15 @@
+swh-loader-mercurial (0.0.4-1~swh1) unstable-swh; urgency=medium
+
+  * v0.0.4
+  * swh.loader.bundle20_loader: Migrate loader to create snapshots
+  * swh.loader.bundle20_loader: Be consistent in returning loader result
+    in task
+  * swh.loader.bundle20_loader: skip some work when possible
+  * swh.loader.bundle20_loader: force v2 bundle generation
+  * swh.loader.slow_loader: Make it swh.storage compliant
+
+ -- Antoine R. Dumont (@ardumont) <antoine.romain.dumont@gmail.com>  Fri, 09 Feb 2018 14:25:11 +0100
+
 swh-loader-mercurial (0.0.3-1~swh1) unstable-swh; urgency=medium
 
   * Release swh.loader.mercurial v0.0.3

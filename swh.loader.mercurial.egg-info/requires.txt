@@ -1,4 +1,5 @@
 hglib
+python-dateutil
 retrying
 sqlitedict
 swh.core>=0.0.36

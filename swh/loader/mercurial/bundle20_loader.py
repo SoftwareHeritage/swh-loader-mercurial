@@ -176,12 +176,13 @@ class HgBundle20Loader(SWHStatelessLoader):
                 # overwrite until the last one
                 self.tags = (t for t in blob.split(b'\n') if t != b'')
 
-        missing_contents = set(
-            self.storage.content_missing(
-                contents.values(),
-                key_hash=ALGO
+        if contents:
+            missing_contents = set(
+                self.storage.content_missing(
+                    contents.values(),
+                    key_hash=ALGO
+                )
             )
-        )
 
         # Clusters needed blobs by file offset and then only fetches the
         # groups at the needed offsets.
@@ -262,9 +263,10 @@ class HgBundle20Loader(SWHStatelessLoader):
         # NOTE: This method generates directories twice to reduce memory usage
         # without generating disk writes.
 
-        missing_dirs = set(
-            self.storage.directory_missing(missing_dirs)
-        )
+        if missing_dirs:
+            missing_dirs = set(
+                self.storage.directory_missing(missing_dirs)
+            )
 
         for header, tree, new_dirs in self.load_directories():
             for d in new_dirs:
@@ -326,9 +328,10 @@ class HgBundle20Loader(SWHStatelessLoader):
             revisions[revision['id']] = revision
 
         missing_revs = revisions.keys()
-        missing_revs = set(
-            self.storage.revision_missing(list(missing_revs))
-        )
+        if missing_revs:
+            missing_revs = set(
+                self.storage.revision_missing(list(missing_revs))
+            )
 
         for r in missing_revs:
             yield revisions[r]
@@ -358,7 +361,9 @@ class HgBundle20Loader(SWHStatelessLoader):
             missing_releases.append(id_hash)
             releases[id_hash] = release
 
-        missing_releases = set(self.storage.release_missing(missing_releases))
+        if missing_releases:
+            missing_releases = set(
+                self.storage.release_missing(missing_releases))
 
         for _id in missing_releases:
             yield releases[_id]

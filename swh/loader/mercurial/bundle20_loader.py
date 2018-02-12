@@ -44,6 +44,7 @@ class HgBundle20Loader(SWHStatelessLoader):
 
     ADDITIONAL_CONFIG = {
         'bundle_filename': ('str', 'HG20_none_bundle'),
+        'reduce_effort': ('bool', True),  # Try to be smart about time
     }
 
     def __init__(self, logging_class='swh.loader.mercurial.Bundle20Loader'):
@@ -52,6 +53,7 @@ class HgBundle20Loader(SWHStatelessLoader):
         self.bundle_filename = self.config['bundle_filename']
         self.hg = None
         self.tags = []
+        self.reduce_effort_flag = self.config['reduce_effort']
 
     def cleanup(self):
         """Clean temporary working directory
@@ -117,15 +119,17 @@ class HgBundle20Loader(SWHStatelessLoader):
             raise
 
         self.br = Bundle20Reader(self.bundle_path)
-        now = datetime.datetime.now(tz=datetime.timezone.utc)
         self.reduce_effort = set()
-        if (now - self.visit_date).days > 1:
-            # Assuming that self.visit_date would be today for a new visit,
-            # treat older visit dates as indication of wanting to skip some
-            # processing effort.
-            for header, commit in self.br.yield_all_changesets():
-                if commit['time'].timestamp() < self.visit_date.timestamp():
-                    self.reduce_effort.add(header['node'])
+        if self.reduce_effort_flag:
+            now = datetime.datetime.now(tz=datetime.timezone.utc)
+            if (now - self.visit_date).days > 1:
+                # Assuming that self.visit_date would be today for a new visit,
+                # treat older visit dates as indication of wanting to skip some
+                # processing effort.
+                for header, commit in self.br.yield_all_changesets():
+                    ts = commit['time'].timestamp()
+                    if ts < self.visit_date.timestamp():
+                        self.reduce_effort.add(header['node'])
 
     def get_origin(self):
         """Get the origin that is currently being loaded in format suitable for

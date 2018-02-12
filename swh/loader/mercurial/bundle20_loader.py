@@ -91,6 +91,7 @@ class HgBundle20Loader(SWHStatelessLoader):
         self.visit_date = visit_date
         self.working_directory = None
         self.bundle_path = None
+        self.branches = {}
 
         try:
             if not directory:  # remote repository
@@ -121,23 +122,26 @@ class HgBundle20Loader(SWHStatelessLoader):
         try:
             self.br = Bundle20Reader(self.bundle_path)
         except FileNotFoundError as e:
-            self.log.error('Empty repository!')
-            # FIXME: create empty snapshot
-            self.cleanup()
-            # FIXME: should be a successful visit too
-            raise
-
-        self.reduce_effort = set()
-        if self.reduce_effort_flag:
-            now = datetime.datetime.now(tz=datetime.timezone.utc)
-            if (now - self.visit_date).days > 1:
-                # Assuming that self.visit_date would be today for a new visit,
-                # treat older visit dates as indication of wanting to skip some
-                # processing effort.
-                for header, commit in self.br.yield_all_changesets():
-                    ts = commit['time'].timestamp()
-                    if ts < self.visit_date.timestamp():
-                        self.reduce_effort.add(header['node'])
+            # Empty repository! Still a successful visit targeting an
+            # empty snapshot
+            self.config['send_contents'] = False
+            self.config['send_directories'] = False
+            self.config['send_revisions'] = False
+            self.config['send_releases'] = False
+            self.config['send_snapshot'] = True
+        else:
+            self.reduce_effort = set()
+            if self.reduce_effort_flag:
+                now = datetime.datetime.now(tz=datetime.timezone.utc)
+                if (now - self.visit_date).days > 1:
+                    # Assuming that self.visit_date would be today for
+                    # a new visit, treat older visit dates as
+                    # indication of wanting to skip some processing
+                    # effort.
+                    for header, commit in self.br.yield_all_changesets():
+                        ts = commit['time'].timestamp()
+                        if ts < self.visit_date.timestamp():
+                            self.reduce_effort.add(header['node'])
 
     def get_origin(self):
         """Get the origin that is currently being loaded in format suitable for
@@ -189,12 +193,16 @@ class HgBundle20Loader(SWHStatelessLoader):
                 self.tags = (t for t in blob.split(b'\n') if t != b'')
 
         if contents:
-            missing_contents = set(
-                self.storage.content_missing(
-                    contents.values(),
-                    key_hash=ALGO
+            try:
+                missing_contents = set(
+                    self.storage.content_missing(
+                        contents.values(),
+                        key_hash=ALGO
+                    )
                 )
-            )
+            except Exception as e:
+                print('WTF', e)
+                raise
 
         # Clusters needed blobs by file offset and then only fetches the
         # groups at the needed offsets.
@@ -424,6 +432,7 @@ class HgArchiveBundle20Loader(HgBundle20Loader):
 
         repo_name = os.listdir(self.temp_dir)[0]
         directory = os.path.join(self.temp_dir, repo_name)
+        self.log.info('##### %s %s %s' % (repo_name, directory, archive_path))
         try:
             super().prepare(origin_url, visit_date, directory=directory)
         except Exception:

@@ -118,7 +118,15 @@ class HgBundle20Loader(SWHStatelessLoader):
             self.cleanup()
             raise
 
-        self.br = Bundle20Reader(self.bundle_path)
+        try:
+            self.br = Bundle20Reader(self.bundle_path)
+        except FileNotFoundError as e:
+            self.log.error('Empty repository!')
+            # FIXME: create empty snapshot
+            self.cleanup()
+            # FIXME: should be a successful visit too
+            raise
+
         self.reduce_effort = set()
         if self.reduce_effort_flag:
             now = datetime.datetime.now(tz=datetime.timezone.utc)

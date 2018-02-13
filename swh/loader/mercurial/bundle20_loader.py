@@ -217,8 +217,8 @@ class HgBundle20Loader(SWHStatelessLoader):
             _, file_offset, header = hash_to_info[blob_hash]
             focs.setdefault(file_offset, {})
             focs[file_offset][header['node']] = blob_hash
-        hash_to_info = None
 
+        hash_to_info = None
         for offset, node_hashes in sorted(focs.items()):
             for header, data, *_ in self.br.yield_group_objects(
                 group_offset=offset

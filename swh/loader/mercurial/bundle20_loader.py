@@ -205,7 +205,7 @@ class HgBundle20Loader(SWHStatelessLoader):
         if contents:
             missing_contents = set(
                 self.storage.content_missing(
-                    contents.values(),
+                    list(contents.values()),
                     key_hash=ALGO
                 )
             )

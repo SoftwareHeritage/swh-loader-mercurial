@@ -44,7 +44,7 @@ class HgBundle20Loader(SWHStatelessLoader):
 
     ADDITIONAL_CONFIG = {
         'bundle_filename': ('str', 'HG20_none_bundle'),
-        'reduce_effort': ('bool', True),  # Try to be smart about time
+        'reduce_effort': ('bool', True),  # default: Try to be smart about time
     }
 
     def __init__(self, logging_class='swh.loader.mercurial.Bundle20Loader'):
@@ -54,6 +54,7 @@ class HgBundle20Loader(SWHStatelessLoader):
         self.hg = None
         self.tags = []
         self.reduce_effort_flag = self.config['reduce_effort']
+        self.empty_repository = None
 
     def cleanup(self):
         """Clean temporary working directory
@@ -124,11 +125,8 @@ class HgBundle20Loader(SWHStatelessLoader):
         except FileNotFoundError as e:
             # Empty repository! Still a successful visit targeting an
             # empty snapshot
-            self.config['send_contents'] = False
-            self.config['send_directories'] = False
-            self.config['send_revisions'] = False
-            self.config['send_releases'] = False
-            self.config['send_snapshot'] = True
+            self.log.warn('%s is an empty repository!' % self.hgdir)
+            self.empty_repository = True
         else:
             self.reduce_effort = set()
             if self.reduce_effort_flag:
@@ -142,6 +140,18 @@ class HgBundle20Loader(SWHStatelessLoader):
                         ts = commit['time'].timestamp()
                         if ts < self.visit_date.timestamp():
                             self.reduce_effort.add(header['node'])
+
+    def has_contents(self):
+        return not self.empty_repository
+
+    def has_directories(self):
+        return not self.empty_repository
+
+    def has_revisions(self):
+        return not self.empty_repository
+
+    def has_releases(self):
+        return not self.empty_repository
 
     def get_origin(self):
         """Get the origin that is currently being loaded in format suitable for
@@ -193,16 +203,12 @@ class HgBundle20Loader(SWHStatelessLoader):
                 self.tags = (t for t in blob.split(b'\n') if t != b'')
 
         if contents:
-            try:
-                missing_contents = set(
-                    self.storage.content_missing(
-                        contents.values(),
-                        key_hash=ALGO
-                    )
+            missing_contents = set(
+                self.storage.content_missing(
+                    contents.values(),
+                    key_hash=ALGO
                 )
-            except Exception as e:
-                print('WTF', e)
-                raise
+            )
 
         # Clusters needed blobs by file offset and then only fetches the
         # groups at the needed offsets.
@@ -432,7 +438,6 @@ class HgArchiveBundle20Loader(HgBundle20Loader):
 
         repo_name = os.listdir(self.temp_dir)[0]
         directory = os.path.join(self.temp_dir, repo_name)
-        self.log.info('##### %s %s %s' % (repo_name, directory, archive_path))
         try:
             super().prepare(origin_url, visit_date, directory=directory)
         except Exception:

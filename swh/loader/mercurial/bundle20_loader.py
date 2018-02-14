@@ -52,7 +52,6 @@ class HgBundle20Loader(SWHStatelessLoader):
         self.content_max_size_limit = self.config['content_size_limit']
         self.bundle_filename = self.config['bundle_filename']
         self.hg = None
-        self.tags = []
         self.reduce_effort_flag = self.config['reduce_effort']
         self.empty_repository = None
 
@@ -93,6 +92,8 @@ class HgBundle20Loader(SWHStatelessLoader):
         self.working_directory = None
         self.bundle_path = None
         self.branches = {}
+        self.tags = []
+        self.releases = {}
 
         try:
             if not directory:  # remote repository
@@ -301,7 +302,6 @@ class HgBundle20Loader(SWHStatelessLoader):
 
     def get_revisions(self):
         """Get the revisions that need to be loaded."""
-        self.branches = {}
         revisions = {}
         self.num_revisions = 0
         for header, commit in self.br.yield_all_changesets():

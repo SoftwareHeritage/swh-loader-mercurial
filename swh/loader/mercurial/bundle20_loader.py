@@ -403,6 +403,10 @@ class HgBundle20Loader(SWHStatelessLoader):
     def get_snapshot(self):
         """Get the snapshot that need to be loaded."""
         self.num_snapshot = 1
+        if not self.branches:
+            # FIXME: Use `default` branch targeting the tip revision
+            pass
+
         branches = {}
         for name, target in self.branches.items():
             branches[name] = {'target': target, 'target_type': 'revision'}

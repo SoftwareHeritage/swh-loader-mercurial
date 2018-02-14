@@ -44,6 +44,7 @@ class HgBundle20Loader(SWHStatelessLoader):
 
     ADDITIONAL_CONFIG = {
         'bundle_filename': ('str', 'HG20_none_bundle'),
+        'reduce_effort': ('bool', True),  # default: Try to be smart about time
     }
 
     def __init__(self, logging_class='swh.loader.mercurial.Bundle20Loader'):
@@ -52,6 +53,8 @@ class HgBundle20Loader(SWHStatelessLoader):
         self.bundle_filename = self.config['bundle_filename']
         self.hg = None
         self.tags = []
+        self.reduce_effort_flag = self.config['reduce_effort']
+        self.empty_repository = None
 
     def cleanup(self):
         """Clean temporary working directory
@@ -89,6 +92,7 @@ class HgBundle20Loader(SWHStatelessLoader):
         self.visit_date = visit_date
         self.working_directory = None
         self.bundle_path = None
+        self.branches = {}
 
         try:
             if not directory:  # remote repository
@@ -116,16 +120,38 @@ class HgBundle20Loader(SWHStatelessLoader):
             self.cleanup()
             raise
 
-        self.br = Bundle20Reader(self.bundle_path)
-        now = datetime.datetime.now(tz=datetime.timezone.utc)
-        self.reduce_effort = set()
-        if (now - self.visit_date).days > 1:
-            # Assuming that self.visit_date would be today for a new visit,
-            # treat older visit dates as indication of wanting to skip some
-            # processing effort.
-            for header, commit in self.br.yield_all_changesets():
-                if commit['time'].timestamp() < self.visit_date.timestamp():
-                    self.reduce_effort.add(header['node'])
+        try:
+            self.br = Bundle20Reader(self.bundle_path)
+        except FileNotFoundError as e:
+            # Empty repository! Still a successful visit targeting an
+            # empty snapshot
+            self.log.warn('%s is an empty repository!' % self.hgdir)
+            self.empty_repository = True
+        else:
+            self.reduce_effort = set()
+            if self.reduce_effort_flag:
+                now = datetime.datetime.now(tz=datetime.timezone.utc)
+                if (now - self.visit_date).days > 1:
+                    # Assuming that self.visit_date would be today for
+                    # a new visit, treat older visit dates as
+                    # indication of wanting to skip some processing
+                    # effort.
+                    for header, commit in self.br.yield_all_changesets():
+                        ts = commit['time'].timestamp()
+                        if ts < self.visit_date.timestamp():
+                            self.reduce_effort.add(header['node'])
+
+    def has_contents(self):
+        return not self.empty_repository
+
+    def has_directories(self):
+        return not self.empty_repository
+
+    def has_revisions(self):
+        return not self.empty_repository
+
+    def has_releases(self):
+        return not self.empty_repository
 
     def get_origin(self):
         """Get the origin that is currently being loaded in format suitable for
@@ -179,7 +205,7 @@ class HgBundle20Loader(SWHStatelessLoader):
         if contents:
             missing_contents = set(
                 self.storage.content_missing(
-                    contents.values(),
+                    list(contents.values()),
                     key_hash=ALGO
                 )
             )
@@ -191,8 +217,8 @@ class HgBundle20Loader(SWHStatelessLoader):
             _, file_offset, header = hash_to_info[blob_hash]
             focs.setdefault(file_offset, {})
             focs[file_offset][header['node']] = blob_hash
-        hash_to_info = None
 
+        hash_to_info = None
         for offset, node_hashes in sorted(focs.items()):
             for header, data, *_ in self.br.yield_group_objects(
                 group_offset=offset

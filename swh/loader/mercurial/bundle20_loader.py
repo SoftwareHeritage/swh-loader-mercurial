@@ -391,6 +391,7 @@ class HgBundle20Loader(SWHStatelessLoader):
             release['id'] = id_hash
             missing_releases.append(id_hash)
             releases[id_hash] = release
+            self.releases[name] = id_hash
 
         if missing_releases:
             missing_releases = set(
@@ -405,6 +406,9 @@ class HgBundle20Loader(SWHStatelessLoader):
         branches = {}
         for name, target in self.branches.items():
             branches[name] = {'target': target, 'target_type': 'revision'}
+        for name, target in self.releases.items():
+            branches[name] = {'target': target, 'target_type': 'release'}
+
         snap = {
             'id': None,
             'branches': branches,

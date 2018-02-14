@@ -319,14 +319,15 @@ class HgBundle20Loader(SWHStatelessLoader):
                 directory_id = self.mnode_to_tree_id[commit['manifest']]
 
             extra_meta = []
+            branches = []
             extra = commit.get('extra')
             if extra:
                 for e in extra.split(b'\x00'):
                     k, v = e.split(b':', 1)
                     k = k.decode('utf-8')
                     extra_meta.append([k, v])
-                    if k == 'branch':  # needed for Occurrences
-                        self.branches[v] = header['node']
+                    if k == 'branch':  # if named branch, we use it in snapshot
+                        branches.append(v)
 
             revision = {
                 'author': author_dict,
@@ -352,6 +353,10 @@ class HgBundle20Loader(SWHStatelessLoader):
             revision['id'] = hashutil.hash_to_bytes(
                 identifiers.revision_identifier(revision))
             revisions[revision['id']] = revision
+
+            if branches:
+                for name in branches:
+                    self.branches[name] = revision['id']
 
         missing_revs = revisions.keys()
         if missing_revs:
@@ -397,15 +402,12 @@ class HgBundle20Loader(SWHStatelessLoader):
     def get_snapshot(self):
         """Get the snapshot that need to be loaded."""
         self.num_snapshot = 1
+        branches = {}
+        for name, target in self.branches.items():
+            branches[name] = {'target': target, 'target_type': 'revision'}
         snap = {
             'id': None,
-            'branches': {
-                name: {
-                    'target': target,
-                    'target_type': 'revision',
-                }
-                for name, target in self.branches.items()
-            }
+            'branches': branches,
         }
         snap['id'] = identifiers.identifier_to_bytes(
             identifiers.snapshot_identifier(snap))

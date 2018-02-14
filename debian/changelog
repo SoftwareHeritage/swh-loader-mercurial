@@ -1,3 +1,13 @@
+swh-loader-mercurial (0.0.6-1~swh1) unstable-swh; urgency=medium
+
+  * v0.0.6
+  * swh.loader.mercurial: Fix serialization issue
+  * swh.loader.mercurial: Add empty line
+  * swh.loader.mercurial: Deal appropriately with empty repository case
+  * swh.loader.mercurial: Make reduce_effort a configuration flag
+
+ -- Antoine R. Dumont (@ardumont) <antoine.romain.dumont@gmail.com>  Wed, 14 Feb 2018 10:23:51 +0100
+
 swh-loader-mercurial (0.0.5-1~swh1) unstable-swh; urgency=medium
 
   * v0.0.5

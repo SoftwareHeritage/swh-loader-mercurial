@@ -66,6 +66,8 @@ class HgBundle20Loader(SWHStatelessLoader):
             self.log.debug('Cleanup up working directory %s' % (
                 self.working_directory, ))
             rmtree(self.working_directory)
+        if self.repo:
+            self.repo.close()
 
     def prepare(self, origin_url, visit_date, directory=None):
         """Prepare the necessary steps to load an actual remote or local
@@ -113,10 +115,12 @@ class HgBundle20Loader(SWHStatelessLoader):
 
             self.bundle_path = os.path.join(self.hgdir, self.bundle_filename)
             self.log.debug('Bundling at %s' % self.bundle_path)
-            with hglib.open(self.hgdir) as repo:
-                repo.bundle(bytes(self.bundle_path, 'utf-8'),
-                            all=True,
-                            type=b'none-v2')
+            self.repo = hglib.open(self.hgdir)
+            self.heads = self.get_heads()
+            self.repo.bundle(bytes(self.bundle_path, 'utf-8'),
+                             all=True,
+                             type=b'none-v2')
+
         except Exception:
             self.cleanup()
             raise
@@ -319,15 +323,12 @@ class HgBundle20Loader(SWHStatelessLoader):
                 directory_id = self.mnode_to_tree_id[commit['manifest']]
 
             extra_meta = []
-            branches = []
             extra = commit.get('extra')
             if extra:
                 for e in extra.split(b'\x00'):
                     k, v = e.split(b':', 1)
                     k = k.decode('utf-8')
                     extra_meta.append([k, v])
-                    if k == 'branch':  # if named branch, we use it in snapshot
-                        branches.append(v)
 
             revision = {
                 'author': author_dict,
@@ -353,10 +354,6 @@ class HgBundle20Loader(SWHStatelessLoader):
             revision['id'] = hashutil.hash_to_bytes(
                 identifiers.revision_identifier(revision))
             revisions[revision['id']] = revision
-
-            if branches:
-                for name in branches:
-                    self.branches[name] = revision['id']
 
         missing_revs = revisions.keys()
         if missing_revs:
@@ -400,16 +397,26 @@ class HgBundle20Loader(SWHStatelessLoader):
         for _id in missing_releases:
             yield releases[_id]
 
+    def get_heads(self):
+        """Read the branches' heads.
+
+        """
+        branches = {}
+        for _, node_hash_id, _, branch_name, *_ in self.repo.heads():
+            branches[branch_name] = node_hash_id
+
+        return branches
+
     def get_snapshot(self):
         """Get the snapshot that need to be loaded."""
         self.num_snapshot = 1
-        if not self.branches:
-            # FIXME: Use `default` branch targeting the tip revision
-            pass
 
         branches = {}
-        for name, target in self.branches.items():
-            branches[name] = {'target': target, 'target_type': 'revision'}
+        for name, target in self.heads.items():
+            branches[name] = {
+                'target': hashutil.hash_to_bytes(target.decode()),
+                'target_type': 'revision'
+            }
         for name, target in self.releases.items():
             branches[name] = {'target': target, 'target_type': 'release'}
 

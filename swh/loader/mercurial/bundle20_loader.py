@@ -436,10 +436,6 @@ class HgBundle20Loader(SWHStatelessLoader):
         self.num_snapshot = 1
         branches = {}
         for name, target in self.named_branches.items():
-            # if name in self.heads:
-            #     assert self.heads[name] == target
-            #     # FIXME: that fails sometimes but who is right?
-            #     #        Choosing to trust the api hglib.heads call for now
             branches[name] = {'target': target, 'target_type': 'revision'}
         for name, target in self.heads.items():
             branches[name] = {'target': target, 'target_type': 'revision'}

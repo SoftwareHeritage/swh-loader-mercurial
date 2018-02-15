@@ -67,16 +67,25 @@ class HgBundle20Loader(SWHStatelessLoader):
             rmtree(self.working_directory)
 
     def get_heads(self, repo):
-        """Read the branches' heads and returns a dict with branch_name
-           (bytes) and mercurial's node id (bytes). Those needs
-           conversion to swh-ids. This is taken care of get_revisions.
+        """Read the closed branches heads (branch, bookmarks) and returns a
+           dict with branch_name (bytes) and mercurial's node id
+           (bytes). Those needs conversion to swh-ids. This is taken
+           care of in get_revisions.
 
         """
-        branches = {}
+        b = {}
         for _, node_hash_id, _, branch_name, *_ in repo.heads():
-            branches[branch_name] = hashutil.hash_to_bytes(
+            b[branch_name] = hashutil.hash_to_bytes(
                 node_hash_id.decode())
-        return branches
+
+        bookmarks = repo.bookmarks()
+        if bookmarks and bookmarks[0]:
+            for bookmark_name, _, target_short in bookmarks[0]:
+                target = repo[target_short].node()
+                b[bookmark_name] = hashutil.hash_to_bytes(
+                    target.decode())
+
+        return b
 
     def prepare(self, origin_url, visit_date, directory=None):
         """Prepare the necessary steps to load an actual remote or local

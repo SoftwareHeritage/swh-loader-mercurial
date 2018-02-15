@@ -120,6 +120,8 @@ class HgBundle20Loader(SWHStatelessLoader):
             self.repo.bundle(bytes(self.bundle_path, 'utf-8'),
                              all=True,
                              type=b'none-v2')
+            self.repo.close()
+            self.repo = None
 
         except Exception:
             self.cleanup()

@@ -51,7 +51,6 @@ class HgBundle20Loader(SWHStatelessLoader):
         super().__init__(logging_class=logging_class)
         self.content_max_size_limit = self.config['content_size_limit']
         self.bundle_filename = self.config['bundle_filename']
-        self.hg = None
         self.reduce_effort_flag = self.config['reduce_effort']
         self.empty_repository = None
 

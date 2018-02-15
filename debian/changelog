@@ -1,3 +1,16 @@
+swh-loader-mercurial (0.0.7-1~swh1) unstable-swh; urgency=medium
+
+  * v0.0.7
+  * bundle20_loader: Read bookmark as branches and use them within
+    snapshot
+  * bundle20_loader: Use swh revision id when creating the snapshot
+  * bundle20_loader: use parent rev ids instead of node ids
+  * bundle20_loader: Read heads to create snapshot
+  * bundle20_loader: snapshot: Target releases if any
+  * bundle20_loader: snapshot: Use swh identifier in branch target
+
+ -- Antoine R. Dumont (@ardumont) <antoine.romain.dumont@gmail.com>  Thu, 15 Feb 2018 15:20:12 +0100
+
 swh-loader-mercurial (0.0.6-1~swh1) unstable-swh; urgency=medium
 
   * v0.0.6

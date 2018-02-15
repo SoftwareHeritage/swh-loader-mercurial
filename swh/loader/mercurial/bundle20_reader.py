@@ -40,8 +40,10 @@ bundle20_loader.py
 # https://www.mercurial-scm.org/wiki/BundleFormat2#New_header is wrong and
 # bizarre, and there isn't any other information on the page.
 #
+#
 # https://www.mercurial-scm.org/repo/hg/file/de86a6872d06/mercurial/help/internals/changegroups.txt     # noqa
-# is very close to what we need. It is accurate, current, and thorough.
+# (`hg help internals.changegroups`) is very close to what we need.
+# It is accurate, current, and thorough.
 # It describes much of the internal structure, which is super helpful if you
 # know in advance which info can be trusted, but it doesn't describe any of the
 # file-level details, including the file headers and that the entire bundle
@@ -50,8 +52,8 @@ bundle20_loader.py
 # nor does it explain the meta-message segment in the blob deltas, nor does it
 # explain the file flags occasionally appended to manifest file hashes. Also it
 # says: "The [delta data] format is described more fully in 'hg help
-# internals.bdiff'", which is also wrong. As far as I can tell, that file has
-# never existed.
+# internals.bdiff'", which is also wrong. As far as I can tell, that
+# file has never existed.
 #
 # It does however have one potentially extremely useful note buried in the
 # middle that, in hindsight, could have significant implications for complexity
@@ -81,7 +83,7 @@ bundle20_loader.py
 # commit the change, and then modify it to restore the original contents, the
 # contents are the same but the history is different, so the file will get a
 # new nodeid. This history-sensitivity is obtained by calculating the nodeid
-# from the concatentation of the parent nodeids with the file's contents..."
+# from the concatenation of the parent nodeids with the file's contents..."
 #
 # The result is that we always have to collect and hash everything at least
 # once in order to know if we've seen something like it before, because nothing

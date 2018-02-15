@@ -51,8 +51,6 @@ class HgBundle20Loader(SWHStatelessLoader):
         super().__init__(logging_class=logging_class)
         self.content_max_size_limit = self.config['content_size_limit']
         self.bundle_filename = self.config['bundle_filename']
-        self.hg = None
-        self.tags = []
         self.reduce_effort_flag = self.config['reduce_effort']
         self.empty_repository = None
 
@@ -67,6 +65,27 @@ class HgBundle20Loader(SWHStatelessLoader):
             self.log.debug('Cleanup up working directory %s' % (
                 self.working_directory, ))
             rmtree(self.working_directory)
+
+    def get_heads(self, repo):
+        """Read the closed branches heads (branch, bookmarks) and returns a
+           dict with branch_name (bytes) and mercurial's node id
+           (bytes). Those needs conversion to swh-ids. This is taken
+           care of in get_revisions.
+
+        """
+        b = {}
+        for _, node_hash_id, _, branch_name, *_ in repo.heads():
+            b[branch_name] = hashutil.hash_to_bytes(
+                node_hash_id.decode())
+
+        bookmarks = repo.bookmarks()
+        if bookmarks and bookmarks[0]:
+            for bookmark_name, _, target_short in bookmarks[0]:
+                target = repo[target_short].node()
+                b[bookmark_name] = hashutil.hash_to_bytes(
+                    target.decode())
+
+        return b
 
     def prepare(self, origin_url, visit_date, directory=None):
         """Prepare the necessary steps to load an actual remote or local
@@ -93,6 +112,8 @@ class HgBundle20Loader(SWHStatelessLoader):
         self.working_directory = None
         self.bundle_path = None
         self.branches = {}
+        self.tags = []
+        self.releases = {}
 
         try:
             if not directory:  # remote repository
@@ -113,9 +134,11 @@ class HgBundle20Loader(SWHStatelessLoader):
             self.bundle_path = os.path.join(self.hgdir, self.bundle_filename)
             self.log.debug('Bundling at %s' % self.bundle_path)
             with hglib.open(self.hgdir) as repo:
+                self.heads = self.get_heads(repo)
                 repo.bundle(bytes(self.bundle_path, 'utf-8'),
                             all=True,
                             type=b'none-v2')
+
         except Exception:
             self.cleanup()
             raise
@@ -301,7 +324,7 @@ class HgBundle20Loader(SWHStatelessLoader):
 
     def get_revisions(self):
         """Get the revisions that need to be loaded."""
-        self.branches = {}
+        node_2_rev = {}
         revisions = {}
         self.num_revisions = 0
         for header, commit in self.br.yield_all_changesets():
@@ -325,8 +348,6 @@ class HgBundle20Loader(SWHStatelessLoader):
                     k, v = e.split(b':', 1)
                     k = k.decode('utf-8')
                     extra_meta.append([k, v])
-                    if k == 'branch':  # needed for Occurrences
-                        self.branches[v] = header['node']
 
             revision = {
                 'author': author_dict,
@@ -344,14 +365,29 @@ class HgBundle20Loader(SWHStatelessLoader):
                     ] + extra_meta
                 },
                 'synthetic': False,
-                'parents': [
-                    header['p1'],
-                    header['p2']
-                ]
+                'parents': []
             }
+
+            p1 = node_2_rev.get(header['p1'])
+            p2 = node_2_rev.get(header['p2'])
+            if p1:
+                revision['parents'].append(p1)
+            if p2:
+                revision['parents'].append(p2)
+
             revision['id'] = hashutil.hash_to_bytes(
-                identifiers.revision_identifier(revision))
+                identifiers.revision_identifier(revision)
+            )
+            node_2_rev[header['node']] = revision['id']
             revisions[revision['id']] = revision
+
+        # Converts heads to use swh ids
+        self.heads = {
+            branch_name: node_2_rev[node_id]
+            for branch_name, node_id in self.heads.items()
+        }
+
+        node_2_rev = None
 
         missing_revs = revisions.keys()
         if missing_revs:
@@ -386,6 +422,7 @@ class HgBundle20Loader(SWHStatelessLoader):
             release['id'] = id_hash
             missing_releases.append(id_hash)
             releases[id_hash] = release
+            self.releases[name] = id_hash
 
         if missing_releases:
             missing_releases = set(
@@ -397,15 +434,15 @@ class HgBundle20Loader(SWHStatelessLoader):
     def get_snapshot(self):
         """Get the snapshot that need to be loaded."""
         self.num_snapshot = 1
+        branches = {}
+        for name, target in self.heads.items():
+            branches[name] = {'target': target, 'target_type': 'revision'}
+        for name, target in self.releases.items():
+            branches[name] = {'target': target, 'target_type': 'release'}
+
         snap = {
             'id': None,
-            'branches': {
-                name: {
-                    'target': target,
-                    'target_type': 'revision',
-                }
-                for name, target in self.branches.items()
-            }
+            'branches': branches,
         }
         snap['id'] = identifiers.identifier_to_bytes(
             identifiers.snapshot_identifier(snap))

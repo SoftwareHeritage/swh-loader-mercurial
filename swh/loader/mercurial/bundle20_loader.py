@@ -45,6 +45,7 @@ class HgBundle20Loader(SWHStatelessLoader):
     ADDITIONAL_CONFIG = {
         'bundle_filename': ('str', 'HG20_none_bundle'),
         'reduce_effort': ('bool', True),  # default: Try to be smart about time
+        'named_branches': ('bool', True)  # if activated, parse named branches
     }
 
     def __init__(self, logging_class='swh.loader.mercurial.Bundle20Loader'):
@@ -53,6 +54,7 @@ class HgBundle20Loader(SWHStatelessLoader):
         self.bundle_filename = self.config['bundle_filename']
         self.hg = None
         self.reduce_effort_flag = self.config['reduce_effort']
+        self.named_branches_flag = self.config['named_branches']
         self.empty_repository = None
 
     def cleanup(self):
@@ -104,6 +106,7 @@ class HgBundle20Loader(SWHStatelessLoader):
         self.working_directory = None
         self.bundle_path = None
         self.branches = {}
+        self.named_branches = {}
         self.tags = []
         self.releases = {}
 
@@ -314,6 +317,9 @@ class HgBundle20Loader(SWHStatelessLoader):
                 if d['id'] in missing_dirs:
                     yield d
 
+    def _convert_to_rev_id(self, node_2_rev, m):
+        return {k: node_2_rev[v] for k, v in m.items()}
+
     def get_revisions(self):
         """Get the revisions that need to be loaded."""
         node_2_rev = {}
@@ -340,6 +346,9 @@ class HgBundle20Loader(SWHStatelessLoader):
                     k, v = e.split(b':', 1)
                     k = k.decode('utf-8')
                     extra_meta.append([k, v])
+                    if self.named_branches_flag and k == 'branch':
+                        # if named branch, we keep it if option activated
+                        self.named_branches[v] = header['node']
 
             revision = {
                 'author': author_dict,
@@ -373,11 +382,10 @@ class HgBundle20Loader(SWHStatelessLoader):
             node_2_rev[header['node']] = revision['id']
             revisions[revision['id']] = revision
 
-        # Converts heads to use swh ids
-        self.heads = {
-            branch_name: node_2_rev[node_id]
-            for branch_name, node_id in self.heads.items()
-        }
+        # Converts branches target from changeset node id to revision swh ids
+        self.heads = self._convert_to_rev_id(node_2_rev, self.heads)
+        self.named_branches = self._convert_to_rev_id(
+            node_2_rev, self.named_branches)
 
         node_2_rev = None
 
@@ -427,6 +435,12 @@ class HgBundle20Loader(SWHStatelessLoader):
         """Get the snapshot that need to be loaded."""
         self.num_snapshot = 1
         branches = {}
+        for name, target in self.named_branches.items():
+            # if name in self.heads:
+            #     assert self.heads[name] == target
+            #     # FIXME: that fails sometimes but who is right?
+            #     #        Choosing to trust the api hglib.heads call for now
+            branches[name] = {'target': target, 'target_type': 'revision'}
         for name, target in self.heads.items():
             branches[name] = {'target': target, 'target_type': 'revision'}
         for name, target in self.releases.items():

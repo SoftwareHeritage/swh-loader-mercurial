@@ -349,11 +349,16 @@ class HgBundle20Loader(SWHStatelessLoader):
                     ] + extra_meta
                 },
                 'synthetic': False,
-                'parents': [
-                    node_2_rev[header['p1']],
-                    node_2_rev[header['p2']]
-                ]
+                'parents': []
             }
+
+            p1 = node_2_rev.get(header['p1'])
+            p2 = node_2_rev.get(header['p2'])
+            if p1:
+                revision['parents'].append(p1)
+            if p2:
+                revision['parents'].append(p2)
+
             revision['id'] = hashutil.hash_to_bytes(
                 identifiers.revision_identifier(revision)
             )

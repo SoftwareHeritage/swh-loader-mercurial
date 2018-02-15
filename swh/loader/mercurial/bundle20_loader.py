@@ -308,6 +308,7 @@ class HgBundle20Loader(SWHStatelessLoader):
 
     def get_revisions(self):
         """Get the revisions that need to be loaded."""
+        node_2_rev = {}
         revisions = {}
         self.num_revisions = 0
         for header, commit in self.br.yield_all_changesets():
@@ -349,13 +350,17 @@ class HgBundle20Loader(SWHStatelessLoader):
                 },
                 'synthetic': False,
                 'parents': [
-                    header['p1'],
-                    header['p2']
+                    node_2_rev[header['p1']],
+                    node_2_rev[header['p2']]
                 ]
             }
             revision['id'] = hashutil.hash_to_bytes(
-                identifiers.revision_identifier(revision))
+                identifiers.revision_identifier(revision)
+            )
+            node_2_rev[header['node']] = revision['id']
             revisions[revision['id']] = revision
+
+        node_2_rev = None
 
         missing_revs = revisions.keys()
         if missing_revs:

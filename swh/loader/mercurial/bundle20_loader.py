@@ -20,6 +20,7 @@ from Mercurial version 2 bundle files.
 import datetime
 import hglib
 import os
+import random
 
 from dateutil import parser
 from shutil import rmtree
@@ -270,8 +271,12 @@ class HgBundle20Loader(SWHStatelessLoader):
         def tree_size(t):
             return t.size()
 
+        cache_filename = os.path.join(self.hgdir, 'sqldict%s' % (
+            hex(random.randint(0, 0xffffff))[2:]))
+
         self.trees = SelectiveCache(cache_hints=cache_hints,
-                                    size_function=tree_size)
+                                    size_function=tree_size,
+                                    filename=cache_filename)
 
         tree = SimpleTree()
         for header, added, removed in self.br.yield_all_manifest_deltas(

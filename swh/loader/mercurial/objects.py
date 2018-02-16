@@ -264,7 +264,7 @@ class SelectiveCache(OrderedDict):
     DEFAULT_SIZE = 800*1024*1024  # bytes or whatever
 
     def __init__(self, max_size=None, cache_hints=None,
-                 size_function=None):
+                 size_function=None, filename=None):
         """args:
                 max_size: integer value indicating the maximum size of the part
                           of storage held in memory
@@ -283,6 +283,7 @@ class SelectiveCache(OrderedDict):
         self._latest = None
         self._cache_size = 0
         self._cache_hints = copy.copy(cache_hints) or None
+        self.filename = filename
 
     def store(self, key, data):
         """Primary method for putting data into the cache.
@@ -318,7 +319,9 @@ class SelectiveCache(OrderedDict):
 
     def _diskstore(self, key, value):
         if self._disk is None:
-            self._disk = SqliteDict(autocommit=False, journal_mode='OFF')
+            self._disk = SqliteDict(
+                autocommit=False, journal_mode='OFF', filename=self.filename)
+            self._disk.in_temp = True  # necessary to force the disk clean up
         self._disk[key] = value
 
     def has(self, key):

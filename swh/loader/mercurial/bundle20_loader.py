@@ -404,6 +404,11 @@ class HgBundle20Loader(SWHStatelessLoader):
             yield revisions[r]
         self.mnode_to_tree_id = None
 
+    def _read_tag(self, tag, split_byte=b' '):
+        node, *name = tag.split(split_byte)
+        name = split_byte.join(name)
+        return node, name
+
     def get_releases(self):
         """Get the releases that need to be loaded."""
         self.num_releases = 0
@@ -411,7 +416,7 @@ class HgBundle20Loader(SWHStatelessLoader):
         missing_releases = []
         for t in self.tags:
             self.num_releases += 1
-            node, name = t.split(b' ')
+            node, name = self._read_tag(t)
             release = {
                 'name': name,
                 'target': hashutil.hash_to_bytes(node.decode()),

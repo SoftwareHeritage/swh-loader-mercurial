@@ -21,6 +21,7 @@ import datetime
 import hglib
 import os
 import random
+import re
 
 from dateutil import parser
 from shutil import rmtree
@@ -35,6 +36,9 @@ from .archive_extract import tmp_extract
 from .bundle20_reader import Bundle20Reader
 from .converters import PRIMARY_ALGO as ALGO
 from .objects import SelectiveCache, SimpleTree
+
+
+TAG_PATTERN = re.compile('[0-9A-Fa-f]{40}')
 
 
 class HgBundle20Loader(SWHStatelessLoader):
@@ -417,9 +421,14 @@ class HgBundle20Loader(SWHStatelessLoader):
         for t in self.tags:
             self.num_releases += 1
             node, name = self._read_tag(t)
+            node = node.decode()
+            if not TAG_PATTERN.match(node):
+                self.log.warn('Wrong pattern (%s) found in tags. Skipping' % (
+                    node, ))
+                continue
             release = {
                 'name': name,
-                'target': hashutil.hash_to_bytes(node.decode()),
+                'target': hashutil.hash_to_bytes(node),
                 'target_type': 'revision',
                 'message': None,
                 'metadata': None,

@@ -51,6 +51,7 @@ class HgBundle20Loader(SWHStatelessLoader):
         'bundle_filename': ('str', 'HG20_none_bundle'),
         'reduce_effort': ('bool', True),  # default: Try to be smart about time
         'temp_directory': ('str', '/tmp'),
+        'cache_size': ('int', 2*1024*1024*1024),
     }
 
     def __init__(self, logging_class='swh.loader.mercurial.Bundle20Loader'):
@@ -60,6 +61,7 @@ class HgBundle20Loader(SWHStatelessLoader):
         self.reduce_effort_flag = self.config['reduce_effort']
         self.empty_repository = None
         self.temp_directory = self.config['temp_directory']
+        self.cache_size = self.config['cache_size']
 
     def cleanup(self):
         """Clean temporary working directory
@@ -145,6 +147,10 @@ class HgBundle20Loader(SWHStatelessLoader):
                 repo.bundle(bytes(self.bundle_path, 'utf-8'),
                             all=True,
                             type=b'none-v2')
+
+            self.cache_filename = os.path.join(
+                self.hgdir, 'sqldict%s' % (
+                    hex(random.randint(0, 0xffffff))[2:], ))
 
         except Exception:
             self.cleanup()
@@ -277,12 +283,10 @@ class HgBundle20Loader(SWHStatelessLoader):
         def tree_size(t):
             return t.size()
 
-        cache_filename = os.path.join(self.hgdir, 'sqldict%s' % (
-            hex(random.randint(0, 0xffffff))[2:]))
-
         self.trees = SelectiveCache(cache_hints=cache_hints,
                                     size_function=tree_size,
-                                    filename=cache_filename)
+                                    filename=self.cache_filename,
+                                    max_size=self.cache_size)
 
         tree = SimpleTree()
         for header, added, removed in self.br.yield_all_manifest_deltas(

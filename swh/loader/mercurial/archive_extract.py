@@ -1,4 +1,4 @@
-# Copyright (C) 2017  The Software Heritage developers
+# Copyright (C) 2017-2018  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -9,7 +9,7 @@ import tempfile
 import patoolib
 
 
-def tmp_extract(archive, prefix=None, log=None, source=None):
+def tmp_extract(archive, dir=None, prefix=None, log=None, source=None):
     """Extract an archive to a temporary location with optional logs.
 
     Args:
@@ -30,7 +30,7 @@ def tmp_extract(archive, prefix=None, log=None, source=None):
     else:
         package = archive_base.split('.')[0]
 
-    tmpdir = tempfile.mkdtemp(prefix=prefix)
+    tmpdir = tempfile.mkdtemp(dir=dir, prefix=prefix)
     patoolib.extract_archive(archive, interactive=False, outdir=tmpdir)
     repo_path = os.path.join(tmpdir, package)
 

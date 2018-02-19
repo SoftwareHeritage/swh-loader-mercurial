@@ -50,6 +50,7 @@ class HgBundle20Loader(SWHStatelessLoader):
     ADDITIONAL_CONFIG = {
         'bundle_filename': ('str', 'HG20_none_bundle'),
         'reduce_effort': ('bool', True),  # default: Try to be smart about time
+        'temp_directory': ('str', '/tmp'),
     }
 
     def __init__(self, logging_class='swh.loader.mercurial.Bundle20Loader'):
@@ -58,6 +59,7 @@ class HgBundle20Loader(SWHStatelessLoader):
         self.bundle_filename = self.config['bundle_filename']
         self.reduce_effort_flag = self.config['reduce_effort']
         self.empty_repository = None
+        self.temp_directory = self.config['temp_directory']
 
     def cleanup(self):
         """Clean temporary working directory
@@ -125,7 +127,7 @@ class HgBundle20Loader(SWHStatelessLoader):
                 self.working_directory = mkdtemp(
                     suffix='.tmp',
                     prefix='swh.loader.mercurial.',
-                    dir='/tmp')
+                    dir=self.temp_directory)
                 os.makedirs(self.working_directory, exist_ok=True)
                 self.hgdir = self.working_directory
 
@@ -488,6 +490,7 @@ class HgArchiveBundle20Loader(HgBundle20Loader):
 
     def prepare(self, origin_url, archive_path, visit_date):
         self.temp_dir = tmp_extract(archive=archive_path,
+                                    dir=self.temp_directory,
                                     prefix='swh.loader.mercurial.',
                                     log=self.log,
                                     source=origin_url)

@@ -313,25 +313,20 @@ class HgBundle20Loader(SWHStatelessLoader):
 
     def get_directories(self):
         """Get the directories that need to be loaded."""
-        missing_dirs = []
+        dirs = {}
         self.num_directories = 0
-        for header, tree, new_dirs in self.load_directories():
+        for _, _, new_dirs in self.load_directories():
             for d in new_dirs:
                 self.num_directories += 1
-                missing_dirs.append(d['id'])
+                dirs[d['id']] = d
 
-        # NOTE: This method generates directories twice to reduce memory usage
-        # without generating disk writes.
-
+        missing_dirs = list(dirs.keys())
         if missing_dirs:
-            missing_dirs = set(
-                self.storage.directory_missing(missing_dirs)
-            )
+            missing_dirs = self.storage.directory_missing(missing_dirs)
 
-        for header, tree, new_dirs in self.load_directories():
-            for d in new_dirs:
-                if d['id'] in missing_dirs:
-                    yield d
+        for _id in missing_dirs:
+            yield dirs[_id]
+        dirs = {}
 
     def get_revisions(self):
         """Get the revisions that need to be loaded."""

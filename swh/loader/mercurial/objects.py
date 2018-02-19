@@ -11,6 +11,9 @@ import binascii
 import copy
 import os
 import sys
+import pickle
+import sqlite3
+import zlib
 
 from collections import OrderedDict
 from sqlitedict import SqliteDict
@@ -18,6 +21,16 @@ from sqlitedict import SqliteDict
 from swh.model import identifiers
 
 OS_PATH_SEP = os.path.sep.encode('utf-8')
+
+
+def _encode(obj):
+    return sqlite3.Binary(zlib.compress(
+        pickle.dumps(obj, pickle.HIGHEST_PROTOCOL)))
+
+
+def _decode(obj):
+    return pickle.loads(
+        zlib.decompress(bytes(obj)))
 
 
 class SimpleBlob:
@@ -321,7 +334,8 @@ class SelectiveCache(OrderedDict):
         if self._disk is None:
             self._disk = SqliteDict(
                 autocommit=False, journal_mode='OFF',
-                filename=self.filename, tablename='swh')
+                filename=self.filename, tablename='swh',
+                encode=_encode, decode=_decode)
             self._disk.in_temp = True  # necessary to force the disk clean up
         self._disk[key] = value
 

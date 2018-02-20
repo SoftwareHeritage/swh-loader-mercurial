@@ -1,3 +1,11 @@
+swh-loader-mercurial (0.0.9-1~swh1) unstable-swh; urgency=medium
+
+  * v0.0.9
+  * bundle20_loader: Add memory configuration cache for both
+  * bundle20_loader: Set cache disk within loader's temporary workdir
+
+ -- Antoine R. Dumont (@ardumont) <antoine.romain.dumont@gmail.com>  Tue, 20 Feb 2018 20:04:22 +0100
+
 swh-loader-mercurial (0.0.8-1~swh1) unstable-swh; urgency=medium
 
   * v0.0.8

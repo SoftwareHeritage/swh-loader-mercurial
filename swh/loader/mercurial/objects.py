@@ -1,4 +1,4 @@
-# Copyright (C) 2017  The Software Heritage developers
+# Copyright (C) 2017-2018  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -11,6 +11,9 @@ import binascii
 import copy
 import os
 import sys
+import pickle
+import sqlite3
+import zlib
 
 from collections import OrderedDict
 from sqlitedict import SqliteDict
@@ -18,6 +21,16 @@ from sqlitedict import SqliteDict
 from swh.model import identifiers
 
 OS_PATH_SEP = os.path.sep.encode('utf-8')
+
+
+def _encode(obj):
+    return sqlite3.Binary(zlib.compress(
+        pickle.dumps(obj, pickle.HIGHEST_PROTOCOL)))
+
+
+def _decode(obj):
+    return pickle.loads(
+        zlib.decompress(bytes(obj)))
 
 
 class SimpleBlob:
@@ -261,10 +274,10 @@ class SelectiveCache(OrderedDict):
     key that is not in that set of hints, the cache will store it only while it
     is the most recent entry, and will bypass storage phases 2 and 3.
     """
-    DEFAULT_SIZE = 800*1024*1024  # bytes or whatever
+    DEFAULT_SIZE = 2*1024*1024*2014  # bytes or whatever
 
     def __init__(self, max_size=None, cache_hints=None,
-                 size_function=None):
+                 size_function=None, filename=None):
         """args:
                 max_size: integer value indicating the maximum size of the part
                           of storage held in memory
@@ -283,6 +296,7 @@ class SelectiveCache(OrderedDict):
         self._latest = None
         self._cache_size = 0
         self._cache_hints = copy.copy(cache_hints) or None
+        self.filename = filename
 
     def store(self, key, data):
         """Primary method for putting data into the cache.
@@ -318,7 +332,11 @@ class SelectiveCache(OrderedDict):
 
     def _diskstore(self, key, value):
         if self._disk is None:
-            self._disk = SqliteDict(autocommit=False, journal_mode='OFF')
+            self._disk = SqliteDict(
+                autocommit=False, journal_mode='OFF',
+                filename=self.filename, tablename='swh',
+                encode=_encode, decode=_decode)
+            self._disk.in_temp = True  # necessary to force the disk clean up
         self._disk[key] = value
 
     def has(self, key):

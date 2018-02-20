@@ -20,6 +20,8 @@ from Mercurial version 2 bundle files.
 import datetime
 import hglib
 import os
+import random
+import re
 
 from dateutil import parser
 from shutil import rmtree
@@ -36,6 +38,9 @@ from .converters import PRIMARY_ALGO as ALGO
 from .objects import SelectiveCache, SimpleTree
 
 
+TAG_PATTERN = re.compile('[0-9A-Fa-f]{40}')
+
+
 class HgBundle20Loader(SWHStatelessLoader):
     """Mercurial loader able to deal with remote or local repository.
 
@@ -45,6 +50,8 @@ class HgBundle20Loader(SWHStatelessLoader):
     ADDITIONAL_CONFIG = {
         'bundle_filename': ('str', 'HG20_none_bundle'),
         'reduce_effort': ('bool', True),  # default: Try to be smart about time
+        'temp_directory': ('str', '/tmp'),
+        'cache_size': ('int', 2*1024*1024*1024),
     }
 
     def __init__(self, logging_class='swh.loader.mercurial.Bundle20Loader'):
@@ -53,6 +60,8 @@ class HgBundle20Loader(SWHStatelessLoader):
         self.bundle_filename = self.config['bundle_filename']
         self.reduce_effort_flag = self.config['reduce_effort']
         self.empty_repository = None
+        self.temp_directory = self.config['temp_directory']
+        self.cache_size = self.config['cache_size']
 
     def cleanup(self):
         """Clean temporary working directory
@@ -120,7 +129,7 @@ class HgBundle20Loader(SWHStatelessLoader):
                 self.working_directory = mkdtemp(
                     suffix='.tmp',
                     prefix='swh.loader.mercurial.',
-                    dir='/tmp')
+                    dir=self.temp_directory)
                 os.makedirs(self.working_directory, exist_ok=True)
                 self.hgdir = self.working_directory
 
@@ -138,6 +147,10 @@ class HgBundle20Loader(SWHStatelessLoader):
                 repo.bundle(bytes(self.bundle_path, 'utf-8'),
                             all=True,
                             type=b'none-v2')
+
+            self.cache_filename = os.path.join(
+                self.hgdir, 'swh-cache-%s' % (
+                    hex(random.randint(0, 0xffffff))[2:], ))
 
         except Exception:
             self.cleanup()
@@ -271,7 +284,9 @@ class HgBundle20Loader(SWHStatelessLoader):
             return t.size()
 
         self.trees = SelectiveCache(cache_hints=cache_hints,
-                                    size_function=tree_size)
+                                    size_function=tree_size,
+                                    filename=self.cache_filename,
+                                    max_size=self.cache_size)
 
         tree = SimpleTree()
         for header, added, removed in self.br.yield_all_manifest_deltas(
@@ -302,25 +317,20 @@ class HgBundle20Loader(SWHStatelessLoader):
 
     def get_directories(self):
         """Get the directories that need to be loaded."""
-        missing_dirs = []
+        dirs = {}
         self.num_directories = 0
-        for header, tree, new_dirs in self.load_directories():
+        for _, _, new_dirs in self.load_directories():
             for d in new_dirs:
                 self.num_directories += 1
-                missing_dirs.append(d['id'])
+                dirs[d['id']] = d
 
-        # NOTE: This method generates directories twice to reduce memory usage
-        # without generating disk writes.
-
+        missing_dirs = list(dirs.keys())
         if missing_dirs:
-            missing_dirs = set(
-                self.storage.directory_missing(missing_dirs)
-            )
+            missing_dirs = self.storage.directory_missing(missing_dirs)
 
-        for header, tree, new_dirs in self.load_directories():
-            for d in new_dirs:
-                if d['id'] in missing_dirs:
-                    yield d
+        for _id in missing_dirs:
+            yield dirs[_id]
+        dirs = {}
 
     def get_revisions(self):
         """Get the revisions that need to be loaded."""
@@ -399,6 +409,11 @@ class HgBundle20Loader(SWHStatelessLoader):
             yield revisions[r]
         self.mnode_to_tree_id = None
 
+    def _read_tag(self, tag, split_byte=b' '):
+        node, *name = tag.split(split_byte)
+        name = split_byte.join(name)
+        return node, name
+
     def get_releases(self):
         """Get the releases that need to be loaded."""
         self.num_releases = 0
@@ -406,10 +421,15 @@ class HgBundle20Loader(SWHStatelessLoader):
         missing_releases = []
         for t in self.tags:
             self.num_releases += 1
-            node, name = t.split(b' ')
+            node, name = self._read_tag(t)
+            node = node.decode()
+            if not TAG_PATTERN.match(node):
+                self.log.warn('Wrong pattern (%s) found in tags. Skipping' % (
+                    node, ))
+                continue
             release = {
                 'name': name,
-                'target': hashutil.hash_to_bytes(node.decode()),
+                'target': hashutil.hash_to_bytes(node),
                 'target_type': 'revision',
                 'message': None,
                 'metadata': None,
@@ -469,6 +489,7 @@ class HgArchiveBundle20Loader(HgBundle20Loader):
 
     def prepare(self, origin_url, archive_path, visit_date):
         self.temp_dir = tmp_extract(archive=archive_path,
+                                    dir=self.temp_directory,
                                     prefix='swh.loader.mercurial.',
                                     log=self.log,
                                     source=origin_url)

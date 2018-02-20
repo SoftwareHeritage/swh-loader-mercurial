@@ -1,3 +1,17 @@
+swh-loader-mercurial (0.0.8-1~swh1) unstable-swh; urgency=medium
+
+  * v0.0.8
+  * objects: Add custom serialization to use less disk space
+  * bundle20_loader: Add swh specific name to cache and table names
+  * bundle20_loader: Opening cache size parameter
+  * bundle20_loader: Remove one call to load_directories
+  * bundle20_loader: Configure temporary working directory
+  * bundle20_loader: Warn about wrong pattern in tags & continue loading
+  * bundle20_loader: Fix reading tag as tag can contain blank space
+  * bundle20_loader: Set cache disk within loader's temporary workdir
+
+ -- Antoine R. Dumont (@ardumont) <antoine.romain.dumont@gmail.com>  Tue, 20 Feb 2018 16:41:55 +0100
+
 swh-loader-mercurial (0.0.7-1~swh1) unstable-swh; urgency=medium
 
   * v0.0.7

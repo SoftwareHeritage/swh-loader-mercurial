@@ -320,7 +320,8 @@ class SelectiveCache(OrderedDict):
     def _diskstore(self, key, value):
         if self._disk is None:
             self._disk = SqliteDict(
-                autocommit=False, journal_mode='OFF', filename=self.filename)
+                autocommit=False, journal_mode='OFF',
+                filename=self.filename, tablename='swh')
             self._disk.in_temp = True  # necessary to force the disk clean up
         self._disk[key] = value
 

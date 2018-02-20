@@ -149,7 +149,7 @@ class HgBundle20Loader(SWHStatelessLoader):
                             type=b'none-v2')
 
             self.cache_filename = os.path.join(
-                self.hgdir, 'sqldict%s' % (
+                self.hgdir, 'swh-cache-%s' % (
                     hex(random.randint(0, 0xffffff))[2:], ))
 
         except Exception:

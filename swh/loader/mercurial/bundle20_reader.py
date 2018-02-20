@@ -169,15 +169,19 @@ class Bundle20Reader(object):
     at that point would be trivial to add if necessary.
 
     args:
-        bundlefile: string name of the binary repository bundle file
-        cache_size: int tuning parameter for the upper RAM limit used by
+        bundlefile (str): name of the binary repository bundle file
+        cache_filename (str): path to the disk cache used (transited
+                              to the SelectiveCache instance)
+        cache_size (int): tuning parameter for the upper RAM limit used by
                     historical data caches. The default is defined in the
                     SelectiveCache class.
+
     """
     NAUGHT_NODE = b'\x00' * 20
 
-    def __init__(self, bundlefile, cache_size=None):
+    def __init__(self, bundlefile, cache_filename, cache_size=None):
         self.bundlefile = bundlefile
+        self.cache_filename = cache_filename
         bfile = open(bundlefile, 'rb', buffering=200*1024*1024)
 
         btype = bfile.read(4)  # 'HG20'
@@ -415,7 +419,9 @@ class Bundle20Reader(object):
         if cache_hints is None:
             cache_hints = self.build_cache_hints()
 
-        data_cache = SelectiveCache(self.cache_size, cache_hints)
+        data_cache = SelectiveCache(max_size=self.cache_size,
+                                    cache_hints=cache_hints,
+                                    filename=self.cache_filename)
 
         # Loop over all revisions in the group
         data = b''

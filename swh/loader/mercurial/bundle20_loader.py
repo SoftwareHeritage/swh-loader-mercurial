@@ -51,7 +51,8 @@ class HgBundle20Loader(SWHStatelessLoader):
         'bundle_filename': ('str', 'HG20_none_bundle'),
         'reduce_effort': ('bool', True),  # default: Try to be smart about time
         'temp_directory': ('str', '/tmp'),
-        'cache_size': ('int', 2*1024*1024*1024),
+        'cache1_size': ('int', 1*1024*1024*1024),
+        'cache2_size': ('int', 1*1024*1024*1024),
     }
 
     def __init__(self, logging_class='swh.loader.mercurial.Bundle20Loader'):
@@ -61,7 +62,8 @@ class HgBundle20Loader(SWHStatelessLoader):
         self.reduce_effort_flag = self.config['reduce_effort']
         self.empty_repository = None
         self.temp_directory = self.config['temp_directory']
-        self.cache_size = self.config['cache_size']
+        self.cache1_size = self.config['cache1_size']
+        self.cache2_size = self.config['cache2_size']
 
     def cleanup(self):
         """Clean temporary working directory
@@ -148,8 +150,11 @@ class HgBundle20Loader(SWHStatelessLoader):
                             all=True,
                             type=b'none-v2')
 
-            self.cache_filename = os.path.join(
-                self.hgdir, 'swh-cache-%s' % (
+            self.cache_filename1 = os.path.join(
+                self.hgdir, 'swh-cache-1-%s' % (
+                    hex(random.randint(0, 0xffffff))[2:], ))
+            self.cache_filename2 = os.path.join(
+                self.hgdir, 'swh-cache-2-%s' % (
                     hex(random.randint(0, 0xffffff))[2:], ))
 
         except Exception:
@@ -157,7 +162,9 @@ class HgBundle20Loader(SWHStatelessLoader):
             raise
 
         try:
-            self.br = Bundle20Reader(self.bundle_path)
+            self.br = Bundle20Reader(bundlefile=self.bundle_path,
+                                     cache_filename=self.cache_filename1,
+                                     cache_size=self.cache1_size)
         except FileNotFoundError as e:
             # Empty repository! Still a successful visit targeting an
             # empty snapshot
@@ -285,8 +292,8 @@ class HgBundle20Loader(SWHStatelessLoader):
 
         self.trees = SelectiveCache(cache_hints=cache_hints,
                                     size_function=tree_size,
-                                    filename=self.cache_filename,
-                                    max_size=self.cache_size)
+                                    filename=self.cache_filename2,
+                                    max_size=self.cache2_size)
 
         tree = SimpleTree()
         for header, added, removed in self.br.yield_all_manifest_deltas(

@@ -274,7 +274,7 @@ class SelectiveCache(OrderedDict):
     key that is not in that set of hints, the cache will store it only while it
     is the most recent entry, and will bypass storage phases 2 and 3.
     """
-    DEFAULT_SIZE = 2*1024*1024*2014  # bytes or whatever
+    DEFAULT_SIZE = 1*1024*1024*2014  # bytes or whatever
 
     def __init__(self, max_size=None, cache_hints=None,
                  size_function=None, filename=None):

@@ -148,8 +148,11 @@ class HgBundle20Loader(SWHStatelessLoader):
                             all=True,
                             type=b'none-v2')
 
-            self.cache_filename = os.path.join(
-                self.hgdir, 'swh-cache-%s' % (
+            self.cache_filename1 = os.path.join(
+                self.hgdir, 'swh-cache-1-%s' % (
+                    hex(random.randint(0, 0xffffff))[2:], ))
+            self.cache_filename2 = os.path.join(
+                self.hgdir, 'swh-cache-2-%s' % (
                     hex(random.randint(0, 0xffffff))[2:], ))
 
         except Exception:
@@ -157,7 +160,7 @@ class HgBundle20Loader(SWHStatelessLoader):
             raise
 
         try:
-            self.br = Bundle20Reader(self.bundle_path)
+            self.br = Bundle20Reader(self.bundle_path, self.cache_filename2)
         except FileNotFoundError as e:
             # Empty repository! Still a successful visit targeting an
             # empty snapshot
@@ -285,7 +288,7 @@ class HgBundle20Loader(SWHStatelessLoader):
 
         self.trees = SelectiveCache(cache_hints=cache_hints,
                                     size_function=tree_size,
-                                    filename=self.cache_filename,
+                                    filename=self.cache_filename1,
                                     max_size=self.cache_size)
 
         tree = SimpleTree()

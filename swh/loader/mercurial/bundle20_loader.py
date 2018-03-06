@@ -98,7 +98,16 @@ class HgBundle20Loader(SWHStatelessLoader):
 
         return b
 
-    def prepare(self, origin_url, visit_date, directory=None):
+    def prepare_origin(self, *args, **kwargs):
+        self.origin_url = kwargs['origin_url']
+        self.origin = {'url': self.origin_url, 'type': 'hg'}
+        visit_date = kwargs['visit_date']
+        if isinstance(visit_date, str):  # visit_date can be string or datetime
+            visit_date = parser.parse(visit_date)
+        self.visit_date = visit_date
+        return super().prepare_origin(*args, **kwargs)
+
+    def prepare(self, *, origin_url, visit_date, directory=None):
         """Prepare the necessary steps to load an actual remote or local
            repository.
 
@@ -114,12 +123,6 @@ class HgBundle20Loader(SWHStatelessLoader):
             directory (str/None): The local directory to load
 
         """
-        self.origin_url = origin_url
-        self.origin = self.get_origin()
-        if isinstance(visit_date, str):  # visit_date
-            visit_date = parser.parse(visit_date)
-
-        self.visit_date = visit_date
         self.working_directory = None
         self.bundle_path = None
         self.branches = {}
@@ -136,8 +139,8 @@ class HgBundle20Loader(SWHStatelessLoader):
                 self.hgdir = self.working_directory
 
                 self.log.debug('Cloning %s to %s' % (
-                    self.origin_url, self.hgdir))
-                hglib.clone(source=self.origin_url, dest=self.hgdir)
+                    self.origin['url'], self.hgdir))
+                hglib.clone(source=self.origin['url'], dest=self.hgdir)
             else:  # local repository
                 self.working_directory = None
                 self.hgdir = directory
@@ -195,14 +198,6 @@ class HgBundle20Loader(SWHStatelessLoader):
 
     def has_releases(self):
         return not self.empty_repository
-
-    def get_origin(self):
-        """Get the origin that is currently being loaded in format suitable for
-           swh.storage."""
-        return {
-            'type': 'hg',
-            'url': self.origin_url
-        }
 
     def fetch_data(self):
         """Fetch the data from the data source."""
@@ -494,7 +489,7 @@ class HgArchiveBundle20Loader(HgBundle20Loader):
         super().__init__(
             logging_class='swh.loader.mercurial.HgArchiveBundle20Loader')
 
-    def prepare(self, origin_url, archive_path, visit_date):
+    def prepare(self, *, origin_url, archive_path, visit_date):
         self.temp_dir = tmp_extract(archive=archive_path,
                                     dir=self.temp_directory,
                                     prefix='swh.loader.mercurial.',
@@ -504,7 +499,8 @@ class HgArchiveBundle20Loader(HgBundle20Loader):
         repo_name = os.listdir(self.temp_dir)[0]
         directory = os.path.join(self.temp_dir, repo_name)
         try:
-            super().prepare(origin_url, visit_date, directory=directory)
+            super().prepare(origin_url=origin_url,
+                            visit_date=visit_date, directory=directory)
         except Exception:
             self.cleanup()
             raise

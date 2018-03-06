@@ -455,7 +455,6 @@ class HgBundle20Loader(SWHStatelessLoader):
 
     def get_snapshot(self):
         """Get the snapshot that need to be loaded."""
-        self.num_snapshot = 1
         branches = {}
         for name, target in self.heads.items():
             branches[name] = {'target': target, 'target_type': 'revision'}
@@ -477,7 +476,6 @@ class HgBundle20Loader(SWHStatelessLoader):
             'directories': self.num_directories,
             'revisions': self.num_revisions,
             'releases': self.num_releases,
-            'snapshot': self.num_snapshot
         }
 
 

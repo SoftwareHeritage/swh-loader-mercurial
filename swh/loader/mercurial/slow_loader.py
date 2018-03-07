@@ -135,24 +135,21 @@ class HgLoader(SWHStatelessLoader):
     def __init__(self, logging_class='swh.loader.mercurial.HgLoader'):
         super().__init__(logging_class=logging_class)
 
-    def prepare(self, origin_url, directory, visit_date):
-        """see base.BaseLoader.prepare"""
+    def prepare_origin_visit(self, origin_url, directory, visit_date):
         self.origin = {
             'type': 'hg',
             'url': origin_url
         }
-        self.repo = hglib.open(directory)
         self.visit_date = visit_date
+
+    def prepare(self, origin_url, directory, visit_date):
+        """see base.BaseLoader.prepare"""
+        self.repo = hglib.open(directory)
         self.node_to_blob_hash = {}
         self.blob_hash_to_file_rev = {}
         self.commit_trees = {}
         self.unique_trees = {}
         self.revisions = {}
-
-    def get_origin(self):
-        """Get the origin that is currently being loaded in format suitable for
-           swh.storage"""
-        return self.origin
 
     def fetch_data(self):
         """Fetch the data from the data source"""

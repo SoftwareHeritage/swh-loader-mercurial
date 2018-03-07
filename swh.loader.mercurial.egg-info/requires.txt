@@ -3,7 +3,7 @@ python-dateutil
 retrying
 sqlitedict
 swh.core>=0.0.36
-swh.loader.core>=0.0.30
+swh.loader.core>=0.0.32
 swh.model>=0.0.20
 swh.scheduler>=0.0.19
 swh.storage>=0.0.95

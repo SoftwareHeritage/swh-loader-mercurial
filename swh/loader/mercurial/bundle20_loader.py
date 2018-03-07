@@ -100,14 +100,12 @@ class HgBundle20Loader(SWHStatelessLoader):
 
         return b
 
-    def prepare_origin(self, *args, **kwargs):
-        self.origin_url = kwargs['origin_url']
+    def prepare_origin_visit(self, *, origin_url, visit_date, **kwargs):
+        self.origin_url = origin_url
         self.origin = {'url': self.origin_url, 'type': 'hg'}
-        visit_date = kwargs['visit_date']
         if isinstance(visit_date, str):  # visit_date can be string or datetime
             visit_date = parser.parse(visit_date)
         self.visit_date = visit_date
-        return super().prepare_origin(*args, **kwargs)
 
     def prepare(self, *, origin_url, visit_date, directory=None):
         """Prepare the necessary steps to load an actual remote or local

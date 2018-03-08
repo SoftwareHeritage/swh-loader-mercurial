@@ -20,10 +20,8 @@ from Mercurial version 2 bundle files.
 import datetime
 import hglib
 import os
-import psutil
 import random
 import re
-import shutil
 
 from dateutil import parser
 from shutil import rmtree
@@ -32,6 +30,7 @@ from tempfile import mkdtemp
 from swh.model import hashutil, identifiers
 from swh.loader.core.loader import SWHStatelessLoader
 from swh.loader.core.converters import content_for_storage
+from swh.loader.core.utils import clean_dangling_folders
 
 from . import converters
 from .archive_extract import tmp_extract
@@ -42,7 +41,7 @@ from .objects import SelectiveCache, SimpleTree
 
 TAG_PATTERN = re.compile('[0-9A-Fa-f]{40}')
 
-TEMPORARY_DIR_PREFIX = 'swh.loader.mercurial.'
+TEMPORARY_DIR_PREFIX_PATTERN = 'swh.loader.mercurial.'
 
 
 class HgBundle20Loader(SWHStatelessLoader):
@@ -76,27 +75,9 @@ class HgBundle20Loader(SWHStatelessLoader):
            tasks)
 
         """
-        if not os.path.exists(self.temp_directory):
-            return
-        for filename in os.listdir(self.temp_directory):
-            try:
-                # pattern: `swh.loader.mercurial-pid.{noise}`
-                if TEMPORARY_DIR_PREFIX not in filename or \
-                   '-' not in filename:  # silently ignore unknown patterns
-                    continue
-                _, pid = filename.split('-')
-                pid = int(pid.split('.')[0])
-                if psutil.pid_exists(pid):
-                    self.log.debug('PID %s is live, skipping' % pid)
-                    continue
-                path_to_cleanup = os.path.join(self.temp_directory, filename)
-                # could be removed concurrently, another existence check
-                if os.path.exists(path_to_cleanup):
-                    shutil.rmtree(path_to_cleanup)
-            except Exception as e:
-                msg = 'Fail to clean dangling path %s: %s' % (
-                    path_to_cleanup, e)
-                self.log.warn(msg)
+        clean_dangling_folders(path=self.temp_directory,
+                               pattern_check=TEMPORARY_DIR_PREFIX_PATTERN,
+                               log=self.log)
 
     def cleanup(self):
         """Clean temporary working directory
@@ -160,7 +141,7 @@ class HgBundle20Loader(SWHStatelessLoader):
 
         if not directory:  # remote repository
             self.working_directory = mkdtemp(
-                prefix=TEMPORARY_DIR_PREFIX,
+                prefix=TEMPORARY_DIR_PREFIX_PATTERN,
                 suffix='-%s' % os.getpid(),
                 dir=self.temp_directory)
             os.makedirs(self.working_directory, exist_ok=True)
@@ -515,7 +496,7 @@ class HgArchiveBundle20Loader(HgBundle20Loader):
     def prepare(self, *, origin_url, archive_path, visit_date):
         self.temp_dir = tmp_extract(archive=archive_path,
                                     dir=self.temp_directory,
-                                    prefix=TEMPORARY_DIR_PREFIX,
+                                    prefix=TEMPORARY_DIR_PREFIX_PATTERN,
                                     suffix='.dump-%s' % os.getpid(),
                                     log=self.log,
                                     source=origin_url)

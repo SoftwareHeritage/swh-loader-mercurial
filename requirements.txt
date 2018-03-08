@@ -6,3 +6,4 @@ hglib
 retrying
 python-dateutil
 sqlitedict
+psutil

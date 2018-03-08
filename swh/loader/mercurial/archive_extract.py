@@ -9,7 +9,8 @@ import tempfile
 import patoolib
 
 
-def tmp_extract(archive, dir=None, prefix=None, log=None, source=None):
+def tmp_extract(archive, dir=None, prefix=None, suffix=None, log=None,
+                source=None):
     """Extract an archive to a temporary location with optional logs.
 
     Args:
@@ -30,7 +31,7 @@ def tmp_extract(archive, dir=None, prefix=None, log=None, source=None):
     else:
         package = archive_base.split('.')[0]
 
-    tmpdir = tempfile.mkdtemp(dir=dir, prefix=prefix)
+    tmpdir = tempfile.mkdtemp(dir=dir, prefix=prefix, suffix=suffix)
     patoolib.extract_archive(archive, interactive=False, outdir=tmpdir)
     repo_path = os.path.join(tmpdir, package)
 

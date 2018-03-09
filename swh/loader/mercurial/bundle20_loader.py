@@ -54,8 +54,8 @@ class HgBundle20Loader(SWHStatelessLoader):
         'bundle_filename': ('str', 'HG20_none_bundle'),
         'reduce_effort': ('bool', True),  # default: Try to be smart about time
         'temp_directory': ('str', '/tmp'),
-        'cache1_size': ('int', 1*1024*1024*1024),
-        'cache2_size': ('int', 1*1024*1024*1024),
+        'cache1_size': ('int', 800*1024*1024),
+        'cache2_size': ('int', 800*1024*1024),
     }
 
     def __init__(self, logging_class='swh.loader.mercurial.Bundle20Loader'):

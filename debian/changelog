@@ -1,3 +1,17 @@
+swh-loader-mercurial (0.0.11-1~swh1) unstable-swh; urgency=medium
+
+  * v0.0.11
+  * mercurial/loader: Remove wrong parameter name
+  * mercurial/loader: Clean up temporary extraction dir when failing
+  * mercurial/loader: Revert back to initial default cache size value
+  * mercurial/loader: Refactor: Reuse
+    loader.core.utils.clean_dangling_files
+  * bundle20_loader: Add a pre-cleanup step to clean dangling files
+  * d/control: Bump to latest python3-swh.loader.core
+  * slow_loader: Move to prepare_origin_visit
+
+ -- Antoine R. Dumont (@ardumont) <antoine.romain.dumont@gmail.com>  Fri, 09 Mar 2018 14:51:44 +0100
+
 swh-loader-mercurial (0.0.10-1~swh1) unstable-swh; urgency=medium
 
   * v0.0.10

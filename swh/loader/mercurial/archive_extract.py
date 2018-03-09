@@ -7,9 +7,11 @@ import os
 import tempfile
 
 import patoolib
+import shutil
 
 
-def tmp_extract(archive, dir=None, prefix=None, log=None, source=None):
+def tmp_extract(archive, dir=None, prefix=None, suffix=None, log=None,
+                source=None):
     """Extract an archive to a temporary location with optional logs.
 
     Args:
@@ -24,21 +26,26 @@ def tmp_extract(archive, dir=None, prefix=None, log=None, source=None):
         A context manager for a temporary directory that automatically
         removes itself. See: help(tempfile.TemporaryDirectory)
     """
+    logstr = 'From %s - ' % source if log and source else ''
+
     archive_base = os.path.basename(archive)
     if archive_base[0] == '.':
         package = '.' + archive_base.split('.')[1]
     else:
         package = archive_base.split('.')[0]
 
-    tmpdir = tempfile.mkdtemp(dir=dir, prefix=prefix)
-    patoolib.extract_archive(archive, interactive=False, outdir=tmpdir)
+    tmpdir = tempfile.mkdtemp(dir=dir, prefix=prefix, suffix=suffix)
     repo_path = os.path.join(tmpdir, package)
+    try:
+        patoolib.extract_archive(archive, interactive=False, outdir=tmpdir)
+    except Exception as e:
+        if os.path.exists(tmpdir):
+            shutil.rmtree(tmpdir)
+        msg = '%sFailed to uncompress archive %s at %s - %s' % (
+            logstr, archive_base, repo_path, e)
+        raise ValueError(msg)
 
-    if log is not None:
-        logstr = ''
-        if source is not None:
-            logstr = 'From %s - ' % source
+    if log:
         log.info('%sUncompressing archive %s at %s' % (
             logstr, archive_base, repo_path))
-
     return tmpdir

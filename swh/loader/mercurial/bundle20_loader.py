@@ -75,7 +75,7 @@ class HgBundle20Loader(SWHStatelessLoader):
            tasks)
 
         """
-        clean_dangling_folders(path=self.temp_directory,
+        clean_dangling_folders(self.temp_directory,
                                pattern_check=TEMPORARY_DIR_PREFIX_PATTERN,
                                log=self.log)
 

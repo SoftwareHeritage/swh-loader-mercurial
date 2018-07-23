@@ -181,7 +181,7 @@ class SimpleTree(dict):
         }
 
     def hash_changed(self, new_dirs=None):
-        """Computes and sets primary indentifier hashes for unhashed subtrees.
+        """Computes and sets primary identifier hashes for unhashed subtrees.
 
         args:
             new_dirs (optional): an empty list to be populated with the SWH

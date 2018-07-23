@@ -1,3 +1,9 @@
+swh-loader-mercurial (0.0.12-1~swh1) unstable-swh; urgency=medium
+
+  * version 0.0.12
+
+ -- Antoine Lambert <antoine.lambert@inria.fr>  Mon, 23 Jul 2018 14:45:57 +0200
+
 swh-loader-mercurial (0.0.11-1~swh1) unstable-swh; urgency=medium
 
   * v0.0.11

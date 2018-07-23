@@ -1,8 +1,8 @@
-swh-loader-mercurial (0.0.11-1~swh1~bpo9+1) stretch-swh; urgency=medium
+swh-loader-mercurial (0.0.12-1~swh1) unstable-swh; urgency=medium
 
-  * Rebuild for stretch-backports.
+  * version 0.0.12
 
- -- Antoine R. Dumont (@ardumont) <antoine.romain.dumont@gmail.com>  Fri, 09 Mar 2018 14:51:45 +0100
+ -- Antoine Lambert <antoine.lambert@inria.fr>  Mon, 23 Jul 2018 14:45:57 +0200
 
 swh-loader-mercurial (0.0.11-1~swh1) unstable-swh; urgency=medium
 

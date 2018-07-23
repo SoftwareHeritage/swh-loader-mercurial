@@ -138,6 +138,7 @@ class HgBundle20Loader(SWHStatelessLoader):
         self.branches = {}
         self.tags = []
         self.releases = {}
+        self.node_2_rev = {}
 
         if not directory:  # remote repository
             self.working_directory = mkdtemp(
@@ -341,7 +342,6 @@ class HgBundle20Loader(SWHStatelessLoader):
 
     def get_revisions(self):
         """Get the revisions that need to be loaded."""
-        node_2_rev = {}
         revisions = {}
         self.num_revisions = 0
         for header, commit in self.br.yield_all_changesets():
@@ -385,8 +385,8 @@ class HgBundle20Loader(SWHStatelessLoader):
                 'parents': []
             }
 
-            p1 = node_2_rev.get(header['p1'])
-            p2 = node_2_rev.get(header['p2'])
+            p1 = self.node_2_rev.get(header['p1'])
+            p2 = self.node_2_rev.get(header['p2'])
             if p1:
                 revision['parents'].append(p1)
             if p2:
@@ -395,16 +395,14 @@ class HgBundle20Loader(SWHStatelessLoader):
             revision['id'] = hashutil.hash_to_bytes(
                 identifiers.revision_identifier(revision)
             )
-            node_2_rev[header['node']] = revision['id']
+            self.node_2_rev[header['node']] = revision['id']
             revisions[revision['id']] = revision
 
         # Converts heads to use swh ids
         self.heads = {
-            branch_name: node_2_rev[node_id]
+            branch_name: self.node_2_rev[node_id]
             for branch_name, node_id in self.heads.items()
         }
-
-        node_2_rev = None
 
         missing_revs = revisions.keys()
         if missing_revs:
@@ -430,13 +428,20 @@ class HgBundle20Loader(SWHStatelessLoader):
             self.num_releases += 1
             node, name = self._read_tag(t)
             node = node.decode()
+            node_bytes = hashutil.hash_to_bytes(node)
             if not TAG_PATTERN.match(node):
                 self.log.warn('Wrong pattern (%s) found in tags. Skipping' % (
                     node, ))
                 continue
+            if node_bytes not in self.node_2_rev:
+                self.log.warn('No matching revision for tag %s '
+                              '(hg changeset: %s). Skipping' %
+                              (name.decode(), node))
+                continue
+            tgt_rev = self.node_2_rev[node_bytes]
             release = {
                 'name': name,
-                'target': hashutil.hash_to_bytes(node),
+                'target': tgt_rev,
                 'target_type': 'revision',
                 'message': None,
                 'metadata': None,

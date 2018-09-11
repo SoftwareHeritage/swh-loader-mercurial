@@ -284,6 +284,7 @@ class HgBundle20Loader(SWHStatelessLoader):
     def load_directories(self):
         """This is where the work is done to convert manifest deltas from the
         repository bundle into SWH directories.
+
         """
         self.mnode_to_tree_id = {}
         cache_hints = self.br.build_manifest_hints()
@@ -324,7 +325,9 @@ class HgBundle20Loader(SWHStatelessLoader):
                 yield header, tree, new_dirs
 
     def get_directories(self):
-        """Get the directories that need to be loaded."""
+        """Compute directories to load
+
+        """
         dirs = {}
         self.num_directories = 0
         for _, _, new_dirs in self.load_directories():
@@ -341,7 +344,9 @@ class HgBundle20Loader(SWHStatelessLoader):
         dirs = {}
 
     def get_revisions(self):
-        """Get the revisions that need to be loaded."""
+        """Compute revisions to load
+
+        """
         revisions = {}
         self.num_revisions = 0
         for header, commit in self.br.yield_all_changesets():

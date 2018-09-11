@@ -32,10 +32,11 @@ From python3's toplevel:
 ## Remote (failure)
 
 ``` Python
+project = 'hello'
 # remote repository
-origin_url = 'https://www.mercurial-scm.org/repo/hello'
+origin_url = 'https://www.mercurial-scm.org/repo/%s' % project
 # local clone
-directory = '/home/storage/hg/repo/hello'
+directory = '/home/storage/hg/repo/%s' % project
 
 import logging
 logging.basicConfig(level=logging.DEBUG)

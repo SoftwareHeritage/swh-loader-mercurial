@@ -27,7 +27,11 @@ from dateutil import parser
 from shutil import rmtree
 from tempfile import mkdtemp
 
-from swh.model import hashutil, identifiers
+from swh.model import identifiers
+from swh.model.hashutil import (
+    MultiHash, hash_to_hex, hash_to_bytes,
+    DEFAULT_ALGORITHMS
+)
 from swh.loader.core.loader import SWHStatelessLoader
 from swh.loader.core.converters import content_for_storage
 from swh.loader.core.utils import clean_dangling_folders
@@ -100,15 +104,14 @@ class HgBundle20Loader(SWHStatelessLoader):
         """
         b = {}
         for _, node_hash_id, _, branch_name, *_ in repo.heads():
-            b[branch_name] = hashutil.hash_to_bytes(
+            b[branch_name] = hash_to_bytes(
                 node_hash_id.decode())
 
         bookmarks = repo.bookmarks()
         if bookmarks and bookmarks[0]:
             for bookmark_name, _, target_short in bookmarks[0]:
                 target = repo[target_short].node()
-                b[bookmark_name] = hashutil.hash_to_bytes(
-                    target.decode())
+                b[bookmark_name] = hash_to_bytes(target.decode())
 
         return b
 
@@ -225,12 +228,14 @@ class HgBundle20Loader(SWHStatelessLoader):
             file_name = node_info[0]
             header = node_info[2]
 
+            length = len(blob)
             if header['linknode'] in self.reduce_effort:
-                content = hashutil.hash_data(blob, algorithms=[ALGO],
-                                             with_length=True)
+                algorithms = [ALGO]
             else:
-                content = hashutil.hash_data(blob, with_length=True)
-
+                algorithms = DEFAULT_ALGORITHMS
+            h = MultiHash.from_data(blob, hash_names=algorithms, length=length)
+            content = h.digest()
+            content['length'] = length
             blob_hash = content[ALGO]
             self.file_node_to_hash[header['node']] = blob_hash
 
@@ -273,7 +278,6 @@ class HgBundle20Loader(SWHStatelessLoader):
                     content = contents.pop(node_hashes[node], None)
                     if content:
                         content['data'] = blob
-                        content['length'] = len(blob)
                         yield content_for_storage(
                             content,
                             log=self.log,
@@ -380,7 +384,7 @@ class HgBundle20Loader(SWHStatelessLoader):
                 'directory': directory_id,
                 'message': commit['message'],
                 'metadata': {
-                    'node': hashutil.hash_to_hex(header['node']),
+                    'node': hash_to_hex(header['node']),
                     'extra_headers': [
                         ['time_offset_seconds',
                          str(commit['time_offset_seconds']).encode('utf-8')],
@@ -397,7 +401,7 @@ class HgBundle20Loader(SWHStatelessLoader):
             if p2:
                 revision['parents'].append(p2)
 
-            revision['id'] = hashutil.hash_to_bytes(
+            revision['id'] = hash_to_bytes(
                 identifiers.revision_identifier(revision)
             )
             self.node_2_rev[header['node']] = revision['id']
@@ -433,7 +437,7 @@ class HgBundle20Loader(SWHStatelessLoader):
             self.num_releases += 1
             node, name = self._read_tag(t)
             node = node.decode()
-            node_bytes = hashutil.hash_to_bytes(node)
+            node_bytes = hash_to_bytes(node)
             if not TAG_PATTERN.match(node):
                 self.log.warn('Wrong pattern (%s) found in tags. Skipping' % (
                     node, ))
@@ -454,7 +458,7 @@ class HgBundle20Loader(SWHStatelessLoader):
                 'author': {'name': None, 'email': None, 'fullname': b''},
                 'date': None
             }
-            id_hash = hashutil.hash_to_bytes(
+            id_hash = hash_to_bytes(
                 identifiers.release_identifier(release))
             release['id'] = id_hash
             missing_releases.append(id_hash)

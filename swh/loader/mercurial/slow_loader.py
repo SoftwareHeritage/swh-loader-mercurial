@@ -11,7 +11,8 @@ import datetime
 import hglib
 import os
 
-from swh.model import identifiers, hashutil
+from swh.model import identifiers
+from swh.model.hashutil import MultiHash, DEFAULT_ALGORITHMS, hash_to_hex
 from swh.loader.core.loader import SWHStatelessLoader
 
 from .converters import parse_author, PRIMARY_ALGO as ALGO
@@ -51,8 +52,9 @@ def blob_to_content_dict(data, existing_hashes=None, max_size=None,
     content.update(existing_hashes)
 
     hash_types = list(existing_hashes.keys())
-    hashes_to_do = hashutil.DEFAULT_ALGORITHMS.difference(hash_types)
-    content.update(hashutil.hash_data(data, algorithms=hashes_to_do))
+    hashes_to_do = DEFAULT_ALGORITHMS.difference(hash_types)
+    hashes = MultiHash.from_data(data, hash_names=hashes_to_do).digest()
+    content.update(hashes)
 
     if max_size and (size > max_size):
         content.update({
@@ -60,7 +62,7 @@ def blob_to_content_dict(data, existing_hashes=None, max_size=None,
             'reason': 'Content too large',
         })
         if logger:
-            id_hash = hashutil.hash_to_hex(content[ALGO])
+            id_hash = hash_to_hex(content[ALGO])
             logger.info(
                 'Skipping content %s, too large (%s > %s)'
                 % (id_hash, size, max_size),

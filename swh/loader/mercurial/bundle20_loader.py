@@ -233,7 +233,7 @@ class HgBundle20Loader(SWHStatelessLoader):
                 algorithms = [ALGO]
             else:
                 algorithms = DEFAULT_ALGORITHMS
-            h = MultiHash.from_data(blob, hash_names=algorithms, length=length)
+            h = MultiHash.from_data(blob, hash_names=algorithms)
             content = h.digest()
             content['length'] = length
             blob_hash = content[ALGO]

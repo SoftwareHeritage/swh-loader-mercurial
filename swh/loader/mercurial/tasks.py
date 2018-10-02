@@ -8,7 +8,7 @@ from swh.scheduler.task import Task
 from .loader import HgBundle20Loader, HgArchiveBundle20Loader
 
 
-class LoadMercurialTsk(Task):
+class LoadMercurial(Task):
     """Mercurial repository loading
 
     """
@@ -27,7 +27,7 @@ class LoadMercurialTsk(Task):
                            visit_date=visit_date)
 
 
-class LoadArchiveMercurialTsk(Task):
+class LoadArchiveMercurial(Task):
     task_queue = 'swh_loader_mercurial_archive'
 
     def run_task(self, *, origin_url, archive_path, visit_date):

@@ -25,4 +25,7 @@ setup(
     setup_requires=['vcversioner'],
     vcversioner={},
     include_package_data=True,
+    entry_points={
+        'console_scripts': ['swh-loader-hg=swh.loader.mercurial.cli:main'],
+        },
 )

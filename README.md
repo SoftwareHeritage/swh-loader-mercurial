@@ -15,6 +15,44 @@ storage:
 
 # Basic use
 
+The main entry point to import a Mercurial repository is the `main` function
+defined in the `swh.loader.mercurial.cli` module:
+
+``` bash
+python3 -m swh.loader.mercurial.cli
+```
+
+
+If the Python package has been installed via `pip`, you should be able
+to type:
+
+``` bash
+user@host:~$ swh-loader-hg --help
+
+Usage: swh-loader-hg [OPTIONS] ORIGIN_URL
+
+Options:
+  -d, --hg-directory TEXT         Path to the hg (local) directory to load
+                                  from. If unset, the hg repo will ben cloned
+                                  from the given (origin) url
+  -a, --hg-archive TEXT           Path to the hg (local) archive file to load
+                                  from.
+  -D, --visit-date TEXT           Visit date (defaults to now)
+  -l, --log-level [NOTSET|DEBUG|INFO|WARNING|ERROR|CRITICAL]
+                                  Log level
+  --help                          Show this message and exit.
+
+```
+
+For example:
+
+``` bash
+user@host:~$ swh-loader-hg https://www.mercurial-scm.org/repo/hello
+[...]
+```
+
+
+# From Python
 From python3's toplevel:
 
 ## Remote

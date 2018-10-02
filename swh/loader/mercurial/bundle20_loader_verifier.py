@@ -15,7 +15,7 @@ from binascii import hexlify, unhexlify
 
 from swh.model.hashutil import MultiHash
 
-from .bundle20_loader import HgBundle20Loader
+from .loader import HgBundle20Loader
 from .converters import PRIMARY_ALGO as ALGO
 from .objects import SimpleTree
 

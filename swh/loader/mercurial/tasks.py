@@ -5,7 +5,7 @@
 
 from swh.scheduler.task import Task
 
-from .bundle20_loader import HgBundle20Loader, HgArchiveBundle20Loader
+from .loader import HgBundle20Loader, HgArchiveBundle20Loader
 
 
 class LoadMercurialTsk(Task):

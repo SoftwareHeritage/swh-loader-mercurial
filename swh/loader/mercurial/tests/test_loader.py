@@ -11,7 +11,7 @@ import tempfile
 from nose.tools import istest
 from unittest import TestCase
 
-from swh.loader.mercurial.bundle20_loader import HgBundle20Loader
+from swh.loader.mercurial.loader import HgBundle20Loader
 from swh.model import hashutil
 
 

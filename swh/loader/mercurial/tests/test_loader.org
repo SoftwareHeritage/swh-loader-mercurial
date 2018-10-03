@@ -1,12 +1,17 @@
 #+title: Where the loader test data comes from
 
-Repository mercurial is archived within the file the-sandbox.tgz.
-It contains a mercurial repository.
+Mercurial repositories are archived within the folder
+swh/loader/mercurial/tests/resources.  They contain mercurial
+repository.
 
 The following demonstrates the commands executed from within the
 repository to retrieve information.
 
-* branches
+* the-sandbox
+
+Archive: the-sandbox.tgz
+
+** branches
 
 Listing of branches and their tip:
 #+BEGIN_SRC sh
@@ -15,7 +20,7 @@ develop                       57:76cc0882284d
 default                        2:2f13849f14f5 (inactive)
 #+END_SRC
 
-* Changeset identifier
+** Changesets
 
 #+BEGIN_SRC sh
 $ for i in {0..57}; do hg checkout $i > /dev/null; echo $i $(swh-hashtree --ignore '.hg' --path .); done
@@ -80,3 +85,37 @@ $ for i in {0..57}; do hg checkout $i > /dev/null; echo $i $(swh-hashtree --igno
 #+END_SRC
 
 Note: swh-hashtree is a cli tool defined in swh-model/bin/swh-hashtree
+
+* hello
+
+Archive: hello.tgz
+
+** branches
+
+#+BEGIN_SRC sh
+$ hg branches
+default                        1:82e55d328c8c
+#+END_SRC
+
+** tags
+
+I added a tag to have some more data to load (1st repository has no tags):
+#+BEGIN_SRC sh
+$ hg tags
+tip                                2:b985ae4a07e1
+0.1                                1:82e55d328c8c
+#+END_SRC
+
+#+BEGIN_SRC sh
+$ cat .hgtags
+82e55d328c8ca4ee16520036c0aaace03a5beb65 0.1
+#+END_SRC
+
+** Changesets
+
+#+BEGIN_SRC sh
+$ for i in {0..1}; do hg checkout $i > /dev/null; echo $i $(swh-hashtree --ignore '.hg' --path .); done
+0 43d727f2f3f2f7cb3b098ddad1d7038464a4cee2
+1 b3f85f210ff86d334575f64cb01c5bf49895b63e
+2 8f2be433c945384c85920a8e60f2a68d2c0f20fb
+#+END_SRC

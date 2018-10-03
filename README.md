@@ -59,7 +59,6 @@ From python3's toplevel:
 
 ``` Python
 project = 'hello'
-project = 'the-sandbox'
 # remote repository
 origin_url = 'https://www.mercurial-scm.org/repo/%s' % project
 # local clone
@@ -88,7 +87,7 @@ origin_url = 'https://%s.googlecode.com' % project
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
-from swh.loader.mercurial.tasks import LoadMercurialTsk
+from swh.loader.mercurial.tasks import LoadMercurial
 
 t = LoadMercurial()
 t.run(origin_url=origin_url, directory=directory, visit_date='2016-05-03T15:16:32+00:00')
@@ -104,7 +103,7 @@ origin_url = 'https://%s-archive.googlecode.com' % project
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
-from swh.loader.mercurial.tasks import LoadArchiveMercurialTsk
+from swh.loader.mercurial.tasks import LoadArchiveMercurial
 
 t = LoadArchiveMercurial()
 t.run(origin_url=origin_url, archive_path=archive_path, visit_date='2016-05-03T15:16:32+00:00')

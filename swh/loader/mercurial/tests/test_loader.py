@@ -4,121 +4,11 @@
 # See top-level LICENSE file for more information
 
 import os
-import shutil
-import subprocess
-import tempfile
 
 from nose.tools import istest
-from unittest import TestCase
 
+from swh.loader.core.tests import BaseLoaderTest, LoaderNoStorage
 from swh.loader.mercurial.loader import HgBundle20Loader
-from swh.model import hashutil
-
-
-RESOURCES = './swh/loader/mercurial/resources'
-
-
-class BaseHgLoaderTest(TestCase):
-    """Base test loader class.
-
-    In its setup, it's uncompressing a local mercurial mirror to /tmp.
-
-    """
-    def setUp(self, archive_name='the-sandbox.tgz', filename='the-sandbox'):
-        self.tmp_root_path = tempfile.mkdtemp(
-            prefix='swh.loader.mercurial.', suffix='-tests')
-
-        start_path = os.path.dirname(__file__)
-        repo_path = os.path.join(start_path, 'resources', archive_name)
-
-        # uncompress the sample folder
-        subprocess.check_output(
-            ['tar', 'xvf', repo_path, '-C', self.tmp_root_path],
-        )
-
-        self.repo_url = 'file://' + self.tmp_root_path + '/' + filename
-        # archive holds one folder with name <filename>
-        self.destination_path = os.path.join(self.tmp_root_path, filename)
-
-    def tearDown(self):
-        shutil.rmtree(self.tmp_root_path)
-
-    def assertSnapshotOk(self, expected_snapshot, expected_branches=[]):
-        """Check for snapshot match.
-
-        Provide the hashes as hexadecimal, the conversion is done
-        within the method.
-
-        Args:
-
-            expected_snapshot (str/dict): Either the snapshot
-                                          identifier or the full
-                                          snapshot
-            expected_branches (dict): expected branches or nothing is
-                                      the full snapshot is provided
-
-        """
-        if isinstance(expected_snapshot, dict) and not expected_branches:
-            expected_snapshot_id = expected_snapshot['id']
-            expected_branches = expected_snapshot['branches']
-        else:
-            expected_snapshot_id = expected_snapshot
-
-        snapshots = self.loader.all_snapshots
-        self.assertEqual(len(snapshots), 1)
-
-        snap = snapshots[0]
-        snap_id = hashutil.hash_to_hex(snap['id'])
-        self.assertEqual(snap_id, expected_snapshot_id)
-
-        def decode_target(target):
-            if not target:
-                return target
-            target_type = target['target_type']
-
-            if target_type == 'alias':
-                decoded_target = target['target'].decode('utf-8')
-            else:
-                decoded_target = hashutil.hash_to_hex(target['target'])
-
-            return {
-                'target': decoded_target,
-                'target_type': target_type
-            }
-
-        branches = {
-            branch.decode('utf-8'): decode_target(target)
-            for branch, target in snap['branches'].items()
-        }
-        self.assertEqual(expected_branches, branches)
-
-    def assertReleasesOk(self, expected_releases):
-        for i, rel in enumerate(self.loader.all_releases):
-            rel_id = hashutil.hash_to_hex(rel['id'])
-            self.assertEquals(expected_releases[i], rel_id)
-
-    def assertRevisionsOk(self, expected_revisions):  # noqa: N802
-        """Check the loader's revisions match the expected revisions.
-
-        Expects self.loader to be instantiated and ready to be
-        inspected (meaning the loading took place).
-
-        Args:
-            expected_revisions (dict): Dict with key revision id,
-            value the targeted directory id.
-
-        """
-        # The last revision being the one used later to start back from
-        for rev in self.loader.all_revisions:
-            rev_id = hashutil.hash_to_hex(rev['id'])
-            directory_id = hashutil.hash_to_hex(rev['directory'])
-
-            self.assertEquals(expected_revisions[rev_id], directory_id)
-
-
-# Define loaders with no storage
-# They'll just accumulate the data in place
-# Only for testing purposes.
 
 
 class MockStorage:
@@ -143,101 +33,17 @@ class MockStorage:
         return revisions
 
 
-class LoaderNoStorage:
-    """Mixin class to inhibit the persistence and keep in memory the data
-    sent for storage (for testing purposes).
+class BaseHgLoaderTest(BaseLoaderTest):
+    """Mixin base loader test to prepare the mercurial
+       repository to uncompress, load and test the results.
 
-    This overrides the core loader's behavior to store in a dict the
-    swh objects.
-
-    cf. HgLoaderNoStorage
+       This sets up
 
     """
-    def __init__(self):
-        super().__init__()
-        self.all_contents = []
-        self.all_directories = []
-        self.all_revisions = []
-        self.all_releases = []
-        self.all_snapshots = []
-
-        # typed data
-        self.objects = {
-            'content': self.all_contents,
-            'directory': self.all_directories,
-            'revision': self.all_revisions,
-            'release': self.all_releases,
-            'snapshot': self.all_snapshots,
-        }
-
-    def _add(self, type, l):
-        """Add without duplicates and keeping the insertion order.
-
-        Args:
-            type (str): Type of objects concerned by the action
-            l ([object]): List of 'type' object
-
-        """
-        col = self.objects[type]
-        for o in l:
-            if o in col:
-                continue
-            col.extend([o])
-
-    def maybe_load_contents(self, all_contents):
-        self._add('content', all_contents)
-
-    def maybe_load_directories(self, all_directories):
-        self._add('directory', all_directories)
-
-    def maybe_load_revisions(self, all_revisions):
-        self._add('revision', all_revisions)
-
-    def maybe_load_releases(self, all_releases):
-        self._add('release', all_releases)
-
-    def maybe_load_snapshot(self, snapshot):
-        self._add('snapshot', [snapshot])
-
-    def send_batch_contents(self, all_contents):
-        self._add('content', all_contents)
-
-    def send_batch_directories(self, all_directories):
-        self._add('directory', all_directories)
-
-    def send_batch_revisions(self, all_revisions):
-        self._add('revision', all_revisions)
-
-    def send_batch_releases(self, all_releases):
-        self._add('release', all_releases)
-
-    def send_snapshot(self, snapshot):
-        self._add('snapshot', [snapshot])
-
-    def _store_origin_visit(self):
-        pass
-
-    def open_fetch_history(self):
-        pass
-
-    def close_fetch_history_success(self, fetch_history_id):
-        pass
-
-    def close_fetch_history_failure(self, fetch_history_id):
-        pass
-
-    def update_origin_visit(self, origin_id, visit, status):
-        pass
-
-    # Override to do nothing at the end
-    def close_failure(self):
-        pass
-
-    def close_success(self):
-        pass
-
-    def pre_cleanup(self):
-        pass
+    def setUp(self, archive_name='the-sandbox.tgz', filename='the-sandbox'):
+        super().setUp(archive_name=archive_name, filename=filename,
+                      prefix_tmp_folder_name='swh.loader.mercurial.',
+                      start_path=os.path.dirname(__file__))
 
 
 class HgLoaderNoStorage(LoaderNoStorage, HgBundle20Loader):

@@ -47,7 +47,7 @@ bundle20_loader.py
 # It describes much of the internal structure, which is super helpful if you
 # know in advance which info can be trusted, but it doesn't describe any of the
 # file-level details, including the file headers and that the entire bundle
-# is broken into overlayed 4KB chunks starting from just after the bundle
+# is broken into overlaid 4KB chunks starting from just after the bundle
 # header, nor does it describe what any of the component elements are used for,
 # nor does it explain the meta-message segment in the blob deltas, nor does it
 # explain the file flags occasionally appended to manifest file hashes. Also it

@@ -1,4 +1,4 @@
-# Copyright (C) 2017  The Software Heritage developers
+# Copyright (C) 2017-2018  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -13,9 +13,9 @@ import time
 
 from binascii import hexlify, unhexlify
 
-from swh.model import hashutil
+from swh.model.hashutil import MultiHash
 
-from .bundle20_loader import HgBundle20Loader
+from .loader import HgBundle20Loader
 from .converters import PRIMARY_ALGO as ALGO
 from .objects import SimpleTree
 
@@ -31,7 +31,8 @@ class HgLoaderValidater(HgBundle20Loader):
             header = node_info[2]
             i += 1
 
-            bhash = hashutil.hash_data(blob, algorithms=set([ALGO]))[ALGO]
+            hashes = MultiHash.from_data(blob, hash_names=set([ALGO])).digest()
+            bhash = hashes[ALGO]
             self.file_node_to_hash[header['node']] = bhash
 
             u.update([bhash])

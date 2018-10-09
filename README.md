@@ -11,42 +11,69 @@ storage:
   cls: remote
   args:
     url: http://localhost:5002/
-
-send_contents: True
-send_directories: True
-send_revisions: True
-send_releases: True
-send_occurrences: True
-content_packet_size: 1000
-content_packet_size_bytes: 1073741824
-directory_packet_size: 2500
-revision_packet_size: 1000
-release_packet_size: 1000
-occurrence_packet_size: 1000
 ```
 
 # Basic use
 
+The main entry point to import a Mercurial repository is the `main` function
+defined in the `swh.loader.mercurial.cli` module:
+
+``` bash
+python3 -m swh.loader.mercurial.cli
+```
+
+
+If the Python package has been installed via `pip`, you should be able
+to type:
+
+``` bash
+user@host:~$ swh-loader-hg --help
+
+Usage: swh-loader-hg [OPTIONS] ORIGIN_URL
+
+Options:
+  -d, --hg-directory TEXT         Path to the hg (local) directory to load
+                                  from. If unset, the hg repo will ben cloned
+                                  from the given (origin) url
+  -a, --hg-archive TEXT           Path to the hg (local) archive file to load
+                                  from.
+  -D, --visit-date TEXT           Visit date (defaults to now)
+  -l, --log-level [NOTSET|DEBUG|INFO|WARNING|ERROR|CRITICAL]
+                                  Log level
+  --help                          Show this message and exit.
+
+```
+
+For example:
+
+``` bash
+user@host:~$ swh-loader-hg https://www.mercurial-scm.org/repo/hello
+[...]
+```
+
+
+# From Python
 From python3's toplevel:
 
-## Remote (failure)
+## Remote
 
 ``` Python
+project = 'hello'
 # remote repository
-origin_url = 'https://www.mercurial-scm.org/repo/hello'
+origin_url = 'https://www.mercurial-scm.org/repo/%s' % project
 # local clone
-directory = '/home/storage/hg/repo/hello'
+directory = '/home/storage/hg/repo/%s' % project
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
-from swh.loader.mercurial.tasks import LoadMercurialTsk
+from swh.loader.mercurial.tasks import LoadMercurial
 
-t = LoadMercurialTsk()
+t = LoadMercurial()
 t.run(origin_url=origin_url, directory=directory, visit_date='2016-05-03T15:16:32+00:00')
 ```
 
-## local directory (failure)
+## local directory
 
 Only origin, contents, and directories are filled so far.
 
@@ -60,13 +87,13 @@ origin_url = 'https://%s.googlecode.com' % project
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
-from swh.loader.mercurial.tasks import SlowLoadMercurialTsk
+from swh.loader.mercurial.tasks import LoadMercurial
 
-t = SlowLoadMercurialTsk()
+t = LoadMercurial()
 t.run(origin_url=origin_url, directory=directory, visit_date='2016-05-03T15:16:32+00:00')
 ```
 
-## local archive (failure)
+## local archive
 
 ``` Python
 project = '756015-ipv6-source-archive.zip'
@@ -76,8 +103,8 @@ origin_url = 'https://%s-archive.googlecode.com' % project
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
-from swh.loader.mercurial.tasks import SlowLoadMercurialArchiveTsk
+from swh.loader.mercurial.tasks import LoadArchiveMercurial
 
-t = SlowLoadMercurialArchiveTsk()
+t = LoadArchiveMercurial()
 t.run(origin_url=origin_url, archive_path=archive_path, visit_date='2016-05-03T15:16:32+00:00')
 ```

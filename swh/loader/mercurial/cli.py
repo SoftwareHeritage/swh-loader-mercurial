@@ -3,12 +3,15 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-import datetime
 import click
+import datetime
 import logging
 
-LOGLEVELS = [logging._levelToName[lvl]
-             for lvl in sorted(logging._levelToName.keys())]
+from itertools import chain
+
+LOGLEVELS = list(chain.from_iterable((logging._levelToName[lvl],
+                                      logging._levelToName[lvl].lower())
+                 for lvl in sorted(logging._levelToName.keys())))
 
 
 @click.command()
@@ -21,7 +24,7 @@ LOGLEVELS = [logging._levelToName[lvl]
               help=('Path to the hg archive file to load from.'))
 @click.option('--visit-date', '-D', help='Visit date (defaults to now).')
 @click.option('--log-level', '-l',
-              type=click.Choice(LOGLEVELS, case_sensitive=False),
+              type=click.Choice(LOGLEVELS),
               help='Log level.')
 def main(origin_url, hg_directory=None,
          hg_archive=None, visit_date=None, log_level=None):

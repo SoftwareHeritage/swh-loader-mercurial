@@ -96,10 +96,10 @@ class LoaderITest1(BaseHgLoaderTest):
             directory=self.destination_path)
 
         # then
-        self.assertEquals(len(self.loader.all_contents), 2)
-        self.assertEquals(len(self.loader.all_directories), 3)
-        self.assertEquals(len(self.loader.all_releases), 0)
-        self.assertEquals(len(self.loader.all_revisions), 58)
+        self.assertCountContents(2)
+        self.assertCountDirectories(3)
+        self.assertCountReleases(0)
+        self.assertCountRevisions(58)
 
         tip_revision_develop = 'a9c4534552df370f43f0ef97146f393ef2f2a08c'
         tip_revision_default = '70e750bb046101fdced06f428e73fee471509c56'
@@ -170,7 +170,7 @@ class LoaderITest1(BaseHgLoaderTest):
         }
 
         self.assertRevisionsOk(expected_revisions)
-        self.assertEquals(len(self.loader.all_snapshots), 1)
+        self.assertCountSnapshots(1)
 
         expected_snapshot = {
             'id': '05cad59e8980069d9fe2324d406cf226c0021e1c',
@@ -211,10 +211,10 @@ class LoaderITest2(BaseHgLoaderTest):
             directory=self.destination_path)
 
         # then
-        self.assertEquals(len(self.loader.all_contents), 3)
-        self.assertEquals(len(self.loader.all_directories), 3)
-        self.assertEquals(len(self.loader.all_releases), 1)
-        self.assertEquals(len(self.loader.all_revisions), 3)
+        self.assertCountContents(3)
+        self.assertCountDirectories(3)
+        self.assertCountReleases(1)
+        self.assertCountRevisions(3)
 
         tip_release = '515c4d72e089404356d0f4b39d60f948b8999140'
         self.assertReleasesOk([tip_release])
@@ -230,7 +230,7 @@ class LoaderITest2(BaseHgLoaderTest):
         }
 
         self.assertRevisionsOk(expected_revisions)
-        self.assertEquals(len(self.loader.all_snapshots), 1)
+        self.assertCountSnapshots(1)
 
         expected_snapshot = {
             'id': 'fa537f8e0cbdb8a54e29533302ed6fcbee28cb7b',

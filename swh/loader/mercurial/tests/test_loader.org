@@ -1,0 +1,121 @@
+#+title: Where the loader test data comes from
+
+Mercurial repositories are archived within the folder
+swh/loader/mercurial/tests/resources.  They contain mercurial
+repository.
+
+The following demonstrates the commands executed from within the
+repository to retrieve information.
+
+* the-sandbox
+
+Archive: the-sandbox.tgz
+
+** branches
+
+Listing of branches and their tip:
+#+BEGIN_SRC sh
+$ hg branches
+develop                       57:76cc0882284d
+default                        2:2f13849f14f5 (inactive)
+#+END_SRC
+
+** Changesets
+
+#+BEGIN_SRC sh
+$ for i in {0..57}; do hg checkout $i > /dev/null; echo $i $(swh-hashtree --ignore '.hg' --path .); done
+0  e2e117569b086ceabeeedee4acd95f35298d4553
+1  9cd8160c67ac4b0bc97e2e2cd918a580425167d3
+2  180bd57623a7c2c47a8c43514a5f4d903503d0aa
+3  180bd57623a7c2c47a8c43514a5f4d903503d0aa
+4  180bd57623a7c2c47a8c43514a5f4d903503d0aa
+5  180bd57623a7c2c47a8c43514a5f4d903503d0aa
+6  180bd57623a7c2c47a8c43514a5f4d903503d0aa
+7  180bd57623a7c2c47a8c43514a5f4d903503d0aa
+8  180bd57623a7c2c47a8c43514a5f4d903503d0aa
+9  180bd57623a7c2c47a8c43514a5f4d903503d0aa
+10 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+11 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+12 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+13 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+14 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+15 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+16 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+17 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+18 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+19 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+20 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+21 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+22 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+23 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+24 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+25 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+26 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+27 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+28 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+29 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+30 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+31 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+32 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+33 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+34 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+35 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+36 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+37 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+38 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+39 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+40 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+41 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+42 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+43 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+44 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+45 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+46 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+47 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+48 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+49 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+50 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+51 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+52 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+53 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+54 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+55 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+56 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+57 180bd57623a7c2c47a8c43514a5f4d903503d0aa
+#+END_SRC
+
+Note: swh-hashtree is a cli tool defined in swh-model/bin/swh-hashtree
+
+* hello
+
+Archive: hello.tgz
+
+** branches
+
+#+BEGIN_SRC sh
+$ hg branches
+default                        1:82e55d328c8c
+#+END_SRC
+
+** tags
+
+I added a tag to have some more data to load (1st repository has no tags):
+#+BEGIN_SRC sh
+$ hg tags
+tip                                2:b985ae4a07e1
+0.1                                1:82e55d328c8c
+#+END_SRC
+
+#+BEGIN_SRC sh
+$ cat .hgtags
+82e55d328c8ca4ee16520036c0aaace03a5beb65 0.1
+#+END_SRC
+
+** Changesets
+
+#+BEGIN_SRC sh
+$ for i in {0..1}; do hg checkout $i > /dev/null; echo $i $(swh-hashtree --ignore '.hg' --path .); done
+0 43d727f2f3f2f7cb3b098ddad1d7038464a4cee2
+1 b3f85f210ff86d334575f64cb01c5bf49895b63e
+2 8f2be433c945384c85920a8e60f2a68d2c0f20fb
+#+END_SRC

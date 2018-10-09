@@ -5,16 +5,16 @@
 
 from swh.scheduler.task import Task
 
-from .bundle20_loader import HgBundle20Loader, HgArchiveBundle20Loader
+from .loader import HgBundle20Loader, HgArchiveBundle20Loader
 
 
-class LoadMercurialTsk(Task):
+class LoadMercurial(Task):
     """Mercurial repository loading
 
     """
     task_queue = 'swh_loader_mercurial'
 
-    def run_task(self, *, origin_url, visit_date, directory):
+    def run_task(self, *, origin_url, visit_date=None, directory=None):
         """Import a mercurial tarball into swh.
 
         Args: see :func:`DepositLoader.load`.
@@ -27,7 +27,7 @@ class LoadMercurialTsk(Task):
                            visit_date=visit_date)
 
 
-class LoadArchiveMercurialTsk(Task):
+class LoadArchiveMercurial(Task):
     task_queue = 'swh_loader_mercurial_archive'
 
     def run_task(self, *, origin_url, archive_path, visit_date):

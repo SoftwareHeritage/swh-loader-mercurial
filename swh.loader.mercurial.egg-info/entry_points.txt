@@ -1,0 +1,3 @@
+[console_scripts]
+swh-loader-hg = swh.loader.mercurial.cli:main
+

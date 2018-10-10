@@ -3,9 +3,11 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+import click
 import code
 import datetime
 import hglib
+import logging
 import os
 import random
 import sys
@@ -22,7 +24,7 @@ from .objects import SimpleTree
 
 class HgLoaderValidater(HgBundle20Loader):
     def generate_all_blobs(self, validate=True, frequency=1):
-        print('GENERATING BLOBS')
+        logging.debug('GENERATING BLOBS')
         i = 0
         start = time.time()
         u = set()
@@ -42,38 +44,37 @@ class HgLoaderValidater(HgBundle20Loader):
                     self.validate_blob(filename, header, blob)
 
             if i % 10000 == 0:
-                print(i)
+                logging.debug(i)
 
-        print('')
-        print('FOUND', i, 'BLOBS')
-        print('FOUND', len(u), 'UNIQUE BLOBS')
-        print('ELAPSED', time.time()-start)
+        logging.debug('\nFOUND %s BLOBS' % i)
+        logging.debug('FOUND: %s UNIQUE BLOBS' % len(u))
+        logging.debug('ELAPSED: %s' % (time.time()-start))
 
     def validate_blob(self, filename, header, blob):
-            if not self.hg:
-                self.hg = hglib.open(self.hgdir)
+        if not self.hg:
+            self.hg = hglib.open(self.hgdir)
 
-            data = bytes(blob)
+        data = bytes(blob)
 
-            filepath = os.path.join(self.hg.root(), bytes(filename))
-            linknode = hexlify(header['linknode'])
-            cat_contents = self.hg.cat([filepath], rev=linknode)
+        filepath = os.path.join(self.hg.root(), bytes(filename))
+        linknode = hexlify(header['linknode'])
+        cat_contents = self.hg.cat([filepath], rev=linknode)
 
-            if cat_contents != data:
-                print('INTERNAL ERROR ERROR ERROR ERROR')
-                print(filename)
-                print(header)
-                print('-----')
-                print(cat_contents)
-                print('---- vs ----')
-                print(data)
-                code.interact(local=dict(globals(), **locals()))
-                quit()
-            else:
-                print('v', end='')
+        if cat_contents != data:
+            logging.debug('INTERNAL ERROR ERROR ERROR ERROR')
+            logging.debug(filename)
+            logging.debug(header)
+            logging.debug('-----')
+            logging.debug(cat_contents)
+            logging.debug('---- vs ----')
+            logging.debug(data)
+            code.interact(local=dict(globals(), **locals()))
+            quit()
+        else:
+            logging.debug('v', end='')
 
     def generate_all_trees(self, validate=True, frequency=1):
-        print('GENERATING MANIFEST TREES')
+        logging.debug('GENERATING MANIFEST TREES')
 
         c = 0
         n = 0
@@ -92,17 +93,16 @@ class HgLoaderValidater(HgBundle20Loader):
             c += 1
             n += len(new_dirs)
 
-            print('.', end='')
+            logging.debug('.', end='')
             if c % 20 == 0:
                 sys.stdout.flush()
             if c % 10000 == 0:
-                print(c)
+                logging.debug(c)
 
-        print('')
-        print('FOUND', c, 'COMMIT MANIFESTS')
-        print('FOUND', n, 'NEW DIRS')
-        print('FOUND', len(u), 'UNIQUE DIRS')
-        print('ELAPSED', time.time()-start)
+        logging.debug('\nFOUND: %s COMMIT MANIFESTS' % c)
+        logging.debug('FOUND: %s NEW DIRS' % n)
+        logging.debug('FOUND: %s UNIQUE DIRS' % len(u))
+        logging.debug('ELAPSED: %s' % (time.time()-start))
 
     def validate_tree(self, tree, header, i):
         if not self.hg:
@@ -125,9 +125,9 @@ class HgLoaderValidater(HgBundle20Loader):
         files = sorted(list(tree.flatten().keys()))
 
         if tree != base_tree:
-            print('validating rev:', i, 'commit:', commit_id)
-            print('validating files:', len(files), len(base_files))
-            print('   INVALID TREE')
+            logging.debug('validating rev: %s commit: %s' % (i, commit_id))
+            logging.debug('validating files: %s   %s   INVALID TREE' % (
+                len(files), len(base_files)))
 
             def so1(a):
                 keys = [k['name'] for k in a['entries']]
@@ -140,32 +140,32 @@ class HgLoaderValidater(HgBundle20Loader):
 
             # for i in range(len(tree_dirs)):
             #     if tree_dirs[i] != base_dirs[i]:
-            #         print(i)
+            #         logging.debug(i)
             #         code.interact(local=dict(globals(), **locals()))
 
-            print('Program will quit after your next Ctrl-D')
+            logging.debug('Program will quit after your next Ctrl-D')
             code.interact(local=dict(globals(), **locals()))
             quit()
         else:
-            print('v', end='')
+            logging.debug('v')
 
     def generate_all_commits(self, validate=True, frequency=1):
         i = 0
         start = time.time()
         for rev in self.get_revisions():
-            print('.', end='')
+            logging.debug('.', end='')
             i += 1
             if i % 20 == 0:
                 sys.stdout.flush()
 
-        print('')
-        print('FOUND', i, 'COMMITS')
-        print('ELAPSED', time.time()-start)
+        logging.debug('')
+        logging.debug('\nFOUND: %s COMMITS' % i)
+        logging.debug('ELAPSED: %s' % (time.time()-start))
 
     def runtest(self, hgdir, validate_blobs=False, validate_trees=False,
                 frequency=1.0, test_iterative=False):
-        """
-        HgLoaderValidater().runtest('/home/avi/SWH/mozilla-unified')
+        """HgLoaderValidater().runtest('/home/avi/SWH/mozilla-unified')
+
         """
         self.origin_id = 'test'
 
@@ -181,8 +181,8 @@ class HgLoaderValidater(HgBundle20Loader):
         self.hgdir = hgdir
 
         try:
-            print('preparing')
-            self.prepare(hgrepo, dt, hgdir)
+            logging.debug('preparing')
+            self.prepare(origin_url=hgrepo, visit_date=dt, directory=hgdir)
 
             self.file_node_to_hash = {}
 
@@ -191,64 +191,57 @@ class HgLoaderValidater(HgBundle20Loader):
 
         # self.generate_all_trees(validate=validate_trees, frequency=frequency)
         # self.generate_all_commits()
-            print('getting contents')
+            logging.debug('getting contents')
             cs = 0
             for c in self.get_contents():
                 cs += 1
                 pass
 
-            print('getting directories')
+            logging.debug('getting directories')
             ds = 0
             for d in self.get_directories():
                 ds += 1
                 pass
 
             revs = 0
-            print('getting revisions')
+            logging.debug('getting revisions')
             for rev in self.get_revisions():
                 revs += 1
                 pass
 
-            print('getting releases')
+            logging.debug('getting releases')
             rels = 0
             for rel in self.get_releases():
                 rels += 1
-                print(rel)
+                logging.debug(rel)
 
             self.visit = 'foo'
-            print('getting snapshot')
+            logging.debug('getting snapshot')
             o = self.get_snapshot()
-            print(o['branches'].keys())
+            logging.debug(o['branches'].keys())
 
         finally:
             self.cleanup()
 
-        print('final count: ',
-              'cs', cs, 'ds', ds, 'revs', revs, 'rels', rels)
+        logging.info('final count: cs %s ds %s revs %s rels %s' % (
+            cs, ds, revs, rels))
 
 
-def main():
-    if len(sys.argv) > 1:
-        test_repo = sys.argv[1]
-    else:
-        print('Please pass in the path to an HG repository.')
-        quit()
+@click.command()
+@click.option('--verbose', is_flag=True, default=False)
+@click.option('--validate-frequency', default=0.001, type=click.FLOAT)
+@click.option('--test-iterative', default=False, type=click.BOOL)
+@click.argument('repository-url', required=1)
+def main(verbose, validate_frequency, test_iterative, repository_url):
+    logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO)
+    while repository_url[-1] == '/':
+        repository_url = repository_url[:-1]
 
-    while test_repo[-1] == '/':
-        test_repo = test_repo[:-1]
-
-    if len(sys.argv) > 2:
-        validate_frequency = float(sys.argv[2])
-    else:
-        validate_frequency = 0.001
-
-    if len(sys.argv) > 3:
-        test_iterative = True
-    else:
-        test_iterative = False
-
-    HgLoaderValidater().runtest(test_repo, True, True, validate_frequency,
-                                test_iterative)
+    HgLoaderValidater().runtest(
+        repository_url,
+        validate_blobs=True, validate_trees=True,
+        frequency=validate_frequency,
+        test_iterative=test_iterative)
 
 
 if __name__ == '__main__':

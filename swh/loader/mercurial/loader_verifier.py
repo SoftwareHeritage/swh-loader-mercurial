@@ -218,7 +218,7 @@ class HgLoaderValidater(HgBundle20Loader):
             self.visit = 'foo'
             logging.debug('getting snapshot')
             o = self.get_snapshot()
-            logging.debug(o['branches'].keys())
+            logging.debug('Snapshot: %s' % o)
 
         finally:
             self.cleanup()

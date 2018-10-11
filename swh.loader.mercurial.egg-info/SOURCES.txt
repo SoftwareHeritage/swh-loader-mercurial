@@ -31,14 +31,13 @@ swh.loader.mercurial.egg-info/top_level.txt
 swh/loader/__init__.py
 swh/loader/mercurial/__init__.py
 swh/loader/mercurial/archive_extract.py
-swh/loader/mercurial/bundle20_loader_verifier.py
 swh/loader/mercurial/bundle20_reader.py
 swh/loader/mercurial/chunked_reader.py
 swh/loader/mercurial/cli.py
 swh/loader/mercurial/converters.py
 swh/loader/mercurial/loader.py
+swh/loader/mercurial/loader_verifier.py
 swh/loader/mercurial/objects.py
-swh/loader/mercurial/slow_loader.py
 swh/loader/mercurial/tasks.py
 swh/loader/mercurial/tests/__init__.py
 swh/loader/mercurial/tests/test_loader.org

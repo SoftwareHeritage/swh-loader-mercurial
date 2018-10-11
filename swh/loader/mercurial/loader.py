@@ -47,6 +47,8 @@ TAG_PATTERN = re.compile('[0-9A-Fa-f]{40}')
 
 TEMPORARY_DIR_PREFIX_PATTERN = 'swh.loader.mercurial.'
 
+HEAD_POINTER_NAME = b'tip'
+
 
 class HgBundle20Loader(SWHStatelessLoader):
     """Mercurial loader able to deal with remote or local repository.
@@ -97,21 +99,22 @@ class HgBundle20Loader(SWHStatelessLoader):
 
     def get_heads(self, repo):
         """Read the closed branches heads (branch, bookmarks) and returns a
-           dict with branch_name (bytes) and mercurial's node id
-           (bytes). Those needs conversion to swh-ids. This is taken
+           dict with key the branch_name (bytes) and values the tuple
+           (pointer nature (bytes), mercurial's node id
+           (bytes)). Those needs conversion to swh-ids. This is taken
            care of in get_revisions.
 
         """
         b = {}
-        for _, node_hash_id, _, branch_name, *_ in repo.heads():
-            b[branch_name] = hash_to_bytes(
-                node_hash_id.decode())
+        for _, node_hash_id, pointer_nature, branch_name, *_ in repo.heads():
+            b[branch_name] = (
+                pointer_nature, hash_to_bytes(node_hash_id.decode()))
 
         bookmarks = repo.bookmarks()
         if bookmarks and bookmarks[0]:
             for bookmark_name, _, target_short in bookmarks[0]:
                 target = repo[target_short].node()
-                b[bookmark_name] = hash_to_bytes(target.decode())
+                b[bookmark_name] = (None, hash_to_bytes(target.decode()))
 
         return b
 
@@ -409,8 +412,8 @@ class HgBundle20Loader(SWHStatelessLoader):
 
         # Converts heads to use swh ids
         self.heads = {
-            branch_name: self.node_2_rev[node_id]
-            for branch_name, node_id in self.heads.items()
+            branch_name: (pointer_nature, self.node_2_rev[node_id])
+            for branch_name, (pointer_nature, node_id) in self.heads.items()
         }
 
         missing_revs = revisions.keys()
@@ -475,8 +478,10 @@ class HgBundle20Loader(SWHStatelessLoader):
     def get_snapshot(self):
         """Get the snapshot that need to be loaded."""
         branches = {}
-        for name, target in self.heads.items():
+        for name, (pointer_nature, target) in self.heads.items():
             branches[name] = {'target': target, 'target_type': 'revision'}
+            if pointer_nature == HEAD_POINTER_NAME:
+                branches[b'HEAD'] = {'target': name, 'target_type': 'alias'}
         for name, target in self.releases.items():
             branches[name] = {'target': target, 'target_type': 'release'}
 

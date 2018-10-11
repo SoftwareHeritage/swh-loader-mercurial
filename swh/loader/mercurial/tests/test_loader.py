@@ -173,7 +173,7 @@ class LoaderITest1(BaseHgLoaderTest):
         self.assertCountSnapshots(1)
 
         expected_snapshot = {
-            'id': '05cad59e8980069d9fe2324d406cf226c0021e1c',
+            'id': '3b8fe58e467deb7597b12a5fd3b2c096b8c02028',
             'branches': {
                 'develop': {
                     'target': tip_revision_develop,
@@ -183,6 +183,10 @@ class LoaderITest1(BaseHgLoaderTest):
                     'target': tip_revision_default,
                     'target_type': 'revision'
                 },
+                'HEAD': {
+                    'target': 'develop',
+                    'target_type': 'alias',
+                }
             }
         }
 
@@ -233,7 +237,7 @@ class LoaderITest2(BaseHgLoaderTest):
         self.assertCountSnapshots(1)
 
         expected_snapshot = {
-            'id': 'fa537f8e0cbdb8a54e29533302ed6fcbee28cb7b',
+            'id': 'd35668e02e2ba4321dc951cd308cf883786f918a',
             'branches': {
                 'default': {
                     'target': tip_revision_default,
@@ -242,6 +246,10 @@ class LoaderITest2(BaseHgLoaderTest):
                 '0.1': {
                     'target': tip_release,
                     'target_type': 'release'
+                },
+                'HEAD': {
+                    'target': 'default',
+                    'target_type': 'alias',
                 }
             }
         }

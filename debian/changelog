@@ -1,3 +1,12 @@
+swh-loader-mercurial (0.0.14-1~swh1) unstable-swh; urgency=medium
+
+  * v0.0.14
+  * loader: Add default branch's tip as alias in snapshot's branches
+  * loader.mercurial: Cleanup unused code
+  * loader_verifier: Migrate main command to click script & use logging
+
+ -- Antoine R. Dumont (@ardumont) <antoine.romain.dumont@gmail.com>  Thu, 11 Oct 2018 14:50:49 +0200
+
 swh-loader-mercurial (0.0.13-1~swh1) unstable-swh; urgency=medium
 
   * v0.0.13

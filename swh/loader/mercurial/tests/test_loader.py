@@ -5,8 +5,6 @@
 
 import os
 
-from nose.tools import istest
-
 from swh.loader.core.tests import BaseLoaderTest, LoaderNoStorage
 from swh.loader.mercurial.loader import HgBundle20Loader
 
@@ -84,8 +82,7 @@ class LoaderITest1(BaseHgLoaderTest):
         super().setUp()
         self.loader = HgLoaderNoStorage()
 
-    @istest
-    def load(self):
+    def test_load(self):
         """Load a repository with multiple branches results in 1 snapshot
 
         """
@@ -203,8 +200,7 @@ class LoaderITest2(BaseHgLoaderTest):
         super().setUp(archive_name='hello.tgz', filename='hello')
         self.loader = HgLoaderNoStorage()
 
-    @istest
-    def load(self):
+    def test_load(self):
         """Load a repository with tags results in 1 snapshot
 
         """

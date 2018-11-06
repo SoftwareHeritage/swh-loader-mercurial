@@ -180,7 +180,7 @@ class HgBundle20Loader(SWHStatelessLoader):
             self.br = Bundle20Reader(bundlefile=self.bundle_path,
                                      cache_filename=self.cache_filename1,
                                      cache_size=self.cache1_size)
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             # Empty repository! Still a successful visit targeting an
             # empty snapshot
             self.log.warn('%s is an empty repository!' % self.hgdir)

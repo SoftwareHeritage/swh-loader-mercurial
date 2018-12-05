@@ -32,7 +32,7 @@ from swh.model.hashutil import (
     MultiHash, hash_to_hex, hash_to_bytes,
     DEFAULT_ALGORITHMS
 )
-from swh.loader.core.loader import SWHStatelessLoader
+from swh.loader.core.loader import UnbufferedLoader
 from swh.loader.core.converters import content_for_storage
 from swh.loader.core.utils import clean_dangling_folders
 
@@ -50,7 +50,7 @@ TEMPORARY_DIR_PREFIX_PATTERN = 'swh.loader.mercurial.'
 HEAD_POINTER_NAME = b'tip'
 
 
-class HgBundle20Loader(SWHStatelessLoader):
+class HgBundle20Loader(UnbufferedLoader):
     """Mercurial loader able to deal with remote or local repository.
 
     """

@@ -3,7 +3,10 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-from swh.loader.mercurial.loader import HgBundle20Loader
+from swh.loader.mercurial.loader import (
+    HgBundle20Loader, HgArchiveBundle20Loader
+)
+
 
 _LOADER_TEST_CONFIG = {
     'bundle_filename': 'HG20_none_bundle',
@@ -31,13 +34,12 @@ _LOADER_TEST_CONFIG = {
 }
 
 
-class HgLoaderMemoryStorage(HgBundle20Loader):
-    """The mercurial loader to test.
+class BaseHgLoaderMemoryStorage:
+    """The base mercurial loader to test.
 
-    Its behavior has been changed to:
-    - not use any persistence (no storage, or for now a passthrough
-      storage with no filtering)
-    - not use the default configuration loading
+     Mixin behavior changed to:
+    - use an in-memory storage
+    - not use the default configuration loading mechanism
 
     At the end of the tests, you can make sure you have the rights
     objects.
@@ -50,3 +52,12 @@ class HgLoaderMemoryStorage(HgBundle20Loader):
 
     def parse_config_file(self, *args, **kwargs):
         return _LOADER_TEST_CONFIG
+
+
+class HgLoaderMemoryStorage(BaseHgLoaderMemoryStorage, HgBundle20Loader):
+    pass
+
+
+class HgArchiveLoaderMemoryStorage(BaseHgLoaderMemoryStorage,
+                                   HgArchiveBundle20Loader):
+    pass

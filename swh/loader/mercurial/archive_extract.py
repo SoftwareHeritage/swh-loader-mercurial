@@ -28,6 +28,9 @@ def tmp_extract(archive, dir=None, prefix=None, suffix=None, log=None,
     """
     logstr = 'From %s - ' % source if log and source else ''
 
+    if dir and not os.path.exists(dir):
+        os.makedirs(dir, exist_ok=True)
+
     archive_base = os.path.basename(archive)
     if archive_base[0] == '.':
         package = '.' + archive_base.split('.')[1]

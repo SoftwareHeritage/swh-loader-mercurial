@@ -6,7 +6,7 @@
 import os
 
 from swh.loader.core.tests import BaseLoaderTest
-from .common import HgLoaderMemoryStorage
+from .common import HgLoaderMemoryStorage, HgArchiveLoaderMemoryStorage
 
 
 class BaseHgLoaderTest(BaseLoaderTest):
@@ -16,11 +16,14 @@ class BaseHgLoaderTest(BaseLoaderTest):
        This sets up
 
     """
-    def setUp(self, archive_name='the-sandbox.tgz', filename='the-sandbox'):
+    def setUp(self, loader=HgLoaderMemoryStorage,
+              archive_name='the-sandbox.tgz', filename='the-sandbox',
+              uncompress_archive=True):
         super().setUp(archive_name=archive_name, filename=filename,
                       prefix_tmp_folder_name='swh.loader.mercurial.',
-                      start_path=os.path.dirname(__file__))
-        self.loader = HgLoaderMemoryStorage()
+                      start_path=os.path.dirname(__file__),
+                      uncompress_archive=uncompress_archive)
+        self.loader = loader()
         self.storage = self.loader.storage
 
 
@@ -28,7 +31,6 @@ class LoaderITest1(BaseHgLoaderTest):
     """Load a mercurial repository without release
 
     """
-
     def test_load(self):
         """Load a repository with multiple branches results in 1 snapshot
 
@@ -155,6 +157,70 @@ class LoaderITest2(BaseHgLoaderTest):
             origin_url=self.repo_url,
             visit_date='2016-05-03 15:16:32+00',
             directory=self.destination_path)
+
+        # then
+        self.assertCountContents(3)
+        self.assertCountDirectories(3)
+        self.assertCountReleases(1)
+        self.assertCountRevisions(3)
+
+        tip_release = '515c4d72e089404356d0f4b39d60f948b8999140'
+        self.assertReleasesContain([tip_release])
+
+        tip_revision_default = 'c3dbe4fbeaaa98dd961834e4007edb3efb0e2a27'
+        # cf. test_loader.org for explaining from where those hashes
+        # come from
+        expected_revisions = {
+            # revision hash | directory hash  # noqa
+            '93b48d515580522a05f389bec93227fc8e43d940': '43d727f2f3f2f7cb3b098ddad1d7038464a4cee2',  # noqa
+            '8dd3db5d5519e4947f035d141581d304565372d2': 'b3f85f210ff86d334575f64cb01c5bf49895b63e',  # noqa
+            tip_revision_default: '8f2be433c945384c85920a8e60f2a68d2c0f20fb',
+        }
+
+        self.assertRevisionsContain(expected_revisions)
+        self.assertCountSnapshots(1)
+
+        expected_snapshot = {
+            'id': 'd35668e02e2ba4321dc951cd308cf883786f918a',
+            'branches': {
+                'default': {
+                    'target': tip_revision_default,
+                    'target_type': 'revision'
+                },
+                '0.1': {
+                    'target': tip_release,
+                    'target_type': 'release'
+                },
+                'HEAD': {
+                    'target': 'default',
+                    'target_type': 'alias',
+                }
+            }
+        }
+
+        self.assertSnapshotEqual(expected_snapshot)
+        self.assertEqual(self.loader.load_status(), {'status': 'eventful'})
+        self.assertEqual(self.loader.visit_status(), 'full')
+
+
+class ArchiveLoaderITest(BaseHgLoaderTest):
+    """Load a mercurial repository archive with release
+
+    """
+    def setUp(self):
+        super().setUp(loader=HgArchiveLoaderMemoryStorage,
+                      archive_name='hello.tgz', filename='hello',
+                      uncompress_archive=False)
+
+    def test_load(self):
+        """Load a mercurial repository archive with tags results in 1 snapshot
+
+        """
+        # when
+        self.loader.load(
+            origin_url=self.repo_url,
+            visit_date='2016-05-03 15:16:32+00',
+            archive_path=self.destination_path)
 
         # then
         self.assertCountContents(3)

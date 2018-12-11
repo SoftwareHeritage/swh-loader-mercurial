@@ -11,7 +11,6 @@ import os
 import random
 import sys
 import time
-import urllib.parse
 
 from binascii import hexlify, unhexlify
 from swh.model.hashutil import MultiHash
@@ -237,9 +236,8 @@ class BaseLoaderVerifierTest(BaseLoaderTest):
 
 class LoaderVerifierTest1(BaseLoaderVerifierTest):
     def test_data(self):
-        repo_path = urllib.parse.urlparse(self.repo_url).path
         cs, ds, revs, rels, snps = self.validator.runtest(
-            repo_path,
+            self.destination_path,
             validate_blobs=True,
             validate_trees=True,
             frequency=0.001)
@@ -256,9 +254,8 @@ class LoaderVerifierTest2(BaseLoaderVerifierTest):
         super().setUp(archive_name=archive_name, filename=filename)
 
     def test_data(self):
-        repo_path = urllib.parse.urlparse(self.repo_url).path
         cs, ds, revs, rels, snps = self.validator.runtest(
-            repo_path,
+            self.destination_path,
             validate_blobs=True,
             validate_trees=True,
             frequency=0.001)

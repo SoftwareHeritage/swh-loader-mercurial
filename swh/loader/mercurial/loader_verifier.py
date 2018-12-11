@@ -138,11 +138,6 @@ class HgLoaderValidater(HgBundle20Loader):
             tree_dirs.sort(key=so1)
             base_dirs.sort(key=so1)
 
-            # for i in range(len(tree_dirs)):
-            #     if tree_dirs[i] != base_dirs[i]:
-            #         logging.debug(i)
-            #         code.interact(local=dict(globals(), **locals()))
-
             logging.debug('Program will quit after your next Ctrl-D')
             code.interact(local=dict(globals(), **locals()))
             quit()
@@ -186,11 +181,6 @@ class HgLoaderValidater(HgBundle20Loader):
 
             self.file_node_to_hash = {}
 
-        # self.generate_all_blobs(validate=validate_blobs,
-        #                        frequency=frequency)
-
-        # self.generate_all_trees(validate=validate_trees, frequency=frequency)
-        # self.generate_all_commits()
             logging.debug('getting contents')
             cs = 0
             for c in self.get_contents():

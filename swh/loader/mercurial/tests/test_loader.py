@@ -5,6 +5,8 @@
 
 import os
 
+from unittest.mock import patch
+
 from swh.loader.core.tests import BaseLoaderTest
 from .common import HgLoaderMemoryStorage, HgArchiveLoaderMemoryStorage
 
@@ -141,23 +143,8 @@ class LoaderITest1(BaseHgLoaderTest):
         self.assertEqual(self.loader.visit_status(), 'full')
 
 
-class LoaderITest2(BaseHgLoaderTest):
-    """Load a mercurial repository with release
-
-    """
-    def setUp(self):
-        super().setUp(archive_name='hello.tgz', filename='hello')
-
-    def test_load(self):
-        """Load a repository with tags results in 1 snapshot
-
-        """
-        # when
-        self.loader.load(
-            origin_url=self.repo_url,
-            visit_date='2016-05-03 15:16:32+00',
-            directory=self.destination_path)
-
+class CommonHgLoaderData:
+    def assert_data_ok(self):
         # then
         self.assertCountContents(3)
         self.assertCountDirectories(3)
@@ -203,7 +190,27 @@ class LoaderITest2(BaseHgLoaderTest):
         self.assertEqual(self.loader.visit_status(), 'full')
 
 
-class ArchiveLoaderITest(BaseHgLoaderTest):
+class LoaderITest2(BaseHgLoaderTest, CommonHgLoaderData):
+    """Load a mercurial repository with release
+
+    """
+    def setUp(self):
+        super().setUp(archive_name='hello.tgz', filename='hello')
+
+    def test_load(self):
+        """Load a repository with tags results in 1 snapshot
+
+        """
+        # when
+        self.loader.load(
+            origin_url=self.repo_url,
+            visit_date='2016-05-03 15:16:32+00',
+            directory=self.destination_path)
+
+        self.assert_data_ok()
+
+
+class ArchiveLoaderITest(BaseHgLoaderTest, CommonHgLoaderData):
     """Load a mercurial repository archive with release
 
     """
@@ -222,46 +229,21 @@ class ArchiveLoaderITest(BaseHgLoaderTest):
             visit_date='2016-05-03 15:16:32+00',
             archive_path=self.destination_path)
 
-        # then
-        self.assertCountContents(3)
-        self.assertCountDirectories(3)
-        self.assertCountReleases(1)
-        self.assertCountRevisions(3)
+        self.assert_data_ok()
 
-        tip_release = '515c4d72e089404356d0f4b39d60f948b8999140'
-        self.assertReleasesContain([tip_release])
+    @patch('swh.loader.mercurial.archive_extract.patoolib')
+    def test_load_with_failure(self, mock_patoo):
+        mock_patoo.side_effect = ValueError
 
-        tip_revision_default = 'c3dbe4fbeaaa98dd961834e4007edb3efb0e2a27'
-        # cf. test_loader.org for explaining from where those hashes
-        # come from
-        expected_revisions = {
-            # revision hash | directory hash  # noqa
-            '93b48d515580522a05f389bec93227fc8e43d940': '43d727f2f3f2f7cb3b098ddad1d7038464a4cee2',  # noqa
-            '8dd3db5d5519e4947f035d141581d304565372d2': 'b3f85f210ff86d334575f64cb01c5bf49895b63e',  # noqa
-            tip_revision_default: '8f2be433c945384c85920a8e60f2a68d2c0f20fb',
-        }
+        # when
+        r = self.loader.load(
+            origin_url=self.repo_url,
+            visit_date='2016-05-03 15:16:32+00',
+            archive_path=self.destination_path)
 
-        self.assertRevisionsContain(expected_revisions)
-        self.assertCountSnapshots(1)
-
-        expected_snapshot = {
-            'id': 'd35668e02e2ba4321dc951cd308cf883786f918a',
-            'branches': {
-                'default': {
-                    'target': tip_revision_default,
-                    'target_type': 'revision'
-                },
-                '0.1': {
-                    'target': tip_release,
-                    'target_type': 'release'
-                },
-                'HEAD': {
-                    'target': 'default',
-                    'target_type': 'alias',
-                }
-            }
-        }
-
-        self.assertSnapshotEqual(expected_snapshot)
-        self.assertEqual(self.loader.load_status(), {'status': 'eventful'})
-        self.assertEqual(self.loader.visit_status(), 'full')
+        self.assertEqual(r, {'status': 'failed'})
+        self.assertCountContents(0)
+        self.assertCountDirectories(0)
+        self.assertCountRevisions(0)
+        self.assertCountReleases(0)
+        self.assertCountSnapshots(0)

@@ -226,7 +226,7 @@ class HgLoaderValidater:
         return cs, ds, revs, rels, snps
 
 
-class LoaderVerifierTest(BaseLoaderTest):
+class BaseLoaderVerifierTest(BaseLoaderTest):
     def setUp(self, archive_name='the-sandbox.tgz', filename='the-sandbox'):
         super().setUp(archive_name=archive_name, filename=filename,
                       prefix_tmp_folder_name='swh.loader.mercurial.',
@@ -234,6 +234,8 @@ class LoaderVerifierTest(BaseLoaderTest):
         loader = HgLoaderMemoryStorage()
         self.validator = HgLoaderValidater(loader)
 
+
+class LoaderVerifierTest1(BaseLoaderVerifierTest):
     def test_data(self):
         repo_path = urllib.parse.urlparse(self.repo_url).path
         cs, ds, revs, rels, snps = self.validator.runtest(
@@ -246,4 +248,23 @@ class LoaderVerifierTest(BaseLoaderTest):
         self.assertEqual(ds, 3)
         self.assertEqual(revs, 58)
         self.assertEqual(rels, 0)
+        self.assertEqual(snps, 1)
+
+
+class LoaderVerifierTest2(BaseLoaderVerifierTest):
+    def setUp(self, archive_name='hello.tgz', filename='hello'):
+        super().setUp(archive_name=archive_name, filename=filename)
+
+    def test_data(self):
+        repo_path = urllib.parse.urlparse(self.repo_url).path
+        cs, ds, revs, rels, snps = self.validator.runtest(
+            repo_path,
+            validate_blobs=True,
+            validate_trees=True,
+            frequency=0.001)
+
+        self.assertEqual(cs, 3)
+        self.assertEqual(ds, 3)
+        self.assertEqual(rels, 1)
+        self.assertEqual(revs, 3)
         self.assertEqual(snps, 1)

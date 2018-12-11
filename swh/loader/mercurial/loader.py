@@ -58,7 +58,7 @@ class HgBundle20Loader(UnbufferedLoader):
 
     ADDITIONAL_CONFIG = {
         'bundle_filename': ('str', 'HG20_none_bundle'),
-        'reduce_effort': ('bool', True),  # default: Try to be smart about time
+        'reduce_effort': ('bool', False),
         'temp_directory': ('str', '/tmp'),
         'cache1_size': ('int', 800*1024*1024),
         'cache2_size': ('int', 800*1024*1024),

@@ -3,7 +3,6 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-import click
 import code
 import datetime
 import hglib
@@ -12,23 +11,31 @@ import os
 import random
 import sys
 import time
+import urllib.parse
 
 from binascii import hexlify, unhexlify
-
 from swh.model.hashutil import MultiHash
+from ..converters import PRIMARY_ALGO as ALGO
+from ..objects import SimpleTree
 
-from .loader import HgBundle20Loader
-from .converters import PRIMARY_ALGO as ALGO
-from .objects import SimpleTree
+from swh.loader.core.tests import BaseLoaderTest
+
+from .common import HgLoaderMemoryStorage
 
 
-class HgLoaderValidater(HgBundle20Loader):
+class HgLoaderValidater:
+    """Loader validater
+
+    """
+    def __init__(self, loader):
+        self.loader = loader
+
     def generate_all_blobs(self, validate=True, frequency=1):
         logging.debug('GENERATING BLOBS')
         i = 0
         start = time.time()
         u = set()
-        for blob, node_info in self.br.yield_all_blobs():
+        for blob, node_info in self.loader.br.yield_all_blobs():
             filename = node_info[0]
             header = node_info[2]
             i += 1
@@ -83,7 +90,7 @@ class HgLoaderValidater(HgBundle20Loader):
         start = time.time()
         validated = 0
 
-        for header, tree, new_dirs in self.load_directories():
+        for header, tree, new_dirs in self.loader.load_directories():
             if validate and (c >= validated) and (random.random() < frequency):
                 self.validate_tree(tree, header, c)
 
@@ -158,15 +165,14 @@ class HgLoaderValidater(HgBundle20Loader):
         logging.debug('ELAPSED: %s' % (time.time()-start))
 
     def runtest(self, hgdir, validate_blobs=False, validate_trees=False,
-                frequency=1.0, test_iterative=False):
-        """HgLoaderValidater().runtest('/home/avi/SWH/mozilla-unified')
+                frequency=1.0):
+        """loader = HgLoaderMemoryStorage(0
+           HgLoaderValidater(loader).runtest('/home/avi/SWH/mozilla-unified')
 
         """
         self.origin_id = 'test'
 
         dt = datetime.datetime.now(tz=datetime.timezone.utc)
-        if test_iterative:
-            dt = dt - datetime.timedelta(10)
 
         hgrepo = None
         if (hgdir.lower().startswith('http:')
@@ -177,62 +183,67 @@ class HgLoaderValidater(HgBundle20Loader):
 
         try:
             logging.debug('preparing')
-            self.prepare(origin_url=hgrepo, visit_date=dt, directory=hgdir)
+            self.loader.prepare(
+                origin_url=hgrepo, visit_date=dt, directory=hgdir)
 
             self.file_node_to_hash = {}
 
             logging.debug('getting contents')
             cs = 0
-            for c in self.get_contents():
+            for c in self.loader.get_contents():
                 cs += 1
                 pass
 
             logging.debug('getting directories')
             ds = 0
-            for d in self.get_directories():
+            for d in self.loader.get_directories():
                 ds += 1
                 pass
 
             revs = 0
             logging.debug('getting revisions')
-            for rev in self.get_revisions():
+            for rev in self.loader.get_revisions():
                 revs += 1
                 pass
 
             logging.debug('getting releases')
             rels = 0
-            for rel in self.get_releases():
+            for rel in self.loader.get_releases():
                 rels += 1
                 logging.debug(rel)
 
             self.visit = 'foo'
+            snps = 0
             logging.debug('getting snapshot')
-            o = self.get_snapshot()
+            o = self.loader.get_snapshot()
             logging.debug('Snapshot: %s' % o)
+            if o:
+                snps += 1
 
         finally:
-            self.cleanup()
+            self.loader.cleanup()
 
-        logging.info('final count: cs %s ds %s revs %s rels %s' % (
-            cs, ds, revs, rels))
-
-
-@click.command()
-@click.option('--verbose', is_flag=True, default=False)
-@click.option('--validate-frequency', default=0.001, type=click.FLOAT)
-@click.option('--test-iterative', default=False, type=click.BOOL)
-@click.argument('repository-url', required=1)
-def main(verbose, validate_frequency, test_iterative, repository_url):
-    logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO)
-    while repository_url[-1] == '/':
-        repository_url = repository_url[:-1]
-
-    HgLoaderValidater().runtest(
-        repository_url,
-        validate_blobs=True, validate_trees=True,
-        frequency=validate_frequency,
-        test_iterative=test_iterative)
+        return cs, ds, revs, rels, snps
 
 
-if __name__ == '__main__':
-    main()
+class LoaderVerifierTest(BaseLoaderTest):
+    def setUp(self, archive_name='the-sandbox.tgz', filename='the-sandbox'):
+        super().setUp(archive_name=archive_name, filename=filename,
+                      prefix_tmp_folder_name='swh.loader.mercurial.',
+                      start_path=os.path.dirname(__file__))
+        loader = HgLoaderMemoryStorage()
+        self.validator = HgLoaderValidater(loader)
+
+    def test_data(self):
+        repo_path = urllib.parse.urlparse(self.repo_url).path
+        cs, ds, revs, rels, snps = self.validator.runtest(
+            repo_path,
+            validate_blobs=True,
+            validate_trees=True,
+            frequency=0.001)
+
+        self.assertEqual(cs, 2)
+        self.assertEqual(ds, 3)
+        self.assertEqual(revs, 58)
+        self.assertEqual(rels, 0)
+        self.assertEqual(snps, 1)

@@ -29,7 +29,7 @@ class BaseHgLoaderTest(BaseLoaderTest):
         self.storage = self.loader.storage
 
 
-class LoaderITest1(BaseHgLoaderTest):
+class LoaderTestT1(BaseHgLoaderTest):
     """Load a mercurial repository without release
 
     """
@@ -190,7 +190,7 @@ class CommonHgLoaderData:
         self.assertEqual(self.loader.visit_status(), 'full')
 
 
-class LoaderITest2(BaseHgLoaderTest, CommonHgLoaderData):
+class LoaderTest2(BaseHgLoaderTest, CommonHgLoaderData):
     """Load a mercurial repository with release
 
     """
@@ -210,7 +210,7 @@ class LoaderITest2(BaseHgLoaderTest, CommonHgLoaderData):
         self.assert_data_ok()
 
 
-class ArchiveLoaderITest(BaseHgLoaderTest, CommonHgLoaderData):
+class ArchiveLoaderTest(BaseHgLoaderTest, CommonHgLoaderData):
     """Load a mercurial repository archive with release
 
     """

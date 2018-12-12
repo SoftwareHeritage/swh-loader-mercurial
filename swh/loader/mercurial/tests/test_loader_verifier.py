@@ -165,7 +165,7 @@ class HgLoaderValidater:
 
     def runtest(self, hgdir, validate_blobs=False, validate_trees=False,
                 frequency=1.0):
-        """loader = HgLoaderMemoryStorage(0
+        """loader = HgLoaderMemoryStorage()
            HgLoaderValidater(loader).runtest('/home/avi/SWH/mozilla-unified')
 
         """

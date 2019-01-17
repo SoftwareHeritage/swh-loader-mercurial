@@ -3,51 +3,39 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-import unittest
 from unittest.mock import patch
 
-from swh.loader.mercurial.tasks import LoadMercurial, LoadArchiveMercurial
+
+@patch('swh.loader.mercurial.loader.HgBundle20Loader.load')
+def test_loader(mock_loader, swh_app, celery_session_worker):
+    mock_loader.return_value = {'status': 'eventful'}
+
+    res = swh_app.send_task(
+        'swh.loader.mercurial.tasks.LoadMercurial',
+        kwargs=dict(origin_url='origin_url', directory='/some/repo',
+                    visit_date='now'))
+    assert res
+    res.wait()
+    assert res.successful()
+
+    assert res.result == {'status': 'eventful'}
+    mock_loader.assert_called_once_with(
+        origin_url='origin_url', visit_date='now', directory='/some/repo')
 
 
-class TestTasks(unittest.TestCase):
-    def test_check_task_name(self):
-        task = LoadMercurial()
-        self.assertEqual(task.task_queue, 'swh_loader_mercurial')
+@patch('swh.loader.mercurial.loader.HgArchiveBundle20Loader.load')
+def test_archive_loader(mock_loader, swh_app, celery_session_worker):
+    mock_loader.return_value = {'status': 'uneventful'}
 
-    @patch('swh.loader.mercurial.loader.HgBundle20Loader.load')
-    def test_task(self, mock_loader):
-        mock_loader.return_value = {'status': 'eventful'}
-        task = LoadMercurial()
+    res = swh_app.send_task(
+        'swh.loader.mercurial.tasks.LoadArchiveMercurial',
+        ('another_url', '/some/tar.tgz', 'now'))
+    assert res
+    res.wait()
+    assert res.successful()
 
-        # given
-        actual_result = task.run_task(
-            origin_url='origin_url', visit_date='now', directory='/some/repo')
-
-        self.assertEqual(actual_result, {'status': 'eventful'})
-
-        mock_loader.assert_called_once_with(
-            origin_url='origin_url', visit_date='now', directory='/some/repo')
-
-
-class TestTasks2(unittest.TestCase):
-    def test_check_task_name(self):
-        task = LoadArchiveMercurial()
-        self.assertEqual(task.task_queue, 'swh_loader_mercurial_archive')
-
-    @patch('swh.loader.mercurial.loader.HgArchiveBundle20Loader.load')
-    def test_task(self, mock_loader):
-        mock_loader.return_value = {'status': 'uneventful'}
-        task = LoadArchiveMercurial()
-
-        # given
-        actual_result = task.run_task(
-            origin_url='another_url',
-            archive_path='/some/tar.tgz',
-            visit_date='now')
-
-        self.assertEqual(actual_result, {'status': 'uneventful'})
-
-        mock_loader.assert_called_once_with(
-            origin_url='another_url',
-            archive_path='/some/tar.tgz',
-            visit_date='now')
+    assert res.result == {'status': 'uneventful'}
+    mock_loader.assert_called_once_with(
+        origin_url='another_url',
+        archive_path='/some/tar.tgz',
+        visit_date='now')

@@ -3,41 +3,33 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-from swh.scheduler.task import Task
+from celery import current_app as app
 
 from .loader import HgBundle20Loader, HgArchiveBundle20Loader
 
 
-class LoadMercurial(Task):
+@app.task(name=__name__ + '.LoadMercurial')
+def load_mercurial(origin_url, directory=None, visit_date=None):
     """Mercurial repository loading
 
+    Import a mercurial tarball into swh.
+
+    Args: see :func:`DepositLoader.load`.
+
     """
-    task_queue = 'swh_loader_mercurial'
-
-    def run_task(self, *, origin_url, visit_date=None, directory=None):
-        """Import a mercurial tarball into swh.
-
-        Args: see :func:`DepositLoader.load`.
-
-        """
-        loader = HgBundle20Loader()
-        loader.log = self.log
-        return loader.load(origin_url=origin_url,
-                           directory=directory,
-                           visit_date=visit_date)
+    loader = HgBundle20Loader()
+    return loader.load(origin_url=origin_url,
+                       directory=directory,
+                       visit_date=visit_date)
 
 
-class LoadArchiveMercurial(Task):
-    task_queue = 'swh_loader_mercurial_archive'
+@app.task(name=__name__ + '.LoadArchiveMercurial')
+def load_archive_mercurial(origin_url, archive_path, visit_date=None):
+    """Import a mercurial tarball into swh.
 
-    def run_task(self, *, origin_url, archive_path, visit_date):
-        """Import a mercurial tarball into swh.
-
-        Args: see :func:`DepositLoader.load`.
-
-        """
-        loader = HgArchiveBundle20Loader()
-        loader.log = self.log
-        return loader.load(origin_url=origin_url,
-                           archive_path=archive_path,
-                           visit_date=visit_date)
+    Args: see :func:`DepositLoader.load`.
+    """
+    loader = HgArchiveBundle20Loader()
+    return loader.load(origin_url=origin_url,
+                       archive_path=archive_path,
+                       visit_date=visit_date)

@@ -54,7 +54,7 @@ class HgBundle20Loader(UnbufferedLoader):
     """Mercurial loader able to deal with remote or local repository.
 
     """
-    CONFIG_BASE_FILENAME = 'loader/hg'
+    CONFIG_BASE_FILENAME = 'loader/mercurial'
 
     ADDITIONAL_CONFIG = {
         'bundle_filename': ('str', 'HG20_none_bundle'),

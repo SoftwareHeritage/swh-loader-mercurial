@@ -32,7 +32,7 @@ from swh.model.hashutil import (
     MultiHash, hash_to_hex, hash_to_bytes,
     DEFAULT_ALGORITHMS
 )
-from swh.loader.core.loader import SWHStatelessLoader
+from swh.loader.core.loader import UnbufferedLoader
 from swh.loader.core.converters import content_for_storage
 from swh.loader.core.utils import clean_dangling_folders
 
@@ -50,15 +50,15 @@ TEMPORARY_DIR_PREFIX_PATTERN = 'swh.loader.mercurial.'
 HEAD_POINTER_NAME = b'tip'
 
 
-class HgBundle20Loader(SWHStatelessLoader):
+class HgBundle20Loader(UnbufferedLoader):
     """Mercurial loader able to deal with remote or local repository.
 
     """
-    CONFIG_BASE_FILENAME = 'loader/hg'
+    CONFIG_BASE_FILENAME = 'loader/mercurial'
 
     ADDITIONAL_CONFIG = {
         'bundle_filename': ('str', 'HG20_none_bundle'),
-        'reduce_effort': ('bool', True),  # default: Try to be smart about time
+        'reduce_effort': ('bool', False),
         'temp_directory': ('str', '/tmp'),
         'cache1_size': ('int', 800*1024*1024),
         'cache2_size': ('int', 800*1024*1024),
@@ -180,7 +180,7 @@ class HgBundle20Loader(SWHStatelessLoader):
             self.br = Bundle20Reader(bundlefile=self.bundle_path,
                                      cache_filename=self.cache_filename1,
                                      cache_size=self.cache1_size)
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             # Empty repository! Still a successful visit targeting an
             # empty snapshot
             self.log.warn('%s is an empty repository!' % self.hgdir)

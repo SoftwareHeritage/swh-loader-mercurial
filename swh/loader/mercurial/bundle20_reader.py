@@ -584,14 +584,19 @@ class Bundle20Reader(object):
 
         args:
             data: either a string or a list of strings that, when joined,
-                  embodies the composition of a manifest. This takes the form
-                  of repetitions of (without the brackets):
-                        b'<file_path>\x00<file_node>[flag]\n' ...repeat...
-                  where [flag] may or may not be there depending on whether the
-                  file is specially flagged as executable or something
+              embodies the composition of a manifest.
+
+              This takes the form
+              of repetitions of (without the brackets)::
+
+                b'<file_path>\x00<file_node>[flag]\\n' ...repeat...
+
+              where ``[flag]`` may or may not be there depending on
+              whether the file is specially flagged as executable or
+              something
 
         returns:
-            dict of key=file_path, value=(file_node, permissions) where
+            dict: ``{file_path: (file_node, permissions), ...}`` where
             permissions is given according to the flag that optionally exists
             in the data
         """

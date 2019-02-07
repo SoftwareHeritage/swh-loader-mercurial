@@ -5,32 +5,10 @@
 
 import os
 
-from nose.tools import istest
+from unittest.mock import patch
 
-from swh.loader.core.tests import BaseLoaderTest, LoaderNoStorage
-from swh.loader.mercurial.loader import HgBundle20Loader
-
-
-class MockStorage:
-    """A mixin inhibited storage overriding *_missing methods. Those are
-       called from within the mercurial loader.
-
-       Rationale: Need to take control of the current behavior prior
-       to refactor it. The end game is to remove this when we will
-       have tests ok.
-
-    """
-    def content_missing(self, contents, key_hash='sha1'):
-        return [c[key_hash] for c in contents]
-
-    def directory_missing(self, directories):
-        return directories
-
-    def release_missing(self, releases):
-        return releases
-
-    def revision_missing(self, revisions):
-        return revisions
+from swh.loader.core.tests import BaseLoaderTest
+from .common import HgLoaderMemoryStorage, HgArchiveLoaderMemoryStorage
 
 
 class BaseHgLoaderTest(BaseLoaderTest):
@@ -40,52 +18,22 @@ class BaseHgLoaderTest(BaseLoaderTest):
        This sets up
 
     """
-    def setUp(self, archive_name='the-sandbox.tgz', filename='the-sandbox'):
+    def setUp(self, loader=HgLoaderMemoryStorage,
+              archive_name='the-sandbox.tgz', filename='the-sandbox',
+              uncompress_archive=True):
         super().setUp(archive_name=archive_name, filename=filename,
                       prefix_tmp_folder_name='swh.loader.mercurial.',
-                      start_path=os.path.dirname(__file__))
+                      start_path=os.path.dirname(__file__),
+                      uncompress_archive=uncompress_archive)
+        self.loader = loader()
+        self.storage = self.loader.storage
 
 
-class HgLoaderNoStorage(LoaderNoStorage, HgBundle20Loader):
-    """The mercurial loader to test.
-
-    Its behavior has been changed to:
-    - not use any persistence (no storage, or for now a passthrough
-      storage with no filtering)
-    - not use the default configuration loading
-
-    At the end of the tests, you can make sure you have the rights
-    objects.
-
-    """
-    ADDITIONAL_CONFIG = {
-        'reduce_effort': ('bool', False),  # FIXME: This needs to be
-                                           # checked (in production
-                                           # for now, this is not
-                                           # deployed.)
-        'temp_directory': ('str', '/tmp/swh.loader.mercurial'),
-        'cache1_size': ('int', 800*1024*1024),
-        'cache2_size': ('int', 800*1024*1024),
-        'bundle_filename': ('str', 'HG20_none_bundle'),
-    }
-
-    def __init__(self):
-        super().__init__()
-        self.origin_id = 1
-        self.visit = 1
-        self.storage = MockStorage()
-
-
-class LoaderITest1(BaseHgLoaderTest):
+class LoaderTestT1(BaseHgLoaderTest):
     """Load a mercurial repository without release
 
     """
-    def setUp(self):
-        super().setUp()
-        self.loader = HgLoaderNoStorage()
-
-    @istest
-    def load(self):
+    def test_load(self):
         """Load a repository with multiple branches results in 1 snapshot
 
         """
@@ -169,7 +117,7 @@ class LoaderITest1(BaseHgLoaderTest):
             tip_revision_develop: directory_hash,
         }
 
-        self.assertRevisionsOk(expected_revisions)
+        self.assertRevisionsContain(expected_revisions)
         self.assertCountSnapshots(1)
 
         expected_snapshot = {
@@ -190,30 +138,13 @@ class LoaderITest1(BaseHgLoaderTest):
             }
         }
 
-        self.assertSnapshotOk(expected_snapshot)
+        self.assertSnapshotEqual(expected_snapshot)
         self.assertEqual(self.loader.load_status(), {'status': 'eventful'})
         self.assertEqual(self.loader.visit_status(), 'full')
 
 
-class LoaderITest2(BaseHgLoaderTest):
-    """Load a mercurial repository with release
-
-    """
-    def setUp(self):
-        super().setUp(archive_name='hello.tgz', filename='hello')
-        self.loader = HgLoaderNoStorage()
-
-    @istest
-    def load(self):
-        """Load a repository with tags results in 1 snapshot
-
-        """
-        # when
-        self.loader.load(
-            origin_url=self.repo_url,
-            visit_date='2016-05-03 15:16:32+00',
-            directory=self.destination_path)
-
+class CommonHgLoaderData:
+    def assert_data_ok(self):
         # then
         self.assertCountContents(3)
         self.assertCountDirectories(3)
@@ -221,7 +152,7 @@ class LoaderITest2(BaseHgLoaderTest):
         self.assertCountRevisions(3)
 
         tip_release = '515c4d72e089404356d0f4b39d60f948b8999140'
-        self.assertReleasesOk([tip_release])
+        self.assertReleasesContain([tip_release])
 
         tip_revision_default = 'c3dbe4fbeaaa98dd961834e4007edb3efb0e2a27'
         # cf. test_loader.org for explaining from where those hashes
@@ -233,7 +164,7 @@ class LoaderITest2(BaseHgLoaderTest):
             tip_revision_default: '8f2be433c945384c85920a8e60f2a68d2c0f20fb',
         }
 
-        self.assertRevisionsOk(expected_revisions)
+        self.assertRevisionsContain(expected_revisions)
         self.assertCountSnapshots(1)
 
         expected_snapshot = {
@@ -254,6 +185,65 @@ class LoaderITest2(BaseHgLoaderTest):
             }
         }
 
-        self.assertSnapshotOk(expected_snapshot)
+        self.assertSnapshotEqual(expected_snapshot)
         self.assertEqual(self.loader.load_status(), {'status': 'eventful'})
         self.assertEqual(self.loader.visit_status(), 'full')
+
+
+class LoaderTest2(BaseHgLoaderTest, CommonHgLoaderData):
+    """Load a mercurial repository with release
+
+    """
+    def setUp(self):
+        super().setUp(archive_name='hello.tgz', filename='hello')
+
+    def test_load(self):
+        """Load a repository with tags results in 1 snapshot
+
+        """
+        # when
+        self.loader.load(
+            origin_url=self.repo_url,
+            visit_date='2016-05-03 15:16:32+00',
+            directory=self.destination_path)
+
+        self.assert_data_ok()
+
+
+class ArchiveLoaderTest(BaseHgLoaderTest, CommonHgLoaderData):
+    """Load a mercurial repository archive with release
+
+    """
+    def setUp(self):
+        super().setUp(loader=HgArchiveLoaderMemoryStorage,
+                      archive_name='hello.tgz', filename='hello',
+                      uncompress_archive=False)
+
+    def test_load(self):
+        """Load a mercurial repository archive with tags results in 1 snapshot
+
+        """
+        # when
+        self.loader.load(
+            origin_url=self.repo_url,
+            visit_date='2016-05-03 15:16:32+00',
+            archive_path=self.destination_path)
+
+        self.assert_data_ok()
+
+    @patch('swh.loader.mercurial.archive_extract.patoolib')
+    def test_load_with_failure(self, mock_patoo):
+        mock_patoo.side_effect = ValueError
+
+        # when
+        r = self.loader.load(
+            origin_url=self.repo_url,
+            visit_date='2016-05-03 15:16:32+00',
+            archive_path=self.destination_path)
+
+        self.assertEqual(r, {'status': 'failed'})
+        self.assertCountContents(0)
+        self.assertCountDirectories(0)
+        self.assertCountRevisions(0)
+        self.assertCountReleases(0)
+        self.assertCountSnapshots(0)

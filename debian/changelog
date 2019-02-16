@@ -1,3 +1,9 @@
+swh-loader-mercurial (0.0.16-1~swh2) unstable-swh; urgency=medium
+
+  * New upstream release to fix debian packaging issues
+
+ -- Antoine Romain Dumont <antoine.romain.dumont@gmail.com>  Sat, 16 Feb 2019 02:02:57 +0100
+
 swh-loader-mercurial (0.0.16-1~swh1) unstable-swh; urgency=medium
 
   * New upstream release 0.0.16     - (tagged by David Douard

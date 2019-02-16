@@ -1,8 +1,22 @@
-swh-loader-mercurial (0.0.14-1~swh1~bpo9+1) stretch-swh; urgency=medium
+swh-loader-mercurial (0.0.16-1~swh3) unstable-swh; urgency=low
 
-  * Rebuild for stretch-backports.
+  * New upstream release to fix broken dependency
 
- -- Antoine R. Dumont (@ardumont) <antoine.romain.dumont@gmail.com>  Thu, 11 Oct 2018 14:50:48 +0200
+ -- Antoine Romain Dumont <antoine.romain.dumont@gmail.com>  Sat, 16 Feb 2019 10:01:45 +0100
+
+swh-loader-mercurial (0.0.16-1~swh2) unstable-swh; urgency=medium
+
+  * New upstream release to fix debian packaging issues
+
+ -- Antoine Romain Dumont <antoine.romain.dumont@gmail.com>  Sat, 16 Feb 2019 02:02:57 +0100
+
+swh-loader-mercurial (0.0.16-1~swh1) unstable-swh; urgency=medium
+
+  * New upstream release 0.0.16     - (tagged by David Douard
+    <david.douard@sdfa3.org> on 2019-02-07 16:26:07 +0100)
+  * Upstream changes:     - v0.0.16
+
+ -- Software Heritage autobuilder (on jenkins-debian1) <jenkins@jenkins-debian1.internal.softwareheritage.org>  Thu, 07 Feb 2019 15:44:03 +0000
 
 swh-loader-mercurial (0.0.14-1~swh1) unstable-swh; urgency=medium
 

@@ -285,7 +285,7 @@ class HgBundle20Loader(UnbufferedLoader):
                             content,
                             log=self.log,
                             max_content_size=self.content_max_size_limit,
-                            origin_id=self.origin_id
+                            origin_url=self.origin['url']
                         )
 
     def load_directories(self):

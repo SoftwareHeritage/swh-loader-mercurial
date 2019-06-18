@@ -8,6 +8,8 @@ import os
 from unittest.mock import patch
 
 from swh.loader.core.tests import BaseLoaderTest
+from swh.storage.algos.snapshot import snapshot_get_all_branches
+
 from .common import HgLoaderMemoryStorage, HgArchiveLoaderMemoryStorage
 
 
@@ -265,10 +267,12 @@ class WithTransplantLoaderTest(BaseHgLoaderTest):
             directory=self.destination_path)
 
         # collect swh revisions
-        origin_id = self.storage.origin_get([
-            {'type': 'hg', 'url': self.repo_url}])[0]['id']
-        snapshot = self.storage.snapshot_get_latest(origin_id)
+        origin_url = self.storage.origin_get([
+            {'type': 'hg', 'url': self.repo_url}])[0]['url']
+        visit = self.storage.origin_visit_get_latest(
+            origin_url, require_snapshot=True)
         revisions = []
+        snapshot = snapshot_get_all_branches(self.storage, visit['snapshot'])
         for branch in snapshot['branches'].values():
             if branch['target_type'] != 'revision':
                 continue

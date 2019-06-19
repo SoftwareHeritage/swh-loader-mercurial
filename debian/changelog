@@ -1,3 +1,11 @@
+swh-loader-mercurial (0.0.17-1~swh1) unstable-swh; urgency=medium
+
+  * New upstream release 0.0.17     - (tagged by Valentin Lorentz
+    <vlorentz@softwareheritage.org> on 2019-06-18 16:22:40 +0200)
+  * Upstream changes:     - Use origin urls instead of origin ids.
+
+ -- Software Heritage autobuilder (on jenkins-debian1) <jenkins@jenkins-debian1.internal.softwareheritage.org>  Wed, 19 Jun 2019 10:28:22 +0000
+
 swh-loader-mercurial (0.0.16-1~swh3) unstable-swh; urgency=low
 
   * New upstream release to fix broken dependency

@@ -30,3 +30,4 @@ swh/loader/mercurial/tests/test_loader.py
 swh/loader/mercurial/tests/test_tasks.py
 swh/loader/mercurial/tests/resources/hello.tgz
 swh/loader/mercurial/tests/resources/the-sandbox.tgz
+swh/loader/mercurial/tests/resources/transplant.tgz

@@ -8,6 +8,8 @@ import os
 from unittest.mock import patch
 
 from swh.loader.core.tests import BaseLoaderTest
+from swh.storage.algos.snapshot import snapshot_get_all_branches
+
 from .common import HgLoaderMemoryStorage, HgArchiveLoaderMemoryStorage
 
 
@@ -29,7 +31,7 @@ class BaseHgLoaderTest(BaseLoaderTest):
         self.storage = self.loader.storage
 
 
-class LoaderTestT1(BaseHgLoaderTest):
+class WithoutReleaseLoaderTest(BaseHgLoaderTest):
     """Load a mercurial repository without release
 
     """
@@ -190,7 +192,7 @@ class CommonHgLoaderData:
         self.assertEqual(self.loader.visit_status(), 'full')
 
 
-class LoaderTest2(BaseHgLoaderTest, CommonHgLoaderData):
+class WithReleaseLoaderTest(BaseHgLoaderTest, CommonHgLoaderData):
     """Load a mercurial repository with release
 
     """
@@ -247,3 +249,45 @@ class ArchiveLoaderTest(BaseHgLoaderTest, CommonHgLoaderData):
         self.assertCountRevisions(0)
         self.assertCountReleases(0)
         self.assertCountSnapshots(0)
+
+
+class WithTransplantLoaderTest(BaseHgLoaderTest):
+    """Load a mercurial repository where transplant operations
+    have been used.
+
+    """
+    def setUp(self):
+        super().setUp(archive_name='transplant.tgz', filename='transplant')
+
+    def test_load(self):
+        # load hg repository
+        self.loader.load(
+            origin_url=self.repo_url,
+            visit_date='2019-05-23 12:06:00+00',
+            directory=self.destination_path)
+
+        # collect swh revisions
+        origin_url = self.storage.origin_get([
+            {'type': 'hg', 'url': self.repo_url}])[0]['url']
+        visit = self.storage.origin_visit_get_latest(
+            origin_url, require_snapshot=True)
+        revisions = []
+        snapshot = snapshot_get_all_branches(self.storage, visit['snapshot'])
+        for branch in snapshot['branches'].values():
+            if branch['target_type'] != 'revision':
+                continue
+            revisions.append(branch['target'])
+
+        # extract original changesets info and the transplant sources
+        hg_changesets = set()
+        transplant_sources = set()
+        for rev in self.storage.revision_log(revisions):
+            hg_changesets.add(rev['metadata']['node'])
+            for k, v in rev['metadata']['extra_headers']:
+                if k == 'transplant_source':
+                    transplant_sources.add(v)
+
+        # check extracted data are valid
+        self.assertTrue(len(hg_changesets) > 0)
+        self.assertTrue(len(transplant_sources) > 0)
+        self.assertTrue(transplant_sources.issubset(hg_changesets))

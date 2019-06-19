@@ -285,7 +285,7 @@ class HgBundle20Loader(UnbufferedLoader):
                             content,
                             log=self.log,
                             max_content_size=self.content_max_size_limit,
-                            origin_id=self.origin_id
+                            origin_url=self.origin['url']
                         )
 
     def load_directories(self):
@@ -376,6 +376,10 @@ class HgBundle20Loader(UnbufferedLoader):
                 for e in extra.split(b'\x00'):
                     k, v = e.split(b':', 1)
                     k = k.decode('utf-8')
+                    # transplant_source stores binary reference to a changeset
+                    # prefer to dump hexadecimal one in the revision metadata
+                    if k == 'transplant_source':
+                        v = hash_to_hex(v)
                     extra_meta.append([k, v])
 
             revision = {

@@ -323,7 +323,7 @@ class Bundle20Reader(object):
         commit['time'] = datetime.fromtimestamp(float(tstamp))
         commit['time_offset_seconds'] = int(tz)
         if extra:
-            commit['extra'] = extra[0]
+            commit['extra'] = b' '.join(extra)
         commit['changed_files'] = parts[3:]
         return commit
 

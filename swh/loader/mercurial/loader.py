@@ -64,6 +64,8 @@ class HgBundle20Loader(UnbufferedLoader):
         'cache2_size': ('int', 800*1024*1024),
     }
 
+    visit_type = 'hg'
+
     def __init__(self, logging_class='swh.loader.mercurial.Bundle20Loader'):
         super().__init__(logging_class=logging_class)
         self.content_max_size_limit = self.config['content_size_limit']
@@ -120,7 +122,7 @@ class HgBundle20Loader(UnbufferedLoader):
 
     def prepare_origin_visit(self, *, origin_url, visit_date, **kwargs):
         self.origin_url = origin_url
-        self.origin = {'url': self.origin_url, 'type': 'hg'}
+        self.origin = {'url': self.origin_url, 'type': self.visit_type}
         if isinstance(visit_date, str):  # visit_date can be string or datetime
             visit_date = parser.parse(visit_date)
         self.visit_date = visit_date

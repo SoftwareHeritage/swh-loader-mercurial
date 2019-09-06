@@ -1,3 +1,13 @@
+swh-loader-mercurial (0.0.18-1~swh1) unstable-swh; urgency=medium
+
+  * New upstream release 0.0.18     - (tagged by Antoine R. Dumont
+    (@ardumont) <antoine.romain.dumont@gmail.com> on 2019-09-06 14:08:36
+    +0200)
+  * Upstream changes:     - v0.0.18     - Add attribute visit_type     -
+    add code of conduct document     - CONTRIBUTORS: add Avi Kelman
+
+ -- Software Heritage autobuilder (on jenkins-debian1) <jenkins@jenkins-debian1.internal.softwareheritage.org>  Fri, 06 Sep 2019 12:11:01 +0000
+
 swh-loader-mercurial (0.0.17-1~swh1) unstable-swh; urgency=medium
 
   * New upstream release 0.0.17     - (tagged by Valentin Lorentz

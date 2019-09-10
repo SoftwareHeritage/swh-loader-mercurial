@@ -311,7 +311,7 @@ class WithTransplantLoaderTest(BaseHgLoaderTest):
             hg_changesets.add(rev['metadata']['node'])
             for k, v in rev['metadata']['extra_headers']:
                 if k == 'transplant_source':
-                    transplant_sources.add(v)
+                    transplant_sources.add(v.decode('ascii'))
 
         # check extracted data are valid
         self.assertTrue(len(hg_changesets) > 0)

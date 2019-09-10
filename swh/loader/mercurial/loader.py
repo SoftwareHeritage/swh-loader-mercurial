@@ -32,7 +32,7 @@ from tempfile import mkdtemp
 
 from swh.model import identifiers
 from swh.model.hashutil import (
-    MultiHash, hash_to_hex, hash_to_bytes,
+    MultiHash, hash_to_hex, hash_to_bytehex, hash_to_bytes,
     DEFAULT_ALGORITHMS
 )
 from swh.loader.core.loader import UnbufferedLoader
@@ -432,7 +432,7 @@ class HgBundle20Loader(UnbufferedLoader):
                     # transplant_source stores binary reference to a changeset
                     # prefer to dump hexadecimal one in the revision metadata
                     if k == 'transplant_source':
-                        v = hash_to_hex(v)
+                        v = hash_to_bytehex(v)
                     extra_meta.append([k, v])
 
             revision = {

@@ -16,6 +16,7 @@ _LOADER_TEST_CONFIG = {
     'content_packet_size_bytes': 1073741824,
     'content_size_limit': 104857600,
     'directory_packet_size': 25000,
+    'clone_timeout_seconds': 2 * 3600,
     'log_db': 'dbname=softwareheritage-log',
     'occurrence_packet_size': 100000,
     'reduce_effort': False,

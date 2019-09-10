@@ -144,6 +144,26 @@ class WithoutReleaseLoaderTest(BaseHgLoaderTest):
         self.assertEqual(self.loader.load_status(), {'status': 'eventful'})
         self.assertEqual(self.loader.visit_status(), 'full')
 
+    def test_load_status(self):
+        # first visit of the mercurial repository
+        self.loader.load(
+            origin_url=self.repo_url,
+            visit_date='2016-05-03 15:16:32+00',
+            directory=self.destination_path)
+
+        self.assertEqual(self.loader.load_status(), {'status': 'eventful'})
+        self.assertEqual(self.loader.visit_status(), 'full')
+
+        # second visit with no changes in the mercurial repository
+        # since the first one
+        self.loader.load(
+            origin_url=self.repo_url,
+            visit_date='2016-05-04 14:12:21+00',
+            directory=self.destination_path)
+
+        self.assertEqual(self.loader.load_status(), {'status': 'uneventful'})
+        self.assertEqual(self.loader.visit_status(), 'full')
+
 
 class CommonHgLoaderData:
     def assert_data_ok(self):

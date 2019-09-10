@@ -19,9 +19,12 @@ from Mercurial version 2 bundle files.
 
 import datetime
 import hglib
+import multiprocessing
 import os
+from queue import Empty
 import random
 import re
+import time
 
 from dateutil import parser
 from shutil import rmtree
@@ -50,6 +53,10 @@ TEMPORARY_DIR_PREFIX_PATTERN = 'swh.loader.mercurial.'
 HEAD_POINTER_NAME = b'tip'
 
 
+class CloneTimeoutError(Exception):
+    pass
+
+
 class HgBundle20Loader(UnbufferedLoader):
     """Mercurial loader able to deal with remote or local repository.
 
@@ -62,6 +69,7 @@ class HgBundle20Loader(UnbufferedLoader):
         'temp_directory': ('str', '/tmp'),
         'cache1_size': ('int', 800*1024*1024),
         'cache2_size': ('int', 800*1024*1024),
+        'clone_timeout_seconds': ('int', 7200),
     }
 
     visit_type = 'hg'
@@ -75,6 +83,7 @@ class HgBundle20Loader(UnbufferedLoader):
         self.temp_directory = self.config['temp_directory']
         self.cache1_size = self.config['cache1_size']
         self.cache2_size = self.config['cache2_size']
+        self.clone_timeout = self.config['clone_timeout_seconds']
         self.working_directory = None
         self.bundle_path = None
 
@@ -129,6 +138,43 @@ class HgBundle20Loader(UnbufferedLoader):
         self.last_visit = self.storage.origin_visit_get_latest(
             self.origin['url'], require_snapshot=True)
 
+    @staticmethod
+    def clone_with_timeout(log, origin, destination, timeout):
+        queue = multiprocessing.Queue()
+        start = time.monotonic()
+
+        def do_clone(queue, origin, destination):
+            try:
+                result = hglib.clone(source=origin, dest=destination)
+            except BaseException as e:
+                queue.put(e)
+            else:
+                queue.put(result)
+
+        process = multiprocessing.Process(target=do_clone,
+                                          args=(queue, origin, destination))
+        process.start()
+
+        while True:
+            try:
+                result = queue.get(timeout=0.1)
+                break
+            except Empty:
+                duration = time.monotonic() - start
+                if timeout and duration > timeout:
+                    log.warning('Timeout cloning `%s` within %s seconds',
+                                origin, timeout)
+                    process.terminate()
+                    process.join()
+                    raise CloneTimeoutError(origin, timeout)
+                continue
+
+        process.join()
+        if isinstance(result, Exception):
+            raise result from None
+
+        return result
+
     def prepare(self, *, origin_url, visit_date, directory=None):
         """Prepare the necessary steps to load an actual remote or local
            repository.
@@ -158,9 +204,12 @@ class HgBundle20Loader(UnbufferedLoader):
             os.makedirs(self.working_directory, exist_ok=True)
             self.hgdir = self.working_directory
 
-            self.log.debug('Cloning %s to %s' % (
-                self.origin['url'], self.hgdir))
-            hglib.clone(source=self.origin['url'], dest=self.hgdir)
+            self.log.debug('Cloning %s to %s with timeout %s seconds',
+                           self.origin['url'], self.hgdir, self.clone_timeout)
+
+            self.clone_with_timeout(self.log, self.origin['url'], self.hgdir,
+                                    self.clone_timeout)
+
         else:  # local repository
             self.working_directory = None
             self.hgdir = directory

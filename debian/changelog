@@ -1,3 +1,11 @@
+swh-loader-mercurial (0.0.19-1~swh1) unstable-swh; urgency=medium
+
+  * New upstream release 0.0.19     - (tagged by Antoine Lambert
+    <antoine.lambert@inria.fr> on 2019-09-10 14:16:53 +0200)
+  * Upstream changes:     - version 0.0.19
+
+ -- Software Heritage autobuilder (on jenkins-debian1) <jenkins@jenkins-debian1.internal.softwareheritage.org>  Tue, 10 Sep 2019 12:20:20 +0000
+
 swh-loader-mercurial (0.0.18-1~swh1) unstable-swh; urgency=medium
 
   * New upstream release 0.0.18     - (tagged by Antoine R. Dumont

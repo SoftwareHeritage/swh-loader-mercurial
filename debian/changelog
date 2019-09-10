@@ -1,8 +1,12 @@
-swh-loader-mercurial (0.0.19-1~swh1~bpo10+1) buster-swh; urgency=medium
+swh-loader-mercurial (0.0.20-1~swh1) unstable-swh; urgency=medium
 
-  * Rebuild for buster-swh
+  * New upstream release 0.0.20     - (tagged by Nicolas Dandrimont
+    <nicolas@dandrimont.eu> on 2019-09-10 18:28:32 +0200)
+  * Upstream changes:     - Release swh.loader.mercurial 0.0.20     -
+    Implement timeout when cloning repositories     - Fix encoding for
+    extra headers
 
- -- Software Heritage autobuilder (on jenkins-debian1) <jenkins@jenkins-debian1.internal.softwareheritage.org>  Tue, 10 Sep 2019 12:21:57 +0000
+ -- Software Heritage autobuilder (on jenkins-debian1) <jenkins@jenkins-debian1.internal.softwareheritage.org>  Tue, 10 Sep 2019 16:31:15 +0000
 
 swh-loader-mercurial (0.0.19-1~swh1) unstable-swh; urgency=medium
 

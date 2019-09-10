@@ -3,14 +3,20 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+import logging
 import os
+import time
 
 from unittest.mock import patch
+
+import hglib
+import pytest
 
 from swh.loader.core.tests import BaseLoaderTest
 from swh.storage.algos.snapshot import snapshot_get_all_branches
 
 from .common import HgLoaderMemoryStorage, HgArchiveLoaderMemoryStorage
+from ..loader import HgBundle20Loader, CloneTimeoutError
 
 
 class BaseHgLoaderTest(BaseLoaderTest):
@@ -305,9 +311,58 @@ class WithTransplantLoaderTest(BaseHgLoaderTest):
             hg_changesets.add(rev['metadata']['node'])
             for k, v in rev['metadata']['extra_headers']:
                 if k == 'transplant_source':
-                    transplant_sources.add(v)
+                    transplant_sources.add(v.decode('ascii'))
 
         # check extracted data are valid
         self.assertTrue(len(hg_changesets) > 0)
         self.assertTrue(len(transplant_sources) > 0)
         self.assertTrue(transplant_sources.issubset(hg_changesets))
+
+
+def test_clone_with_timeout_timeout(caplog, tmp_path, monkeypatch):
+    log = logging.getLogger('test_clone_with_timeout')
+
+    def clone_timeout(source, dest):
+        time.sleep(60)
+
+    monkeypatch.setattr(hglib, "clone", clone_timeout)
+
+    with pytest.raises(CloneTimeoutError):
+        HgBundle20Loader.clone_with_timeout(
+            log, 'https://www.mercurial-scm.org/repo/hello', tmp_path, 1
+        )
+
+    for record in caplog.records:
+        assert record.levelname == 'WARNING'
+        assert (
+            'https://www.mercurial-scm.org/repo/hello' in record.getMessage()
+        )
+        assert record.args == ('https://www.mercurial-scm.org/repo/hello', 1)
+
+
+def test_clone_with_timeout_returns(caplog, tmp_path, monkeypatch):
+    log = logging.getLogger('test_clone_with_timeout')
+
+    def clone_return(source, dest):
+        return (source, dest)
+
+    monkeypatch.setattr(hglib, "clone", clone_return)
+
+    assert HgBundle20Loader.clone_with_timeout(
+        log, 'https://www.mercurial-scm.org/repo/hello', tmp_path, 1
+    ) == ('https://www.mercurial-scm.org/repo/hello', tmp_path)
+
+
+def test_clone_with_timeout_exception(caplog, tmp_path, monkeypatch):
+    log = logging.getLogger('test_clone_with_timeout')
+
+    def clone_return(source, dest):
+        raise ValueError('Test exception')
+
+    monkeypatch.setattr(hglib, "clone", clone_return)
+
+    with pytest.raises(ValueError) as excinfo:
+        HgBundle20Loader.clone_with_timeout(
+            log, 'https://www.mercurial-scm.org/repo/hello', tmp_path, 1
+        )
+    assert 'Test exception' in excinfo.value.args[0]

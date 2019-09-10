@@ -126,6 +126,8 @@ class HgBundle20Loader(UnbufferedLoader):
         if isinstance(visit_date, str):  # visit_date can be string or datetime
             visit_date = parser.parse(visit_date)
         self.visit_date = visit_date
+        self.last_visit = self.storage.origin_visit_get_latest(
+            self.origin['url'], require_snapshot=True)
 
     def prepare(self, *, origin_url, visit_date, directory=None):
         """Prepare the necessary steps to load an actual remote or local
@@ -506,6 +508,16 @@ class HgBundle20Loader(UnbufferedLoader):
             'directories': self.num_directories,
             'revisions': self.num_revisions,
             'releases': self.num_releases,
+        }
+
+    def load_status(self):
+        snapshot = self.get_snapshot()
+        load_status = 'eventful'
+        if (self.last_visit is not None and
+                self.last_visit['snapshot'] == snapshot['id']):
+            load_status = 'uneventful'
+        return {
+            'status': load_status,
         }
 
 

@@ -19,7 +19,6 @@ from Mercurial version 2 bundle files.
 
 import datetime
 import hglib
-import multiprocessing
 import os
 from queue import Empty
 import random
@@ -29,6 +28,8 @@ import time
 from dateutil import parser
 from shutil import rmtree
 from tempfile import mkdtemp
+
+import billiard
 
 from swh.model import identifiers
 from swh.model.hashutil import (
@@ -140,7 +141,7 @@ class HgBundle20Loader(UnbufferedLoader):
 
     @staticmethod
     def clone_with_timeout(log, origin, destination, timeout):
-        queue = multiprocessing.Queue()
+        queue = billiard.Queue()
         start = time.monotonic()
 
         def do_clone(queue, origin, destination):
@@ -151,8 +152,8 @@ class HgBundle20Loader(UnbufferedLoader):
             else:
                 queue.put(result)
 
-        process = multiprocessing.Process(target=do_clone,
-                                          args=(queue, origin, destination))
+        process = billiard.Process(target=do_clone,
+                                   args=(queue, origin, destination))
         process.start()
 
         while True:

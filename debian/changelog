@@ -1,8 +1,12 @@
-swh-loader-mercurial (0.0.20-1~swh1~bpo10+1) buster-swh; urgency=medium
+swh-loader-mercurial (0.0.21-1~swh1) unstable-swh; urgency=medium
 
-  * Rebuild for buster-swh
+  * New upstream release 0.0.21     - (tagged by Nicolas Dandrimont
+    <nicolas@dandrimont.eu> on 2019-09-17 17:55:48 +0200)
+  * Upstream changes:     - Release swh.loader.mercurial v0.0.21     -
+    Use billiard instead of multiprocessing for use in celery-based
+    envs.
 
- -- Software Heritage autobuilder (on jenkins-debian1) <jenkins@jenkins-debian1.internal.softwareheritage.org>  Tue, 10 Sep 2019 16:32:54 +0000
+ -- Software Heritage autobuilder (on jenkins-debian1) <jenkins@jenkins-debian1.internal.softwareheritage.org>  Tue, 17 Sep 2019 15:58:42 +0000
 
 swh-loader-mercurial (0.0.20-1~swh1) unstable-swh; urgency=medium
 

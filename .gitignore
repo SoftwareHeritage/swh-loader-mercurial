@@ -10,3 +10,4 @@ version.txt
 build/
 dist/
 .tox/
+.mypy_cache/

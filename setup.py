@@ -50,9 +50,10 @@ setup(
     extras_require={'testing': parse_requirements('test')},
     vcversioner={},
     include_package_data=True,
-    entry_points={
-        'console_scripts': ['swh-loader-hg=swh.loader.mercurial.cli:main'],
-        },
+    entry_points='''
+        [swh.workers]
+        loader.mercurial=swh.loader.mercurial:register
+    ''',
     classifiers=[
         "Programming Language :: Python :: 3",
         "Intended Audience :: Developers",

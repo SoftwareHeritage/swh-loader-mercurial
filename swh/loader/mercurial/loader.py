@@ -1,4 +1,4 @@
-# Copyright (C) 2017-2018  The Software Heritage developers
+# Copyright (C) 2017-2019  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -75,8 +75,12 @@ class HgBundle20Loader(UnbufferedLoader):
 
     visit_type = 'hg'
 
-    def __init__(self, logging_class='swh.loader.mercurial.Bundle20Loader'):
+    def __init__(self, url, visit_date=None, directory=None,
+                 logging_class='swh.loader.mercurial.Bundle20Loader'):
         super().__init__(logging_class=logging_class)
+        self.origin_url = url
+        self.visit_date = visit_date
+        self.directory = directory
         self.content_max_size_limit = self.config['content_size_limit']
         self.bundle_filename = self.config['bundle_filename']
         self.reduce_effort_flag = self.config['reduce_effort']
@@ -130,14 +134,14 @@ class HgBundle20Loader(UnbufferedLoader):
 
         return b
 
-    def prepare_origin_visit(self, *, origin_url, visit_date, **kwargs):
-        self.origin_url = origin_url
-        self.origin = {'url': self.origin_url, 'type': self.visit_type}
+    def prepare_origin_visit(self, *args, **kwargs):
+        self.origin = {'url': self.origin_url}
+        visit_date = self.visit_date
         if isinstance(visit_date, str):  # visit_date can be string or datetime
             visit_date = parser.parse(visit_date)
         self.visit_date = visit_date
         self.last_visit = self.storage.origin_visit_get_latest(
-            self.origin['url'], require_snapshot=True)
+            self.origin_url, require_snapshot=True)
 
     @staticmethod
     def clone_with_timeout(log, origin, destination, timeout):
@@ -176,7 +180,7 @@ class HgBundle20Loader(UnbufferedLoader):
 
         return result
 
-    def prepare(self, *, origin_url, visit_date, directory=None):
+    def prepare(self, *args, **kwargs):
         """Prepare the necessary steps to load an actual remote or local
            repository.
 
@@ -197,6 +201,8 @@ class HgBundle20Loader(UnbufferedLoader):
         self.releases = {}
         self.node_2_rev = {}
 
+        directory = self.directory
+
         if not directory:  # remote repository
             self.working_directory = mkdtemp(
                 prefix=TEMPORARY_DIR_PREFIX_PATTERN,
@@ -206,9 +212,9 @@ class HgBundle20Loader(UnbufferedLoader):
             self.hgdir = self.working_directory
 
             self.log.debug('Cloning %s to %s with timeout %s seconds',
-                           self.origin['url'], self.hgdir, self.clone_timeout)
+                           self.origin_url, self.hgdir, self.clone_timeout)
 
-            self.clone_with_timeout(self.log, self.origin['url'], self.hgdir,
+            self.clone_with_timeout(self.log, self.origin_url, self.hgdir,
                                     self.clone_timeout)
 
         else:  # local repository
@@ -339,7 +345,7 @@ class HgBundle20Loader(UnbufferedLoader):
                             content,
                             log=self.log,
                             max_content_size=self.content_max_size_limit,
-                            origin_url=self.origin['url']
+                            origin_url=self.origin_url
                         )
 
     def load_directories(self):
@@ -575,23 +581,24 @@ class HgArchiveBundle20Loader(HgBundle20Loader):
     """Mercurial loader for repository wrapped within archives.
 
     """
-    def __init__(self):
+    def __init__(self, url, visit_date=None, archive_path=None):
         super().__init__(
+            url, visit_date=visit_date,
             logging_class='swh.loader.mercurial.HgArchiveBundle20Loader')
         self.temp_dir = None
+        self.archive_path = archive_path
 
-    def prepare(self, *, origin_url, archive_path, visit_date):
-        self.temp_dir = tmp_extract(archive=archive_path,
+    def prepare(self, *args, **kwargs):
+        self.temp_dir = tmp_extract(archive=self.archive_path,
                                     dir=self.temp_directory,
                                     prefix=TEMPORARY_DIR_PREFIX_PATTERN,
                                     suffix='.dump-%s' % os.getpid(),
                                     log=self.log,
-                                    source=origin_url)
+                                    source=self.origin_url)
 
         repo_name = os.listdir(self.temp_dir)[0]
-        directory = os.path.join(self.temp_dir, repo_name)
-        super().prepare(origin_url=origin_url,
-                        visit_date=visit_date, directory=directory)
+        self.directory = os.path.join(self.temp_dir, repo_name)
+        super().prepare(*args, **kwargs)
 
     def cleanup(self):
         if self.temp_dir and os.path.exists(self.temp_dir):

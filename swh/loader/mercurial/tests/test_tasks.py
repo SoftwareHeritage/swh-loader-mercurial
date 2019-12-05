@@ -12,15 +12,15 @@ def test_loader(mock_loader, swh_app, celery_session_worker):
 
     res = swh_app.send_task(
         'swh.loader.mercurial.tasks.LoadMercurial',
-        kwargs=dict(origin_url='origin_url', directory='/some/repo',
-                    visit_date='now'))
+        (), dict(url='origin_url',
+                 directory='/some/repo',
+                 visit_date='now'))
     assert res
     res.wait()
     assert res.successful()
 
     assert res.result == {'status': 'eventful'}
-    mock_loader.assert_called_once_with(
-        origin_url='origin_url', visit_date='now', directory='/some/repo')
+    mock_loader.assert_called_once_with()
 
 
 @patch('swh.loader.mercurial.loader.HgArchiveBundle20Loader.load')
@@ -29,13 +29,12 @@ def test_archive_loader(mock_loader, swh_app, celery_session_worker):
 
     res = swh_app.send_task(
         'swh.loader.mercurial.tasks.LoadArchiveMercurial',
-        ('another_url', '/some/tar.tgz', 'now'))
+        (), dict(url='another_url',
+                 archive_path='/some/tar.tgz',
+                 visit_date='now'))
     assert res
     res.wait()
     assert res.successful()
 
     assert res.result == {'status': 'uneventful'}
-    mock_loader.assert_called_once_with(
-        origin_url='another_url',
-        archive_path='/some/tar.tgz',
-        visit_date='now')
+    mock_loader.assert_called_once_with()

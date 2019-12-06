@@ -11,9 +11,12 @@ def test_loader(mocker, swh_app, celery_session_worker):
 
     res = swh_app.send_task(
         'swh.loader.mercurial.tasks.LoadMercurial',
-        (), dict(url='origin_url',
-                 directory='/some/repo',
-                 visit_date='now'))
+        kwargs={
+            'url': 'origin_url',
+            'directory': '/some/repo',
+            'visit_date': 'now',
+        })
+
     assert res
     res.wait()
     assert res.successful()
@@ -29,9 +32,11 @@ def test_archive_loader(mocker, swh_app, celery_session_worker):
 
     res = swh_app.send_task(
         'swh.loader.mercurial.tasks.LoadArchiveMercurial',
-        (), dict(url='another_url',
-                 archive_path='/some/tar.tgz',
-                 visit_date='now'))
+        kwargs={
+            'url': 'another_url',
+            'archive_path': '/some/tar.tgz',
+            'visit_date': 'now',
+        })
     assert res
     res.wait()
     assert res.successful()

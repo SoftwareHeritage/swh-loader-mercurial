@@ -9,7 +9,7 @@ from .loader import HgBundle20Loader, HgArchiveBundle20Loader
 
 
 @shared_task(name=__name__ + '.LoadMercurial')
-def load_hg(*, url, directory=None, visit_date=None):
+def load_hg(url, directory=None, visit_date=None):
     """Mercurial repository loading
 
     Import a mercurial tarball into swh.
@@ -23,7 +23,7 @@ def load_hg(*, url, directory=None, visit_date=None):
 
 
 @shared_task(name=__name__ + '.LoadArchiveMercurial')
-def load_hg_from_archive(*, url, archive_path=None, visit_date=None):
+def load_hg_from_archive(url, archive_path=None, visit_date=None):
     """Import a mercurial tarball into swh.
 
     Args: see :func:`DepositLoader.load`.

@@ -1,3 +1,21 @@
+swh-loader-mercurial (0.0.22-1~swh1) unstable-swh; urgency=medium
+
+  * New upstream release 0.0.22     - (tagged by Antoine R. Dumont
+    (@ardumont) <antoine.romain.dumont@gmail.com> on 2019-12-10 10:54:19
+    +0100)
+  * Upstream changes:     - v0.0.22     - tasks: Unify message format
+    with other loaders     - tests: Clarify message     - tests: Migrate
+    to pytest-mock's fixture     - mercurial.tasks: Rename tasks
+    according to production     - loader.mercurial: Register mercurial
+    worker     - mercurial: Unify loader constructor     - Add a pre-
+    commit config file     - Migrate tox.ini to extras = xxx instead of
+    deps = .[testing]     - De-specify testenv:py3     - Include all
+    requirements in MANIFEST.in     - typing: minimal changes to make a
+    no-op mypy run pass     - tox.ini: Fix py3 environment to use
+    packaged tests
+
+ -- Software Heritage autobuilder (on jenkins-debian1) <jenkins@jenkins-debian1.internal.softwareheritage.org>  Tue, 10 Dec 2019 09:58:47 +0000
+
 swh-loader-mercurial (0.0.21-1~swh1) unstable-swh; urgency=medium
 
   * New upstream release 0.0.21     - (tagged by Nicolas Dandrimont

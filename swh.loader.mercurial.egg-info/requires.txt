@@ -13,5 +13,6 @@ swh.loader.core>=0.0.43
 
 [testing]
 pytest
+pytest-mock
 swh.core[http]>=0.0.61
 swh.scheduler[testing]

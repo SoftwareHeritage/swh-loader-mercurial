@@ -46,8 +46,8 @@ class BaseHgLoaderMemoryStorage:
     objects.
 
     """
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.origin_id = 1
         self.visit = 1
 

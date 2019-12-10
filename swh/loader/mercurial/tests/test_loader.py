@@ -23,33 +23,35 @@ class BaseHgLoaderTest(BaseLoaderTest):
     """Mixin base loader test to prepare the mercurial
        repository to uncompress, load and test the results.
 
-       This sets up
-
     """
-    def setUp(self, loader=HgLoaderMemoryStorage,
-              archive_name='the-sandbox.tgz', filename='the-sandbox',
+    def setUp(self, archive_name='the-sandbox.tgz', filename='the-sandbox',
               uncompress_archive=True):
         super().setUp(archive_name=archive_name, filename=filename,
                       prefix_tmp_folder_name='swh.loader.mercurial.',
                       start_path=os.path.dirname(__file__),
                       uncompress_archive=uncompress_archive)
-        self.loader = loader()
-        self.storage = self.loader.storage
 
 
 class WithoutReleaseLoaderTest(BaseHgLoaderTest):
     """Load a mercurial repository without release
 
     """
+    def setUp(self, *args, **kwargs):
+        super().setUp(*args, **kwargs)
+        self.loader = HgLoaderMemoryStorage(
+            url=self.repo_url,
+            visit_date='2016-05-03 15:16:32+00',
+            directory=self.destination_path)
+        self.storage = self.loader.storage
+
     def test_load(self):
         """Load a repository with multiple branches results in 1 snapshot
 
+        Another visit with no change in between result in uneventful visit
+
         """
         # when
-        self.loader.load(
-            origin_url=self.repo_url,
-            visit_date='2016-05-03 15:16:32+00',
-            directory=self.destination_path)
+        self.loader.load()
 
         # then
         self.assertCountContents(2)
@@ -150,22 +152,9 @@ class WithoutReleaseLoaderTest(BaseHgLoaderTest):
         self.assertEqual(self.loader.load_status(), {'status': 'eventful'})
         self.assertEqual(self.loader.visit_status(), 'full')
 
-    def test_load_status(self):
-        # first visit of the mercurial repository
-        self.loader.load(
-            origin_url=self.repo_url,
-            visit_date='2016-05-03 15:16:32+00',
-            directory=self.destination_path)
-
-        self.assertEqual(self.loader.load_status(), {'status': 'eventful'})
-        self.assertEqual(self.loader.visit_status(), 'full')
-
         # second visit with no changes in the mercurial repository
         # since the first one
-        self.loader.load(
-            origin_url=self.repo_url,
-            visit_date='2016-05-04 14:12:21+00',
-            directory=self.destination_path)
+        self.loader.load()
 
         self.assertEqual(self.loader.load_status(), {'status': 'uneventful'})
         self.assertEqual(self.loader.visit_status(), 'full')
@@ -224,17 +213,19 @@ class WithReleaseLoaderTest(BaseHgLoaderTest, CommonHgLoaderData):
     """
     def setUp(self):
         super().setUp(archive_name='hello.tgz', filename='hello')
+        self.loader = HgLoaderMemoryStorage(
+            url=self.repo_url,
+            visit_date='2016-05-03 15:16:32+00',
+            directory=self.destination_path
+        )
+        self.storage = self.loader.storage
 
     def test_load(self):
         """Load a repository with tags results in 1 snapshot
 
         """
         # when
-        self.loader.load(
-            origin_url=self.repo_url,
-            visit_date='2016-05-03 15:16:32+00',
-            directory=self.destination_path)
-
+        self.loader.load()
         self.assert_data_ok()
 
 
@@ -243,20 +234,21 @@ class ArchiveLoaderTest(BaseHgLoaderTest, CommonHgLoaderData):
 
     """
     def setUp(self):
-        super().setUp(loader=HgArchiveLoaderMemoryStorage,
-                      archive_name='hello.tgz', filename='hello',
+        super().setUp(archive_name='hello.tgz', filename='hello',
                       uncompress_archive=False)
+        self.loader = HgArchiveLoaderMemoryStorage(
+            url=self.repo_url,
+            visit_date='2016-05-03 15:16:32+00',
+            archive_path=self.destination_path
+        )
+        self.storage = self.loader.storage
 
     def test_load(self):
         """Load a mercurial repository archive with tags results in 1 snapshot
 
         """
         # when
-        self.loader.load(
-            origin_url=self.repo_url,
-            visit_date='2016-05-03 15:16:32+00',
-            archive_path=self.destination_path)
-
+        self.loader.load()
         self.assert_data_ok()
 
     @patch('swh.loader.mercurial.archive_extract.patoolib')
@@ -264,10 +256,7 @@ class ArchiveLoaderTest(BaseHgLoaderTest, CommonHgLoaderData):
         mock_patoo.side_effect = ValueError
 
         # when
-        r = self.loader.load(
-            origin_url=self.repo_url,
-            visit_date='2016-05-03 15:16:32+00',
-            archive_path=self.destination_path)
+        r = self.loader.load()
 
         self.assertEqual(r, {'status': 'failed'})
         self.assertCountContents(0)
@@ -284,13 +273,16 @@ class WithTransplantLoaderTest(BaseHgLoaderTest):
     """
     def setUp(self):
         super().setUp(archive_name='transplant.tgz', filename='transplant')
+        self.loader = HgLoaderMemoryStorage(
+            url=self.repo_url,
+            visit_date='2019-05-23 12:06:00+00',
+            directory=self.destination_path
+        )
+        self.storage = self.loader.storage
 
     def test_load(self):
         # load hg repository
-        self.loader.load(
-            origin_url=self.repo_url,
-            visit_date='2019-05-23 12:06:00+00',
-            directory=self.destination_path)
+        self.loader.load()
 
         # collect swh revisions
         origin_url = self.storage.origin_get([

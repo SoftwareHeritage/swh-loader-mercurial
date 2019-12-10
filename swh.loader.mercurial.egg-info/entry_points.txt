@@ -1,3 +1,4 @@
-[console_scripts]
-swh-loader-hg = swh.loader.mercurial.cli:main
 
+        [swh.workers]
+        loader.mercurial=swh.loader.mercurial:register
+    

@@ -1,4 +1,4 @@
-# Copyright (C) 2018  The Software Heritage developers
+# Copyright (C) 2018-2019  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -12,25 +12,20 @@ _LOADER_TEST_CONFIG = {
     'bundle_filename': 'HG20_none_bundle',
     'cache1_size': 838860800,
     'cache2_size': 838860800,
-    'content_packet_size': 100000,
-    'content_packet_size_bytes': 1073741824,
     'content_size_limit': 104857600,
-    'directory_packet_size': 25000,
     'clone_timeout_seconds': 2 * 3600,
     'log_db': 'dbname=softwareheritage-log',
-    'occurrence_packet_size': 100000,
     'reduce_effort': False,
-    'release_packet_size': 100000,
-    'revision_packet_size': 100000,
     'save_data': False,
     'save_data_path': '',
-    'send_contents': True,
-    'send_directories': True,
-    'send_occurrences': True,
-    'send_releases': True,
-    'send_revisions': True,
-    'send_snapshot': True,
-    'storage': {'args': {}, 'cls': 'memory'},
+    'max_content_size': 100 * 1024 * 1024,
+    'storage': {
+        'cls': 'pipeline',
+        'steps': [
+            {'cls': 'filter'},
+            {'cls': 'memory'},
+        ]
+    },
     'temp_directory': '/tmp/swh.loader.mercurial'
 }
 

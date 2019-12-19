@@ -1,8 +1,12 @@
-swh-loader-mercurial (0.0.24-1~swh1~bpo10+1) buster-swh; urgency=medium
+swh-loader-mercurial (0.0.25-1~swh1) unstable-swh; urgency=medium
 
-  * Rebuild for buster-swh
+  * New upstream release 0.0.25     - (tagged by Antoine R. Dumont
+    (@ardumont) <antoine.romain.dumont@gmail.com> on 2019-12-19 12:25:33
+    +0100)
+  * Upstream changes:     - v0.0.25     - mercurial.loader: Fix
+    configuration key duplication
 
- -- Software Heritage autobuilder (on jenkins-debian1) <jenkins@jenkins-debian1.internal.softwareheritage.org>  Thu, 12 Dec 2019 13:19:19 +0000
+ -- Software Heritage autobuilder (on jenkins-debian1) <jenkins@jenkins-debian1.internal.softwareheritage.org>  Thu, 19 Dec 2019 11:28:23 +0000
 
 swh-loader-mercurial (0.0.24-1~swh1) unstable-swh; urgency=medium
 

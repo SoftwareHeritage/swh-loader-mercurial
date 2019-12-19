@@ -81,7 +81,7 @@ class HgBundle20Loader(UnbufferedLoader):
         self.origin_url = url
         self.visit_date = visit_date
         self.directory = directory
-        self.content_max_size_limit = self.config['content_size_limit']
+        self.content_max_size_limit = self.config['max_content_size']
         self.bundle_filename = self.config['bundle_filename']
         self.reduce_effort_flag = self.config['reduce_effort']
         self.empty_repository = None

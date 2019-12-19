@@ -12,13 +12,12 @@ _LOADER_TEST_CONFIG = {
     'bundle_filename': 'HG20_none_bundle',
     'cache1_size': 838860800,
     'cache2_size': 838860800,
-    'content_size_limit': 104857600,
     'clone_timeout_seconds': 2 * 3600,
     'log_db': 'dbname=softwareheritage-log',
     'reduce_effort': False,
     'save_data': False,
     'save_data_path': '',
-    'max_content_size': 100 * 1024 * 1024,
+    'max_content_size': 104857600,
     'storage': {
         'cls': 'pipeline',
         'steps': [

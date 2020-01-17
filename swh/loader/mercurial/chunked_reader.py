@@ -29,8 +29,7 @@ class ChunkedFileReader(object):
         self._file.seek(self._offset, 0)  # seek back to original position
 
     def _chunk_size(self, first_time=False):
-        """Unpack the next <determined_by_'size_unpack_fmt'> bytes from the
-        file to get the next file chunk size.
+        """Unpack the next bytes from the file to get the next file chunk size.
         """
         size = struct.unpack(self._size_pattern,
                              self._file.read(self._size_bytes))[0]

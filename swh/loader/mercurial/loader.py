@@ -1,4 +1,4 @@
-# Copyright (C) 2017-2019  The Software Heritage developers
+# Copyright (C) 2017-2020  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -36,7 +36,7 @@ from swh.model.hashutil import (
     MultiHash, hash_to_hex, hash_to_bytehex, hash_to_bytes,
     DEFAULT_ALGORITHMS
 )
-from swh.loader.core.loader import UnbufferedLoader
+from swh.loader.core.loader import DVCSLoader
 from swh.loader.core.converters import content_for_storage
 from swh.loader.core.utils import clean_dangling_folders
 
@@ -58,7 +58,7 @@ class CloneTimeoutError(Exception):
     pass
 
 
-class HgBundle20Loader(UnbufferedLoader):
+class HgBundle20Loader(DVCSLoader):
     """Mercurial loader able to deal with remote or local repository.
 
     """

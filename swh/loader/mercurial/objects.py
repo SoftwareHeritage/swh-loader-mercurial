@@ -255,14 +255,17 @@ class SelectiveCache(OrderedDict):
     if the primary RAM-based storage area is filled to the designated capacity.
 
     Storage is occupied in three phases:
+
         1) The most recent key/value pair is always held, regardless of other
-           factors, until the next entry replaces it.
+        factors, until the next entry replaces it.
+
         2) Stored key/value pairs are pushed into a randomly accessible
-           expanding buffer in memory with a stored size function, maximum size
-           value, and special hinting about which keys to store for how long
-           optionally declared at instantiation.
+        expanding buffer in memory with a stored size function, maximum size
+        value, and special hinting about which keys to store for how long
+        optionally declared at instantiation.
+
         3) The in-memory buffer pickles into a randomly accessible disk-backed
-           secondary buffer when it becomes full.
+        secondary buffer when it becomes full.
 
     Occupied space is calculated by default as whatever the len() function
     returns on the values being stored. This can be changed by passing in a new
@@ -278,14 +281,15 @@ class SelectiveCache(OrderedDict):
 
     def __init__(self, max_size=None, cache_hints=None,
                  size_function=None, filename=None):
-        """args:
-                max_size: integer value indicating the maximum size of the part
-                          of storage held in memory
-                cache_hints: dict of key/int pairs as described in the class
-                             description
-                size_function: callback function that accepts one parameter and
-                               returns one int, which should probably be the
-                               calculated size of the parameter
+        """
+        args:
+            max_size: integer value indicating the maximum size of the part
+                of storage held in memory
+            cache_hints: dict of key/int pairs as described in the class
+                description
+            size_function: callback function that accepts one parameter and
+                returns one int, which should probably be the calculated
+                size of the parameter
         """
         self._max_size = max_size or SelectiveCache.DEFAULT_SIZE
         self._disk = None

@@ -1,3 +1,13 @@
+swh-loader-mercurial (0.0.27-1~swh1) unstable-swh; urgency=medium
+
+  * New upstream release 0.0.27     - (tagged by Antoine R. Dumont
+    (@ardumont) <antoine.romain.dumont@gmail.com> on 2020-02-06 18:45:38
+    +0100)
+  * Upstream changes:     - v0.0.27     - loader.mercurial: Call
+    storage's (skipped_)content_add endpoints
+
+ -- Software Heritage autobuilder (on jenkins-debian1) <jenkins@jenkins-debian1.internal.softwareheritage.org>  Thu, 06 Feb 2020 17:58:15 +0000
+
 swh-loader-mercurial (0.0.26-1~swh1) unstable-swh; urgency=medium
 
   * New upstream release 0.0.26     - (tagged by Antoine R. Dumont

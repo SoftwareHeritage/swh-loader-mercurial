@@ -37,7 +37,6 @@ from swh.model.hashutil import (
     DEFAULT_ALGORITHMS
 )
 from swh.loader.core.loader import DVCSLoader
-from swh.loader.core.converters import content_for_storage
 from swh.loader.core.utils import clean_dangling_folders
 
 from . import converters
@@ -81,7 +80,6 @@ class HgBundle20Loader(DVCSLoader):
         self.origin_url = url
         self.visit_date = visit_date
         self.directory = directory
-        self.content_max_size_limit = self.config['max_content_size']
         self.bundle_filename = self.config['bundle_filename']
         self.reduce_effort_flag = self.config['reduce_effort']
         self.empty_repository = None
@@ -341,12 +339,7 @@ class HgBundle20Loader(DVCSLoader):
                     content = contents.pop(node_hashes[node], None)
                     if content:
                         content['data'] = blob
-                        yield content_for_storage(
-                            content,
-                            log=self.log,
-                            max_content_size=self.content_max_size_limit,
-                            origin_url=self.origin_url
-                        )
+                        yield content
 
     def load_directories(self):
         """This is where the work is done to convert manifest deltas from the

@@ -18,7 +18,7 @@ Build-Depends: debhelper (>= 9),
                python3-swh.model (>= 0.0.27~),
                python3-swh.storage (>= 0.0.117~),
                python3-swh.scheduler (>= 0.0.39~),
-               python3-swh.loader.core (>= 0.0.37~),
+               python3-swh.loader.core (>= 0.0.78~),
                python3-vcversioner
 Standards-Version: 3.9.6
 Homepage: https://forge.softwareheritage.org/source/swh-loader-mercurial/
@@ -26,7 +26,7 @@ Homepage: https://forge.softwareheritage.org/source/swh-loader-mercurial/
 Package: python3-swh.loader.mercurial
 Architecture: all
 Depends: python3-swh.core (>= 0.0.36~),
-         python3-swh.loader.core (>= 0.0.37~),
+         python3-swh.loader.core (>= 0.0.78~),
          python3-swh.model (>= 0.0.27~),
          python3-swh.storage (>= 0.0.117~),
          python3-swh.scheduler (>= 0.0.39~),

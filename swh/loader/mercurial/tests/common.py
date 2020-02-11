@@ -22,6 +22,7 @@ _LOADER_TEST_CONFIG = {
         'cls': 'pipeline',
         'steps': [
             {'cls': 'filter'},
+            {'cls': 'validate'},
             {'cls': 'memory'},
         ]
     },

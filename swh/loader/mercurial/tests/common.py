@@ -21,8 +21,8 @@ _LOADER_TEST_CONFIG = {
     'storage': {
         'cls': 'pipeline',
         'steps': [
-            {'cls': 'filter'},
             {'cls': 'validate'},
+            {'cls': 'filter'},
             {'cls': 'memory'},
         ]
     },

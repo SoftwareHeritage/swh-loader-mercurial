@@ -19,12 +19,7 @@ _LOADER_TEST_CONFIG = {
     'save_data_path': '',
     'max_content_size': 104857600,
     'storage': {
-        'cls': 'pipeline',
-        'steps': [
-            {'cls': 'validate'},
-            {'cls': 'filter'},
-            {'cls': 'memory'},
-        ]
+        'cls': 'memory',
     },
     'temp_directory': '/tmp/swh.loader.mercurial'
 }
@@ -41,6 +36,7 @@ class BaseHgLoaderMemoryStorage:
     objects.
 
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.origin_id = 1

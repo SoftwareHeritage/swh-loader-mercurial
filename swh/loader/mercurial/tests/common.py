@@ -3,25 +3,21 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-from swh.loader.mercurial.loader import (
-    HgBundle20Loader, HgArchiveBundle20Loader
-)
+from swh.loader.mercurial.loader import HgBundle20Loader, HgArchiveBundle20Loader
 
 
 _LOADER_TEST_CONFIG = {
-    'bundle_filename': 'HG20_none_bundle',
-    'cache1_size': 838860800,
-    'cache2_size': 838860800,
-    'clone_timeout_seconds': 2 * 3600,
-    'log_db': 'dbname=softwareheritage-log',
-    'reduce_effort': False,
-    'save_data': False,
-    'save_data_path': '',
-    'max_content_size': 104857600,
-    'storage': {
-        'cls': 'memory',
-    },
-    'temp_directory': '/tmp/swh.loader.mercurial'
+    "bundle_filename": "HG20_none_bundle",
+    "cache1_size": 838860800,
+    "cache2_size": 838860800,
+    "clone_timeout_seconds": 2 * 3600,
+    "log_db": "dbname=softwareheritage-log",
+    "reduce_effort": False,
+    "save_data": False,
+    "save_data_path": "",
+    "max_content_size": 104857600,
+    "storage": {"cls": "memory",},
+    "temp_directory": "/tmp/swh.loader.mercurial",
 }
 
 
@@ -50,6 +46,5 @@ class HgLoaderMemoryStorage(BaseHgLoaderMemoryStorage, HgBundle20Loader):
     pass
 
 
-class HgArchiveLoaderMemoryStorage(BaseHgLoaderMemoryStorage,
-                                   HgArchiveBundle20Loader):
+class HgArchiveLoaderMemoryStorage(BaseHgLoaderMemoryStorage, HgArchiveBundle20Loader):
     pass

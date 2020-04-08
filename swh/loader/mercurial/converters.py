@@ -4,7 +4,7 @@
 # See top-level LICENSE file for more information
 
 
-PRIMARY_ALGO = 'sha1_git'
+PRIMARY_ALGO = "sha1_git"
 
 
 def parse_author(name_email):
@@ -14,29 +14,29 @@ def parse_author(name_email):
         return None
 
     try:
-        open_bracket = name_email.index(b'<')
+        open_bracket = name_email.index(b"<")
     except ValueError:
         name = email = None
     else:
         raw_name = name_email[:open_bracket]
-        raw_email = name_email[open_bracket+1:]
+        raw_email = name_email[open_bracket + 1 :]
 
         if not raw_name:
             name = None
-        elif raw_name.endswith(b' '):
+        elif raw_name.endswith(b" "):
             name = raw_name[:-1]
         else:
             name = raw_name
 
         try:
-            close_bracket = raw_email.index(b'>')
+            close_bracket = raw_email.index(b">")
         except ValueError:
             email = None
         else:
             email = raw_email[:close_bracket]
 
     return {
-        'name': name,
-        'email': email,
-        'fullname': name_email,
+        "name": name,
+        "email": email,
+        "fullname": name_email,
     }

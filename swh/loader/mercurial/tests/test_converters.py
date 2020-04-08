@@ -13,64 +13,55 @@ class TestParseAuthorConverters(unittest.TestCase):
         self.assertIsNone(converters.parse_author(None))
 
     def test_parse_author_no_bracket(self):
-        actual_author = converters.parse_author(b'someone')
+        actual_author = converters.parse_author(b"someone")
 
-        self.assertEqual(actual_author, {
-            'name': None,
-            'email': None,
-            'fullname': b'someone'
-        })
+        self.assertEqual(
+            actual_author, {"name": None, "email": None, "fullname": b"someone"}
+        )
 
     def test_parse_author_2(self):
-        actual_author = converters.parse_author(b'something <wicked')
+        actual_author = converters.parse_author(b"something <wicked")
 
-        self.assertEqual(actual_author, {
-            'name': b'something',
-            'email': None,
-            'fullname': b'something <wicked'
-        })
+        self.assertEqual(
+            actual_author,
+            {"name": b"something", "email": None, "fullname": b"something <wicked"},
+        )
 
     def test_parse_author_3(self):
-        actual_author = converters.parse_author(b'something >wicked')
+        actual_author = converters.parse_author(b"something >wicked")
 
-        self.assertEqual(actual_author, {
-            'name': None,
-            'email': None,
-            'fullname': b'something >wicked'
-        })
+        self.assertEqual(
+            actual_author,
+            {"name": None, "email": None, "fullname": b"something >wicked"},
+        )
 
     def test_parse_author_4(self):
-        actual_author = converters.parse_author(b'something <')
+        actual_author = converters.parse_author(b"something <")
 
-        self.assertEqual(actual_author, {
-            'name': b'something',
-            'email': None,
-            'fullname': b'something <'
-        })
+        self.assertEqual(
+            actual_author,
+            {"name": b"something", "email": None, "fullname": b"something <"},
+        )
 
     def test_parse_author_5(self):
-        actual_author = converters.parse_author(b'<only>')
+        actual_author = converters.parse_author(b"<only>")
 
-        self.assertEqual(actual_author, {
-            'name': None,
-            'email': b'only',
-            'fullname': b'<only>'
-        })
+        self.assertEqual(
+            actual_author, {"name": None, "email": b"only", "fullname": b"<only>"}
+        )
 
     def test_parse_author_6(self):
-        actual_author = converters.parse_author(b'  <something>')
+        actual_author = converters.parse_author(b"  <something>")
 
-        self.assertEqual(actual_author, {
-            'name': b' ',
-            'email': b'something',
-            'fullname': b'  <something>'
-        })
+        self.assertEqual(
+            actual_author,
+            {"name": b" ", "email": b"something", "fullname": b"  <something>"},
+        )
 
     def test_parse_author_normal(self):
-        actual_author = converters.parse_author(b'someone <awesome>')
+        actual_author = converters.parse_author(b"someone <awesome>")
 
-        self.assertEqual(actual_author, {
-            'name': b'someone',
-            'email': b'awesome',
-            'fullname': b'someone <awesome>'
-        })
+        self.assertEqual(
+            actual_author,
+            {"name": b"someone", "email": b"awesome", "fullname": b"someone <awesome>"},
+        )

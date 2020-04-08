@@ -177,22 +177,22 @@ class Bundle20Reader(object):
                     SelectiveCache class.
 
     """
-    NAUGHT_NODE = b'\x00' * 20
+
+    NAUGHT_NODE = b"\x00" * 20
 
     def __init__(self, bundlefile, cache_filename, cache_size=None):
         self.bundlefile = bundlefile
         self.cache_filename = cache_filename
-        bfile = open(bundlefile, 'rb', buffering=200*1024*1024)
+        bfile = open(bundlefile, "rb", buffering=200 * 1024 * 1024)
 
         btype = bfile.read(4)  # 'HG20'
-        if btype != b'HG20':
-            raise Exception(bundlefile,
-                            b'Not an HG20 bundle. First 4 bytes:' + btype)
+        if btype != b"HG20":
+            raise Exception(bundlefile, b"Not an HG20 bundle. First 4 bytes:" + btype)
         bfile.read(4)  # '\x00\x00\x00\x00'
 
         self.params = self.read_bundle_header(bfile)
         # print('PARAMETERS', self.params)
-        self.num_commits = self.params[b'nbchanges']
+        self.num_commits = self.params[b"nbchanges"]
 
         self.filereader = ChunkedFileReader(bfile)
 
@@ -215,27 +215,25 @@ class Bundle20Reader(object):
         returns:
             dict of decoded bundle parameters
         """
-        unpack('>I', bfile)  # header length
-        chg_len = unpack('>B', bfile)  # len('CHANGEGROUP') == 11
+        unpack(">I", bfile)  # header length
+        chg_len = unpack(">B", bfile)  # len('CHANGEGROUP') == 11
         bfile.read(chg_len)  # should say 'CHANGEGROUP'
-        unpack('>I', bfile)  # probably \x00\x00\x00\x00
+        unpack(">I", bfile)  # probably \x00\x00\x00\x00
 
-        n_mandatory, n_advisory = unpack('>BB', bfile)  # parameter counts
+        n_mandatory, n_advisory = unpack(">BB", bfile)  # parameter counts
         mandatory_params = [
-                    (key_len, val_len)
-                    for key_len, val_len
-                    in [unpack('>BB', bfile) for i in range(n_mandatory)]
-                    ]
+            (key_len, val_len)
+            for key_len, val_len in [unpack(">BB", bfile) for i in range(n_mandatory)]
+        ]
         advisory_params = [
-                    (key_len, val_len)
-                    for key_len, val_len
-                    in [unpack('>BB', bfile) for i in range(n_advisory)]
-                    ]
+            (key_len, val_len)
+            for key_len, val_len in [unpack(">BB", bfile) for i in range(n_advisory)]
+        ]
         params = {}
 
-        for key_len, val_len in mandatory_params+advisory_params:
-            key = unpack('>%ds' % key_len, bfile)
-            val = int(unpack('>%ds' % val_len, bfile))
+        for key_len, val_len in mandatory_params + advisory_params:
+            key = unpack(">%ds" % key_len, bfile)
+            val = int(unpack(">%ds" % val_len, bfile))
             params[key] = val
 
         return params
@@ -254,11 +252,11 @@ class Bundle20Reader(object):
             (int, int, read iterator) representing a single text diff component
         """
         while bytes_to_read > 0:
-            start_offset = unpack('>I', self.filereader)
-            end_offset = unpack('>I', self.filereader)
-            blocklen = unpack('>I', self.filereader)
+            start_offset = unpack(">I", self.filereader)
+            end_offset = unpack(">I", self.filereader)
+            blocklen = unpack(">I", self.filereader)
             delta_it = self.filereader.read_iterator(blocklen)
-            bytes_to_read -= (12 + blocklen)
+            bytes_to_read -= 12 + blocklen
             yield (start_offset, end_offset, delta_it)  # RevDiff
 
     def read_chunk_header(self):
@@ -276,11 +274,11 @@ class Bundle20Reader(object):
         """
         header = self.filereader.read(100)
         header = {
-            'node': header[0:20],
-            'p1': header[20:40],
-            'p2': header[40:60],
-            'basenode': header[60:80],
-            'linknode': header[80:100]
+            "node": header[0:20],
+            "p1": header[20:40],
+            "p2": header[40:60],
+            "basenode": header[60:80],
+            "linknode": header[80:100],
         }
         return header
 
@@ -297,7 +295,7 @@ class Bundle20Reader(object):
             tuple(dict, iterator) of (header, chunk data) if there is another
             chunk in the group, else None
         """
-        size = unpack('>I', self.filereader) - 104
+        size = unpack(">I", self.filereader) - 104
         if size >= 0:
             header = self.read_chunk_header()
             return (header, self.revdata_iterator(size))
@@ -313,18 +311,18 @@ class Bundle20Reader(object):
         returns:
             dict of decoded commit information
         """
-        parts, message = data.split(b'\n\n', 1)
-        parts = parts.split(b'\n')
+        parts, message = data.split(b"\n\n", 1)
+        parts = parts.split(b"\n")
         commit = {}
-        commit['message'] = message
-        commit['manifest'] = unhexlify(parts[0])
-        commit['user'] = parts[1]
-        tstamp, tz, *extra = parts[2].split(b' ')
-        commit['time'] = datetime.fromtimestamp(float(tstamp))
-        commit['time_offset_seconds'] = int(tz)
+        commit["message"] = message
+        commit["manifest"] = unhexlify(parts[0])
+        commit["user"] = parts[1]
+        tstamp, tz, *extra = parts[2].split(b" ")
+        commit["time"] = datetime.fromtimestamp(float(tstamp))
+        commit["time_offset_seconds"] = int(tz)
         if extra:
-            commit['extra'] = b' '.join(extra)
-        commit['changed_files'] = parts[3:]
+            commit["extra"] = b" ".join(extra)
+        commit["changed_files"] = parts[3:]
         return commit
 
     def skip_sections(self, num_sections=1):
@@ -334,10 +332,10 @@ class Bundle20Reader(object):
             num_sections: int number of sections to skip
         """
         for i in range(num_sections):
-            size = unpack('>I', self.filereader)
+            size = unpack(">I", self.filereader)
             while size >= 104:
                 self.filereader.seek(size - 4, from_current=True)
-                size = unpack('>I', self.filereader)
+                size = unpack(">I", self.filereader)
 
     def apply_revdata(self, revdata_it, prev_state):
         """Compose the complete text body for a change from component deltas.
@@ -357,14 +355,14 @@ class Bundle20Reader(object):
 
         for delta_start, delta_end, rev_diff_it in revdata_it:
             removed.append(prev_state[delta_start:delta_end])
-            added.append(b''.join(rev_diff_it))
+            added.append(b"".join(rev_diff_it))
 
             state.append(prev_state[next_start:delta_start])
             state.append(added[-1])
             next_start = delta_end
 
         state.append(prev_state[next_start:])
-        state = b''.join(state)
+        state = b"".join(state)
 
         return (state, added, removed)
 
@@ -375,12 +373,12 @@ class Bundle20Reader(object):
         yields:
             output of read_chunk_header method for all chunks in the group
         """
-        size = unpack('>I', self.filereader) - 104
+        size = unpack(">I", self.filereader) - 104
         while size >= 0:
             header = self.read_chunk_header()
             self.filereader.seek(size, from_current=True)
             yield header
-            size = unpack('>I', self.filereader) - 104
+            size = unpack(">I", self.filereader) - 104
 
     def group_iterator(self):
         """Bundle sections are called groups. These are composed of one or more
@@ -419,17 +417,19 @@ class Bundle20Reader(object):
         if cache_hints is None:
             cache_hints = self.build_cache_hints()
 
-        data_cache = SelectiveCache(max_size=self.cache_size,
-                                    cache_hints=cache_hints,
-                                    filename=self.cache_filename)
+        data_cache = SelectiveCache(
+            max_size=self.cache_size,
+            cache_hints=cache_hints,
+            filename=self.cache_filename,
+        )
 
         # Loop over all revisions in the group
-        data = b''
+        data = b""
         for header, revdata_it in self.group_iterator():
-            node = header['node']
-            basenode = header['basenode']
+            node = header["node"]
+            basenode = header["basenode"]
 
-            data = data_cache.fetch(basenode) or b''
+            data = data_cache.fetch(basenode) or b""
 
             data, added, removed = self.apply_revdata(revdata_it, data)
 
@@ -451,20 +451,20 @@ class Bundle20Reader(object):
             (bytestring, dict) of (the blob data, the meta information)
         """
         meta = {}
-        if data.startswith(b'\x01\n'):
-            empty, metainfo, data = data.split(b'\x01\n', 2)
-            metainfo = b'\x01\n' + metainfo + b'\x01\n'
-            if metainfo.startswith(b'copy:'):
+        if data.startswith(b"\x01\n"):
+            empty, metainfo, data = data.split(b"\x01\n", 2)
+            metainfo = b"\x01\n" + metainfo + b"\x01\n"
+            if metainfo.startswith(b"copy:"):
                 # direct file copy (?)
-                copyinfo = metainfo.split(b'\n')
-                meta['copied_file'] = copyinfo[0][6:]
-                meta['copied_rev'] = copyinfo[1][9:]
-            elif metainfo.startswith(b'censored:'):
+                copyinfo = metainfo.split(b"\n")
+                meta["copied_file"] = copyinfo[0][6:]
+                meta["copied_rev"] = copyinfo[1][9:]
+            elif metainfo.startswith(b"censored:"):
                 # censored revision deltas must be full-replacements (?)
-                meta['censored'] = metainfo
+                meta["censored"] = metainfo
             else:
                 # no idea
-                meta['text'] = metainfo
+                meta["text"] = metainfo
         return data, meta
 
     def seek_changelog(self):
@@ -503,15 +503,15 @@ class Bundle20Reader(object):
         self.seek_filelist()
 
         # Loop through all files that have commits
-        size = unpack('>I', self.filereader)
+        size = unpack(">I", self.filereader)
         while size > 0:
-            file_name = self.filereader.read(size-4)
+            file_name = self.filereader.read(size - 4)
             file_start_offset = self.filereader.tell()
             # get all of the blobs for each file
             for header, data, *_ in self.yield_group_objects():
                 blob, meta = self.extract_meta_from_blob(data)
                 yield blob, (file_name, file_start_offset, header)
-            size = unpack('>I', self.filereader)
+            size = unpack(">I", self.filereader)
 
     def yield_all_changesets(self):
         """Gets commit data from the bundle.
@@ -569,11 +569,11 @@ class Bundle20Reader(object):
         hints = OrderedDict()
         prev_node = None
         for header in self.skim_headers():
-            basenode = header['basenode']
+            basenode = header["basenode"]
             if (basenode != self.NAUGHT_NODE) and (basenode != prev_node):
                 # If the base isn't immediately prior, then cache it once more.
                 hints[basenode] = hints.get(basenode, 0) + 1
-            prev_node = header['node']
+            prev_node = header["node"]
         self.filereader.seek(cur_pos)
         return hints
 
@@ -602,23 +602,21 @@ class Bundle20Reader(object):
         """
         elements = {}
         if isinstance(data, str):
-            data = data.split(b'\n')
+            data = data.split(b"\n")
         else:
-            data = itertools.chain.from_iterable(
-                [chunk.split(b'\n') for chunk in data]
-            )
+            data = itertools.chain.from_iterable([chunk.split(b"\n") for chunk in data])
 
         for line in data:
-            if line != b'':
-                f = line.split(b'\x00')
+            if line != b"":
+                f = line.split(b"\x00")
 
                 node = f[1]
                 flag_bytes = node[40:]
 
                 elements[f[0]] = (
                     unhexlify(node[:40]),
-                    b'l' in flag_bytes,
-                    b'755' if (b'x' in flag_bytes) else b'644'
+                    b"l" in flag_bytes,
+                    b"755" if (b"x" in flag_bytes) else b"644",
                 )
 
         return elements

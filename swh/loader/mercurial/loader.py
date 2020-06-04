@@ -502,7 +502,7 @@ class HgBundle20Loader(DVCSLoader):
                     + extra_meta,
                 },
                 synthetic=False,
-                parents=parents,
+                parents=tuple(parents),
             )
 
             self.node_2_rev[header["node"]] = revision.id

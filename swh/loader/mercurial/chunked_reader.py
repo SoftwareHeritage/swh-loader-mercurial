@@ -16,7 +16,8 @@ class ChunkedFileReader(object):
         file: rb file handle pre-aligned to the start of the chunked portion
         size_unpack_fmt: struct format string for unpacking the next chunk size
     """
-    def __init__(self, file, size_unpack_fmt='>I'):
+
+    def __init__(self, file, size_unpack_fmt=">I"):
         self._file = file
         self._size_pattern = size_unpack_fmt
         self._size_bytes = struct.calcsize(size_unpack_fmt)
@@ -31,8 +32,7 @@ class ChunkedFileReader(object):
     def _chunk_size(self, first_time=False):
         """Unpack the next bytes from the file to get the next file chunk size.
         """
-        size = struct.unpack(self._size_pattern,
-                             self._file.read(self._size_bytes))[0]
+        size = struct.unpack(self._size_pattern, self._file.read(self._size_bytes))[0]
         return size
 
     def size(self):
@@ -46,7 +46,7 @@ class ChunkedFileReader(object):
         args:
             bytes_to_read: int number of bytes of content
         """
-        return b''.join(self.read_iterator(bytes_to_read))
+        return b"".join(self.read_iterator(bytes_to_read))
 
     def read_iterator(self, bytes_to_read):
         """Return a generator that yields N bytes from the file one file chunk
@@ -76,7 +76,7 @@ class ChunkedFileReader(object):
                 read except without the reading data part.
         """
         if from_current:
-            new_pos = new_pos or 0              # None -> current
+            new_pos = new_pos or 0  # None -> current
             if new_pos <= self._chunk_bytes_left:
                 new_pos += self._file.tell()
             else:
@@ -92,11 +92,10 @@ class ChunkedFileReader(object):
                     )
                 )
         else:
-            new_pos = new_pos or self._offset   # None -> start position
+            new_pos = new_pos or self._offset  # None -> start position
 
         self._chunk_bytes_left = self._bytes_per_chunk - (
-            (new_pos - self._offset)
-            % (self._bytes_per_chunk + self._size_bytes)
+            (new_pos - self._offset) % (self._bytes_per_chunk + self._size_bytes)
         )
         self._file.seek(new_pos)
 

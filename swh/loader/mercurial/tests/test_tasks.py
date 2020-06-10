@@ -5,41 +5,39 @@
 
 
 def test_loader(mocker, swh_app, celery_session_worker):
-    mock_loader = mocker.patch(
-        'swh.loader.mercurial.loader.HgBundle20Loader.load')
-    mock_loader.return_value = {'status': 'eventful'}
+    mock_loader = mocker.patch("swh.loader.mercurial.loader.HgBundle20Loader.load")
+    mock_loader.return_value = {"status": "eventful"}
 
     res = swh_app.send_task(
-        'swh.loader.mercurial.tasks.LoadMercurial',
-        kwargs={
-            'url': 'origin_url',
-            'directory': '/some/repo',
-            'visit_date': 'now',
-        })
+        "swh.loader.mercurial.tasks.LoadMercurial",
+        kwargs={"url": "origin_url", "directory": "/some/repo", "visit_date": "now",},
+    )
 
     assert res
     res.wait()
     assert res.successful()
 
-    assert res.result == {'status': 'eventful'}
+    assert res.result == {"status": "eventful"}
     mock_loader.assert_called_once_with()
 
 
 def test_archive_loader(mocker, swh_app, celery_session_worker):
     mock_loader = mocker.patch(
-        'swh.loader.mercurial.loader.HgArchiveBundle20Loader.load')
-    mock_loader.return_value = {'status': 'uneventful'}
+        "swh.loader.mercurial.loader.HgArchiveBundle20Loader.load"
+    )
+    mock_loader.return_value = {"status": "uneventful"}
 
     res = swh_app.send_task(
-        'swh.loader.mercurial.tasks.LoadArchiveMercurial',
+        "swh.loader.mercurial.tasks.LoadArchiveMercurial",
         kwargs={
-            'url': 'another_url',
-            'archive_path': '/some/tar.tgz',
-            'visit_date': 'now',
-        })
+            "url": "another_url",
+            "archive_path": "/some/tar.tgz",
+            "visit_date": "now",
+        },
+    )
     assert res
     res.wait()
     assert res.successful()
 
-    assert res.result == {'status': 'uneventful'}
+    assert res.result == {"status": "uneventful"}
     mock_loader.assert_called_once_with()

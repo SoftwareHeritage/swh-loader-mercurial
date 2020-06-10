@@ -20,17 +20,15 @@ from sqlitedict import SqliteDict
 
 from swh.model import identifiers
 
-OS_PATH_SEP = os.path.sep.encode('utf-8')
+OS_PATH_SEP = os.path.sep.encode("utf-8")
 
 
 def _encode(obj):
-    return sqlite3.Binary(zlib.compress(
-        pickle.dumps(obj, pickle.HIGHEST_PROTOCOL)))
+    return sqlite3.Binary(zlib.compress(pickle.dumps(obj, pickle.HIGHEST_PROTOCOL)))
 
 
 def _decode(obj):
-    return pickle.loads(
-        zlib.decompress(bytes(obj)))
+    return pickle.loads(zlib.decompress(bytes(obj)))
 
 
 class SimpleBlob:
@@ -44,7 +42,7 @@ class SimpleBlob:
                     e.g. '755' or b'755'
     """
 
-    kind = 'file'
+    kind = "file"
 
     def __init__(self, file_hash, is_symlink, file_perms):
         self.hash = file_hash
@@ -53,10 +51,10 @@ class SimpleBlob:
             self.perms += 0o020000
 
     def __str__(self):
-        return ('SimpleBlob: ' + str(self.hash) + ' -- ' + str(self.perms))
+        return "SimpleBlob: " + str(self.hash) + " -- " + str(self.perms)
 
     def __eq__(self, other):
-        return ((self.perms == other.perms) and (self.hash == other.hash))
+        return (self.perms == other.perms) and (self.hash == other.hash)
 
     def size(self):
         """Return the size in byte."""
@@ -68,7 +66,7 @@ class SimpleTree(dict):
     compact after forking and change monitoring for efficient re-hashing.
     """
 
-    kind = 'dir'
+    kind = "dir"
     perms = 0o040000
 
     def __init__(self):
@@ -76,7 +74,7 @@ class SimpleTree(dict):
         self._size = None
 
     def __eq__(self, other):
-        return ((self.hash == other.hash) and (self.items() == other.items()))
+        return (self.hash == other.hash) and (self.items() == other.items())
 
     def _new_tree_node(self, path):
         """Deeply nests SimpleTrees according to a given subdirectory path and
@@ -168,16 +166,11 @@ class SimpleTree(dict):
                 yield from v.yield_swh_directories()
 
         yield {
-            'id': self.hash,
-            'entries': [
-                {
-                    'name': k,
-                    'perms': v.perms,
-                    'type': v.kind,
-                    'target': v.hash
-                }
+            "id": self.hash,
+            "entries": [
+                {"name": k, "perms": v.perms, "type": v.kind, "target": v.hash}
                 for k, v in sorted(self.items())
-            ]
+            ],
         }
 
     def hash_changed(self, new_dirs=None):
@@ -193,22 +186,21 @@ class SimpleTree(dict):
         """
         if self.hash is None:
             directory = {
-                'entries': [
+                "entries": [
                     {
-                        'name': k,
-                        'perms': v.perms,
-                        'type': v.kind,
-                        'target': (v.hash if v.hash is not None
-                                   else v.hash_changed(new_dirs))
+                        "name": k,
+                        "perms": v.perms,
+                        "type": v.kind,
+                        "target": (
+                            v.hash if v.hash is not None else v.hash_changed(new_dirs)
+                        ),
                     }
                     for k, v in sorted(self.items())
                 ]
             }
 
-            self.hash = binascii.unhexlify(
-                identifiers.directory_identifier(directory)
-            )
-            directory['id'] = self.hash
+            self.hash = binascii.unhexlify(identifiers.directory_identifier(directory))
+            directory["id"] = self.hash
             if new_dirs is not None:
                 new_dirs.append(directory)
 
@@ -221,7 +213,7 @@ class SimpleTree(dict):
         returns:
             a flat list of all of the contained file paths
         """
-        _curpath = _curpath or b''
+        _curpath = _curpath or b""
         _files = _files or {}
         for k, v in sorted(self.items()):
             p = os.path.join(_curpath, k)
@@ -237,11 +229,9 @@ class SimpleTree(dict):
         """
         if self._size is None:
             self._size = (
-                sys.getsizeof(self) + sys.getsizeof(self.__dict__)
-                + sum([
-                    sys.getsizeof(k)+v.size()
-                    for k, v in self.items()
-                ])
+                sys.getsizeof(self)
+                + sys.getsizeof(self.__dict__)
+                + sum([sys.getsizeof(k) + v.size() for k, v in self.items()])
             )
         return self._size
 
@@ -277,10 +267,12 @@ class SelectiveCache(OrderedDict):
     key that is not in that set of hints, the cache will store it only while it
     is the most recent entry, and will bypass storage phases 2 and 3.
     """
-    DEFAULT_SIZE = 800*1024*1024  # bytes or whatever
 
-    def __init__(self, max_size=None, cache_hints=None,
-                 size_function=None, filename=None):
+    DEFAULT_SIZE = 800 * 1024 * 1024  # bytes or whatever
+
+    def __init__(
+        self, max_size=None, cache_hints=None, size_function=None, filename=None
+    ):
         """
         args:
             max_size: integer value indicating the maximum size of the part
@@ -320,10 +312,7 @@ class SelectiveCache(OrderedDict):
 
         # ...but limit memory expenditure for the cache by offloading to disk
         should_commit = False
-        while (
-            self._cache_size > self._max_size
-            and len(self) > 0
-        ):
+        while self._cache_size > self._max_size and len(self) > 0:
             should_commit = True
             k, v = self.popitem(last=False)
             self._cache_size -= self._size_function(v) - 53
@@ -337,9 +326,13 @@ class SelectiveCache(OrderedDict):
     def _diskstore(self, key, value):
         if self._disk is None:
             self._disk = SqliteDict(
-                autocommit=False, journal_mode='OFF',
-                filename=self.filename, tablename='swh',
-                encode=_encode, decode=_decode)
+                autocommit=False,
+                journal_mode="OFF",
+                filename=self.filename,
+                tablename="swh",
+                encode=_encode,
+                decode=_decode,
+            )
             self._disk.in_temp = True  # necessary to force the disk clean up
         self._disk[key] = value
 

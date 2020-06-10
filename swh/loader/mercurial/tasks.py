@@ -8,7 +8,7 @@ from celery import shared_task
 from .loader import HgBundle20Loader, HgArchiveBundle20Loader
 
 
-@shared_task(name=__name__ + '.LoadMercurial')
+@shared_task(name=__name__ + ".LoadMercurial")
 def load_hg(*, url, directory=None, visit_date=None):
     """Mercurial repository loading
 
@@ -17,17 +17,17 @@ def load_hg(*, url, directory=None, visit_date=None):
     Args: see :func:`DepositLoader.load`.
 
     """
-    loader = HgBundle20Loader(
-        url, directory=directory, visit_date=visit_date)
+    loader = HgBundle20Loader(url, directory=directory, visit_date=visit_date)
     return loader.load()
 
 
-@shared_task(name=__name__ + '.LoadArchiveMercurial')
+@shared_task(name=__name__ + ".LoadArchiveMercurial")
 def load_hg_from_archive(*, url, archive_path=None, visit_date=None):
     """Import a mercurial tarball into swh.
 
     Args: see :func:`DepositLoader.load`.
     """
     loader = HgArchiveBundle20Loader(
-        url, archive_path=archive_path, visit_date=visit_date)
+        url, archive_path=archive_path, visit_date=visit_date
+    )
     return loader.load()

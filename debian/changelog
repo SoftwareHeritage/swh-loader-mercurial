@@ -1,3 +1,22 @@
+swh-loader-mercurial (0.0.28-1~swh1) unstable-swh; urgency=medium
+
+  * New upstream release 0.0.28     - (tagged by Antoine R. Dumont
+    (@ardumont) <ardumont@softwareheritage.org> on 2020-06-10 17:58:11
+    +0200)
+  * Upstream changes:     - v0.0.28     - mercurial.loader: Wrap list
+    when calling <object>_missing endpoints     - mercurial.loader: Use
+    list comprehension over map     - mercurial.loader: Add missing type
+    annotation to respect base class     - mercurial.loader: Fix
+    revision parents field to a tuple     - setup.py: make black and
+    flake8 get along     - setup.py: add documentation link     - setup:
+    Update the minimum required runtime python3 version     - Add a
+    pyproject.toml file to target py37 for black     - Enable black     -
+    loader: Port to swh-model objects instead of dicts     - Use swh-
+    storage validation proxy earlier in the pipeline     - Use swh-
+    storage validation proxy
+
+ -- Software Heritage autobuilder (on jenkins-debian1) <jenkins@jenkins-debian1.internal.softwareheritage.org>  Wed, 10 Jun 2020 16:05:33 +0000
+
 swh-loader-mercurial (0.0.27-1~swh1) unstable-swh; urgency=medium
 
   * New upstream release 0.0.27     - (tagged by Antoine R. Dumont

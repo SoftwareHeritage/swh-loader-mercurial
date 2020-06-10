@@ -357,7 +357,7 @@ class HgBundle20Loader(DVCSLoader):
         if contents:
             missing_contents = set(
                 self.storage.content_missing(
-                    map(lambda c: c.to_dict(), contents.values()), key_hash=ALGO
+                    [c.to_dict() for c in contents.values()], key_hash=ALGO
                 )
             )
 

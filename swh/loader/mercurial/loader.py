@@ -162,7 +162,7 @@ class HgBundle20Loader(DVCSLoader):
 
         return b
 
-    def prepare_origin_visit(self, *args, **kwargs):
+    def prepare_origin_visit(self, *args, **kwargs) -> None:
         self.origin = Origin(url=self.origin_url)
         visit_date = self.visit_date
         if isinstance(visit_date, str):  # visit_date can be string or datetime

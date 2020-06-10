@@ -10,7 +10,8 @@ from typing import Any, Mapping
 def register() -> Mapping[str, Any]:
     """Register the current worker module's definition"""
     from .loader import HgBundle20Loader
+
     return {
-        'task_modules': [f'{__name__}.tasks'],
-        'loader': HgBundle20Loader,
+        "task_modules": [f"{__name__}.tasks"],
+        "loader": HgBundle20Loader,
     }

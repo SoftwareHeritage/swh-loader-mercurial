@@ -516,7 +516,7 @@ class HgBundle20Loader(DVCSLoader):
 
         missing_revs = set(revisions.keys())
         if missing_revs:
-            missing_revs = set(self.storage.revision_missing(missing_revs))
+            missing_revs = set(self.storage.revision_missing(list(missing_revs)))
 
         for rev in missing_revs:
             yield revisions[rev]
@@ -562,7 +562,7 @@ class HgBundle20Loader(DVCSLoader):
             self.releases[name] = release.id
 
         if missing_releases:
-            missing_releases = set(self.storage.release_missing(missing_releases))
+            missing_releases = set(self.storage.release_missing(list(missing_releases)))
 
         for _id in missing_releases:
             yield releases[_id]

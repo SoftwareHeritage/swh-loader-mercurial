@@ -58,6 +58,7 @@ from swh.model.hashutil import (
 )
 from swh.loader.core.loader import DVCSLoader
 from swh.loader.core.utils import clean_dangling_folders
+from swh.storage.algos.origin import origin_get_latest_visit_status
 
 from . import converters
 from .archive_extract import tmp_extract
@@ -117,6 +118,7 @@ class HgBundle20Loader(DVCSLoader):
         self.bundle_path = None
         self.heads = {}
         self.releases = {}
+        self.last_snapshot_id: Optional[bytes] = None
 
     def pre_cleanup(self):
         """Cleanup potential dangling files from prior runs (e.g. OOM killed
@@ -168,9 +170,14 @@ class HgBundle20Loader(DVCSLoader):
         if isinstance(visit_date, str):  # visit_date can be string or datetime
             visit_date = parser.parse(visit_date)
         self.visit_date = visit_date
-        self.last_visit = self.storage.origin_visit_get_latest(
-            self.origin_url, require_snapshot=True
+        visit_and_status = origin_get_latest_visit_status(
+            self.storage, self.origin_url, require_snapshot=True
         )
+        if visit_and_status is None:
+            self.last_snapshot_id = None
+        else:
+            _, visit_status = visit_and_status
+            self.last_snapshot_id = visit_status.snapshot
 
     @staticmethod
     def clone_with_timeout(log, origin, destination, timeout):
@@ -598,7 +605,7 @@ class HgBundle20Loader(DVCSLoader):
     def load_status(self):
         snapshot = self.get_snapshot()
         load_status = "eventful"
-        if self.last_visit is not None and self.last_visit["snapshot"] == snapshot.id:
+        if self.last_snapshot_id is not None and self.last_snapshot_id == snapshot.id:
             load_status = "uneventful"
         return {
             "status": load_status,

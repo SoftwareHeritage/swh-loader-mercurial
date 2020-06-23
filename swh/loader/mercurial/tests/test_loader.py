@@ -1,4 +1,4 @@
-# Copyright (C) 2018  The Software Heritage developers
+# Copyright (C) 2018-2020  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -7,13 +7,16 @@ import logging
 import os
 import time
 
+from typing import Any, Dict
 from unittest.mock import patch
 
 import hglib
 import pytest
 
+from swh.model.model import RevisionType
 from swh.loader.core.tests import BaseLoaderTest
-from swh.storage.algos.snapshot import snapshot_get_all_branches
+from swh.loader.tests.common import assert_last_visit_matches
+from swh.storage.algos.snapshot import snapshot_get_latest
 
 from .common import HgLoaderMemoryStorage, HgArchiveLoaderMemoryStorage
 from ..loader import HgBundle20Loader, CloneTimeoutError
@@ -155,22 +158,26 @@ class WithoutReleaseLoaderTest(BaseHgLoaderTest):
 
         # second visit with no changes in the mercurial repository
         # since the first one
-        self.loader.load()
-
-        self.assertEqual(self.loader.load_status(), {"status": "uneventful"})
-        self.assertEqual(self.loader.visit_status(), "full")
+        actual_load_status = self.loader.load()
+        assert actual_load_status == {"status": "uneventful"}
+        assert_last_visit_matches(
+            self.storage,
+            self.repo_url,
+            type=RevisionType.MERCURIAL.value,
+            status="full",
+        )
 
 
 class CommonHgLoaderData:
-    def assert_data_ok(self):
+    def assert_data_ok(self, actual_load_status: Dict[str, Any]):
         # then
-        self.assertCountContents(3)
-        self.assertCountDirectories(3)
-        self.assertCountReleases(1)
-        self.assertCountRevisions(3)
+        self.assertCountContents(3)  # type: ignore
+        self.assertCountDirectories(3)  # type: ignore
+        self.assertCountReleases(1)  # type: ignore
+        self.assertCountRevisions(3)  # type: ignore
 
         tip_release = "515c4d72e089404356d0f4b39d60f948b8999140"
-        self.assertReleasesContain([tip_release])
+        self.assertReleasesContain([tip_release])  # type: ignore
 
         tip_revision_default = "c3dbe4fbeaaa98dd961834e4007edb3efb0e2a27"
         # cf. test_loader.org for explaining from where those hashes
@@ -182,8 +189,8 @@ class CommonHgLoaderData:
             tip_revision_default: "8f2be433c945384c85920a8e60f2a68d2c0f20fb",
         }
 
-        self.assertRevisionsContain(expected_revisions)
-        self.assertCountSnapshots(1)
+        self.assertRevisionsContain(expected_revisions)  # type: ignore
+        self.assertCountSnapshots(1)  # type: ignore
 
         expected_snapshot = {
             "id": "d35668e02e2ba4321dc951cd308cf883786f918a",
@@ -194,9 +201,14 @@ class CommonHgLoaderData:
             },
         }
 
-        self.assertSnapshotEqual(expected_snapshot)
-        self.assertEqual(self.loader.load_status(), {"status": "eventful"})
-        self.assertEqual(self.loader.visit_status(), "full")
+        self.assertSnapshotEqual(expected_snapshot)  # type: ignore
+        assert actual_load_status == {"status": "eventful"}
+        assert_last_visit_matches(
+            self.storage,  # type: ignore
+            self.repo_url,  # type: ignore
+            type=RevisionType.MERCURIAL.value,
+            status="full",
+        )
 
 
 class WithReleaseLoaderTest(BaseHgLoaderTest, CommonHgLoaderData):
@@ -218,8 +230,8 @@ class WithReleaseLoaderTest(BaseHgLoaderTest, CommonHgLoaderData):
 
         """
         # when
-        self.loader.load()
-        self.assert_data_ok()
+        actual_load_status = self.loader.load()
+        self.assert_data_ok(actual_load_status)
 
 
 class ArchiveLoaderTest(BaseHgLoaderTest, CommonHgLoaderData):
@@ -243,8 +255,8 @@ class ArchiveLoaderTest(BaseHgLoaderTest, CommonHgLoaderData):
 
         """
         # when
-        self.loader.load()
-        self.assert_data_ok()
+        actual_load_status = self.loader.load()
+        self.assert_data_ok(actual_load_status)
 
     @patch("swh.loader.mercurial.archive_extract.patoolib")
     def test_load_with_failure(self, mock_patoo):
@@ -278,19 +290,23 @@ class WithTransplantLoaderTest(BaseHgLoaderTest):
 
     def test_load(self):
         # load hg repository
-        self.loader.load()
+        actual_load_status = self.loader.load()
+        assert actual_load_status == {"status": "eventful"}
 
         # collect swh revisions
         origin_url = self.storage.origin_get([{"type": "hg", "url": self.repo_url}])[0][
             "url"
         ]
-        visit = self.storage.origin_visit_get_latest(origin_url, require_snapshot=True)
+        assert_last_visit_matches(
+            self.storage, origin_url, type=RevisionType.MERCURIAL.value, status="full"
+        )
+
         revisions = []
-        snapshot = snapshot_get_all_branches(self.storage, visit["snapshot"])
-        for branch in snapshot["branches"].values():
-            if branch["target_type"] != "revision":
+        snapshot = snapshot_get_latest(self.storage, origin_url)
+        for branch in snapshot.branches.values():
+            if branch.target_type.value != "revision":
                 continue
-            revisions.append(branch["target"])
+            revisions.append(branch.target)
 
         # extract original changesets info and the transplant sources
         hg_changesets = set()

@@ -15,7 +15,7 @@ from swh.storage.tests.conftest import *  # noqa
 
 
 @pytest.fixture
-def swh_loader_config(swh_storage_backend_config) -> Dict[str, Any]:
+def swh_loader_config(swh_storage_backend_config, tmp_path) -> Dict[str, Any]:
     swh_storage_backend_config["journal_writer"] = {}
     return {
         "storage": {
@@ -35,12 +35,15 @@ def swh_loader_config(swh_storage_backend_config) -> Dict[str, Any]:
                 swh_storage_backend_config,
             ],
         },
-        "check_revision": {"limit": 100, "status": False},
-        "debug": False,
-        "log_db": "dbname=softwareheritage-log",
+        "bundle_filename": "HG20_none_bundle",
+        "cache1_size": 838860800,
+        "cache2_size": 838860800,
+        "clone_timeout_seconds": 2 * 3600,
+        "reduce_effort": False,
         "save_data": False,
         "save_data_path": "",
-        "temp_directory": "/tmp",
+        "max_content_size": 104857600,
+        "temp_directory": str(tmp_path),
     }
 
 

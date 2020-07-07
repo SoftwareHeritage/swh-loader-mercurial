@@ -3,19 +3,16 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+import copy
 import logging
 import os
 import time
-
-from typing import Any, Dict
-from unittest.mock import patch
 
 import hglib
 import pytest
 
 from swh.model import hashutil
 from swh.model.model import RevisionType
-from swh.loader.core.tests import BaseLoaderTest
 from swh.storage.algos.snapshot import snapshot_get_latest
 from swh.loader.tests import (
     assert_last_visit_matches,
@@ -24,32 +21,10 @@ from swh.loader.tests import (
     prepare_repository_from_archive,
 )
 
-from .common import HgLoaderMemoryStorage, HgArchiveLoaderMemoryStorage
-from ..loader import HgBundle20Loader, CloneTimeoutError
+from ..loader import HgBundle20Loader, HgArchiveBundle20Loader, CloneTimeoutError
 
 
-class BaseHgLoaderTest(BaseLoaderTest):
-    """Mixin base loader test to prepare the mercurial
-       repository to uncompress, load and test the results.
-
-    """
-
-    def setUp(
-        self,
-        archive_name="the-sandbox.tgz",
-        filename="the-sandbox",
-        uncompress_archive=True,
-    ):
-        super().setUp(
-            archive_name=archive_name,
-            filename=filename,
-            prefix_tmp_folder_name="swh.loader.mercurial.",
-            start_path=os.path.dirname(__file__),
-            uncompress_archive=uncompress_archive,
-        )
-
-
-def test_loader_hg_new_visit(swh_config, datadir, tmp_path):
+def test_loader_hg_new_visit_no_release(swh_config, datadir, tmp_path):
     """Eventful visit should yield 1 snapshot"""
     archive_name = "the-sandbox"
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
@@ -93,160 +68,182 @@ def test_loader_hg_new_visit(swh_config, datadir, tmp_path):
 
     check_snapshot(expected_snapshot, loader.storage)
 
+    # Ensure archive loader yields the same snapshot
+    loader2 = HgArchiveBundle20Loader(
+        url=archive_path,
+        archive_path=archive_path,
+        visit_date="2016-05-03 15:16:32+00",
+    )
 
-class CommonHgLoaderData:
-    def assert_data_ok(self, actual_load_status: Dict[str, Any]):
-        # then
-        self.assertCountContents(3)  # type: ignore
-        self.assertCountDirectories(3)  # type: ignore
-        self.assertCountReleases(1)  # type: ignore
-        self.assertCountRevisions(3)  # type: ignore
+    actual_load_status = loader2.load()
+    assert actual_load_status == {"status": "eventful"}
 
-        tip_release = "515c4d72e089404356d0f4b39d60f948b8999140"
-        self.assertReleasesContain([tip_release])  # type: ignore
+    stats2 = get_stats(loader2.storage)
+    expected_stats = copy.deepcopy(stats)
+    expected_stats["origin"] += 1
+    expected_stats["origin_visit"] += 1
+    assert stats2 == expected_stats
 
-        tip_revision_default = "c3dbe4fbeaaa98dd961834e4007edb3efb0e2a27"
-        # cf. test_loader.org for explaining from where those hashes
-        # come from
-        expected_revisions = {
-            # revision hash | directory hash  # noqa
-            "93b48d515580522a05f389bec93227fc8e43d940": "43d727f2f3f2f7cb3b098ddad1d7038464a4cee2",  # noqa
-            "8dd3db5d5519e4947f035d141581d304565372d2": "b3f85f210ff86d334575f64cb01c5bf49895b63e",  # noqa
-            tip_revision_default: "8f2be433c945384c85920a8e60f2a68d2c0f20fb",
-        }
-
-        self.assertRevisionsContain(expected_revisions)  # type: ignore
-        self.assertCountSnapshots(1)  # type: ignore
-
-        expected_snapshot = {
-            "id": "d35668e02e2ba4321dc951cd308cf883786f918a",
-            "branches": {
-                "default": {"target": tip_revision_default, "target_type": "revision"},
-                "0.1": {"target": tip_release, "target_type": "release"},
-                "HEAD": {"target": "default", "target_type": "alias",},
-            },
-        }
-
-        self.assertSnapshotEqual(expected_snapshot)  # type: ignore
-        assert actual_load_status == {"status": "eventful"}
-        assert_last_visit_matches(
-            self.storage,  # type: ignore
-            self.repo_url,  # type: ignore
-            type=RevisionType.MERCURIAL.value,
-            status="full",
-        )
+    # That visit yields the same snapshot
+    assert_last_visit_matches(
+        loader2.storage,
+        archive_path,
+        status="full",
+        type="hg",
+        snapshot=hashutil.hash_to_bytes("3b8fe58e467deb7597b12a5fd3b2c096b8c02028"),
+    )
 
 
-class WithReleaseLoaderTest(BaseHgLoaderTest, CommonHgLoaderData):
-    """Load a mercurial repository with release
+def test_loader_hg_new_visit_with_release(swh_config, datadir, tmp_path):
+    """Eventful visit with release should yield 1 snapshot"""
+    archive_name = "hello"
+    archive_path = os.path.join(datadir, f"{archive_name}.tgz")
+    repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
+
+    loader = HgBundle20Loader(url=repo_url, visit_date="2016-05-03 15:16:32+00",)
+
+    actual_load_status = loader.load()
+    assert actual_load_status == {"status": "eventful"}
+
+    # then
+    stats = get_stats(loader.storage)
+    assert stats == {
+        "content": 3,
+        "directory": 3,
+        "origin": 1,
+        "origin_visit": 1,
+        "person": 3,
+        "release": 1,
+        "revision": 3,
+        "skipped_content": 0,
+        "snapshot": 1,
+    }
+
+    # cf. test_loader.org for explaining from where those hashes
+    tip_release = "515c4d72e089404356d0f4b39d60f948b8999140"
+    release = loader.storage.release_get([hashutil.hash_to_bytes(tip_release)])
+    assert release is not None
+
+    tip_revision_default = "c3dbe4fbeaaa98dd961834e4007edb3efb0e2a27"
+    revision = loader.storage.revision_get(
+        [hashutil.hash_to_bytes(tip_revision_default)]
+    )
+    assert revision is not None
+
+    expected_snapshot_id = "d35668e02e2ba4321dc951cd308cf883786f918a"
+    expected_snapshot = {
+        "id": expected_snapshot_id,
+        "branches": {
+            "default": {"target": tip_revision_default, "target_type": "revision"},
+            "0.1": {"target": tip_release, "target_type": "release"},
+            "HEAD": {"target": "default", "target_type": "alias",},
+        },
+    }
+
+    check_snapshot(expected_snapshot, loader.storage)
+    assert_last_visit_matches(
+        loader.storage, repo_url, type=RevisionType.MERCURIAL.value, status="full",
+    )
+
+    # Ensure archive loader yields the same snapshot
+    loader2 = HgArchiveBundle20Loader(
+        url=archive_path,
+        archive_path=archive_path,
+        visit_date="2016-05-03 15:16:32+00",
+    )
+
+    actual_load_status = loader2.load()
+    assert actual_load_status == {"status": "eventful"}
+
+    stats2 = get_stats(loader2.storage)
+    expected_stats = copy.deepcopy(stats)
+    expected_stats["origin"] += 1
+    expected_stats["origin_visit"] += 1
+    assert stats2 == expected_stats
+
+    # That visit yields the same snapshot
+    assert_last_visit_matches(
+        loader2.storage,
+        archive_path,
+        status="full",
+        type="hg",
+        snapshot=hashutil.hash_to_bytes(expected_snapshot_id),
+    )
+
+
+def test_visit_with_archive_decompression_failure(swh_config, mocker, datadir):
+    """Failure to decompress should fail early, no data is ingested"""
+    mock_patoo = mocker.patch("swh.loader.mercurial.archive_extract.patoolib")
+    mock_patoo.side_effect = ValueError
+
+    archive_name = "hello"
+    archive_path = os.path.join(datadir, f"{archive_name}.tgz")
+    # Ensure archive loader yields the same snapshot
+    loader = HgArchiveBundle20Loader(
+        url=archive_path, visit_date="2016-05-03 15:16:32+00",
+    )
+
+    actual_load_status = loader.load()
+    assert actual_load_status == {"status": "failed"}
+
+    stats = get_stats(loader.storage)
+    assert stats == {
+        "content": 0,
+        "directory": 0,
+        "origin": 1,
+        "origin_visit": 1,
+        "person": 0,
+        "release": 0,
+        "revision": 0,
+        "skipped_content": 0,
+        "snapshot": 0,
+    }
+    # That visit yields the same snapshot
+    assert_last_visit_matches(
+        loader.storage, archive_path, status="partial", type="hg", snapshot=None
+    )
+
+
+def test_visit_repository_with_transplant_operations(swh_config, datadir, tmp_path):
+    """Visit a mercurial repository visit transplant operations within should yield a
+    snapshot as well.
 
     """
 
-    def setUp(self):
-        super().setUp(archive_name="hello.tgz", filename="hello")
-        self.loader = HgLoaderMemoryStorage(
-            url=self.repo_url,
-            visit_date="2016-05-03 15:16:32+00",
-            directory=self.destination_path,
-        )
-        self.storage = self.loader.storage
+    archive_name = "transplant"
+    archive_path = os.path.join(datadir, f"{archive_name}.tgz")
+    repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
+    loader = HgBundle20Loader(url=repo_url, visit_date="2019-05-23 12:06:00+00",)
 
-    def test_load(self):
-        """Load a repository with tags results in 1 snapshot
+    # load hg repository
+    actual_load_status = loader.load()
+    assert actual_load_status == {"status": "eventful"}
 
-        """
-        # when
-        actual_load_status = self.loader.load()
-        self.assert_data_ok(actual_load_status)
+    # collect swh revisions
+    assert_last_visit_matches(
+        loader.storage, repo_url, type=RevisionType.MERCURIAL.value, status="full"
+    )
 
+    revisions = []
+    snapshot = snapshot_get_latest(loader.storage, repo_url)
+    for branch in snapshot.branches.values():
+        if branch.target_type.value != "revision":
+            continue
+        revisions.append(branch.target)
 
-class ArchiveLoaderTest(BaseHgLoaderTest, CommonHgLoaderData):
-    """Load a mercurial repository archive with release
+    # extract original changesets info and the transplant sources
+    hg_changesets = set()
+    transplant_sources = set()
+    for rev in loader.storage.revision_log(revisions):
+        hg_changesets.add(rev["metadata"]["node"])
+        for k, v in rev["metadata"]["extra_headers"]:
+            if k == "transplant_source":
+                transplant_sources.add(v.decode("ascii"))
 
-    """
-
-    def setUp(self):
-        super().setUp(
-            archive_name="hello.tgz", filename="hello", uncompress_archive=False
-        )
-        self.loader = HgArchiveLoaderMemoryStorage(
-            url=self.repo_url,
-            visit_date="2016-05-03 15:16:32+00",
-            archive_path=self.destination_path,
-        )
-        self.storage = self.loader.storage
-
-    def test_load(self):
-        """Load a mercurial repository archive with tags results in 1 snapshot
-
-        """
-        # when
-        actual_load_status = self.loader.load()
-        self.assert_data_ok(actual_load_status)
-
-    @patch("swh.loader.mercurial.archive_extract.patoolib")
-    def test_load_with_failure(self, mock_patoo):
-        mock_patoo.side_effect = ValueError
-
-        # when
-        r = self.loader.load()
-
-        self.assertEqual(r, {"status": "failed"})
-        self.assertCountContents(0)
-        self.assertCountDirectories(0)
-        self.assertCountRevisions(0)
-        self.assertCountReleases(0)
-        self.assertCountSnapshots(0)
-
-
-class WithTransplantLoaderTest(BaseHgLoaderTest):
-    """Load a mercurial repository where transplant operations
-    have been used.
-
-    """
-
-    def setUp(self):
-        super().setUp(archive_name="transplant.tgz", filename="transplant")
-        self.loader = HgLoaderMemoryStorage(
-            url=self.repo_url,
-            visit_date="2019-05-23 12:06:00+00",
-            directory=self.destination_path,
-        )
-        self.storage = self.loader.storage
-
-    def test_load(self):
-        # load hg repository
-        actual_load_status = self.loader.load()
-        assert actual_load_status == {"status": "eventful"}
-
-        # collect swh revisions
-        origin_url = self.storage.origin_get([{"type": "hg", "url": self.repo_url}])[0][
-            "url"
-        ]
-        assert_last_visit_matches(
-            self.storage, origin_url, type=RevisionType.MERCURIAL.value, status="full"
-        )
-
-        revisions = []
-        snapshot = snapshot_get_latest(self.storage, origin_url)
-        for branch in snapshot.branches.values():
-            if branch.target_type.value != "revision":
-                continue
-            revisions.append(branch.target)
-
-        # extract original changesets info and the transplant sources
-        hg_changesets = set()
-        transplant_sources = set()
-        for rev in self.storage.revision_log(revisions):
-            hg_changesets.add(rev["metadata"]["node"])
-            for k, v in rev["metadata"]["extra_headers"]:
-                if k == "transplant_source":
-                    transplant_sources.add(v.decode("ascii"))
-
-        # check extracted data are valid
-        self.assertTrue(len(hg_changesets) > 0)
-        self.assertTrue(len(transplant_sources) > 0)
-        self.assertTrue(transplant_sources.issubset(hg_changesets))
+    # check extracted data are valid
+    assert len(hg_changesets) > 0
+    assert len(transplant_sources) > 0
+    assert transplant_sources.issubset(hg_changesets)
 
 
 def test_clone_with_timeout_timeout(caplog, tmp_path, monkeypatch):

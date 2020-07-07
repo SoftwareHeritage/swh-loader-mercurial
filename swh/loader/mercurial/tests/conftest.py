@@ -56,15 +56,6 @@ def swh_config(swh_loader_config, monkeypatch, tmp_path):
     return conffile
 
 
-@pytest.fixture
-def datadir(request):
-    """Override default datadir because it's named `resources` in this repository and not
-    `data` as expected by the default fixture.
-
-    """
-    return os.path.join(os.path.dirname(str(request.fspath)), "resources")
-
-
 @pytest.fixture(scope="session")  # type: ignore  # expected redefinition
 def celery_includes():
     return [

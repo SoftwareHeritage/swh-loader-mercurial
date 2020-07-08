@@ -27,11 +27,10 @@ swh/loader/mercurial/objects.py
 swh/loader/mercurial/py.typed
 swh/loader/mercurial/tasks.py
 swh/loader/mercurial/tests/__init__.py
-swh/loader/mercurial/tests/common.py
 swh/loader/mercurial/tests/conftest.py
 swh/loader/mercurial/tests/test_converters.py
 swh/loader/mercurial/tests/test_loader.py
 swh/loader/mercurial/tests/test_tasks.py
-swh/loader/mercurial/tests/resources/hello.tgz
-swh/loader/mercurial/tests/resources/the-sandbox.tgz
-swh/loader/mercurial/tests/resources/transplant.tgz
+swh/loader/mercurial/tests/data/hello.tgz
+swh/loader/mercurial/tests/data/the-sandbox.tgz
+swh/loader/mercurial/tests/data/transplant.tgz

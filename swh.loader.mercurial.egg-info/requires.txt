@@ -6,13 +6,14 @@ python-hglib
 retrying
 sqlitedict
 vcversioner
-swh.model>=0.3.0
-swh.storage>=0.7.0
+swh.model>=0.4.0
+swh.storage>=0.10.0
 swh.scheduler>=0.0.39
-swh.loader.core>=0.3.2
+swh.loader.core>=0.5.2
 
 [testing]
 pytest
 pytest-mock
 swh.core[http]>=0.0.61
 swh.scheduler[testing]
+swh.storage[testing]

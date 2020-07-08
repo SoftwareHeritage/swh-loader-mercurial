@@ -236,8 +236,8 @@ def test_visit_repository_with_transplant_operations(swh_config, datadir, tmp_pa
     transplant_sources = set()
     for rev in loader.storage.revision_log(revisions):
         hg_changesets.add(rev["metadata"]["node"])
-        for k, v in rev["metadata"]["extra_headers"]:
-            if k == "transplant_source":
+        for k, v in rev["extra_headers"]:
+            if k == b"transplant_source":
                 transplant_sources.add(v.decode("ascii"))
 
     # check extracted data are valid

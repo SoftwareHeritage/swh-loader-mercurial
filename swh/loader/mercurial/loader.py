@@ -470,17 +470,21 @@ class HgBundle20Loader(DVCSLoader):
             else:
                 directory_id = self.mnode_to_tree_id[commit["manifest"]]
 
-            extra_meta = []
+            extra_headers = [
+                (
+                    b"time_offset_seconds",
+                    str(commit["time_offset_seconds"]).encode("utf-8"),
+                )
+            ]
             extra = commit.get("extra")
             if extra:
                 for e in extra.split(b"\x00"):
                     k, v = e.split(b":", 1)
-                    k = k.decode("utf-8")
                     # transplant_source stores binary reference to a changeset
                     # prefer to dump hexadecimal one in the revision metadata
-                    if k == "transplant_source":
+                    if k == b"transplant_source":
                         v = hash_to_bytehex(v)
-                    extra_meta.append([k, v])
+                    extra_headers.append((k, v))
 
             parents = []
             p1 = self.node_2_rev.get(header["p1"])
@@ -498,16 +502,8 @@ class HgBundle20Loader(DVCSLoader):
                 type=RevisionType.MERCURIAL,
                 directory=directory_id,
                 message=commit["message"],
-                metadata={
-                    "node": hash_to_hex(header["node"]),
-                    "extra_headers": [
-                        [
-                            "time_offset_seconds",
-                            str(commit["time_offset_seconds"]).encode("utf-8"),
-                        ],
-                    ]
-                    + extra_meta,
-                },
+                metadata={"node": hash_to_hex(header["node"]),},
+                extra_headers=tuple(extra_headers),
                 synthetic=False,
                 parents=tuple(parents),
             )

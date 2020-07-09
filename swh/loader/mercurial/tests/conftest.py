@@ -56,7 +56,7 @@ def swh_config(swh_loader_config, monkeypatch, tmp_path):
     return conffile
 
 
-@pytest.fixture(scope="session")  # type: ignore  # expected redefinition
+@pytest.fixture(scope="session")  # expected redefinition
 def celery_includes():
     return [
         "swh.loader.mercurial.tasks",

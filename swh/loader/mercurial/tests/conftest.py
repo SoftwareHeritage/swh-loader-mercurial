@@ -10,9 +10,6 @@ import pytest
 
 from typing import Any, Dict
 
-from swh.scheduler.tests.conftest import *  # noqa
-from swh.storage.tests.conftest import *  # noqa
-
 
 @pytest.fixture
 def swh_loader_config(swh_storage_backend_config, tmp_path) -> Dict[str, Any]:
@@ -54,10 +51,3 @@ def swh_config(swh_loader_config, monkeypatch, tmp_path):
         f.write(yaml.dump(swh_loader_config))
     monkeypatch.setenv("SWH_CONFIG_FILENAME", conffile)
     return conffile
-
-
-@pytest.fixture(scope="session")  # expected redefinition
-def celery_includes():
-    return [
-        "swh.loader.mercurial.tasks",
-    ]

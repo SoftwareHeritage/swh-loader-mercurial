@@ -9,11 +9,11 @@ vcversioner
 swh.model>=0.4.0
 swh.storage>=0.10.0
 swh.scheduler>=0.0.39
-swh.loader.core>=0.5.2
+swh.loader.core>=0.5.5
 
 [testing]
 pytest
 pytest-mock
 swh.core[http]>=0.0.61
-swh.scheduler[testing]
+swh.scheduler[testing]>=0.5.0
 swh.storage[testing]

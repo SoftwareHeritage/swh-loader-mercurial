@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: swh.loader.mercurial
-Version: 0.0.30
+Version: 0.0.31
 Summary: Software Heritage Mercurial Loader
 Home-page: https://forge.softwareheritage.org/diffusion/DLDHG/
 Author: Software Heritage developers

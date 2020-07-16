@@ -4,11 +4,11 @@
 # See top-level LICENSE file for more information
 
 
-def test_loader(mocker, swh_app, celery_session_worker):
+def test_loader(mocker, swh_scheduler_celery_app, swh_scheduler_celery_worker):
     mock_loader = mocker.patch("swh.loader.mercurial.loader.HgBundle20Loader.load")
     mock_loader.return_value = {"status": "eventful"}
 
-    res = swh_app.send_task(
+    res = swh_scheduler_celery_app.send_task(
         "swh.loader.mercurial.tasks.LoadMercurial",
         kwargs={"url": "origin_url", "directory": "/some/repo", "visit_date": "now",},
     )
@@ -21,13 +21,13 @@ def test_loader(mocker, swh_app, celery_session_worker):
     mock_loader.assert_called_once_with()
 
 
-def test_archive_loader(mocker, swh_app, celery_session_worker):
+def test_archive_loader(mocker, swh_scheduler_celery_app, swh_scheduler_celery_worker):
     mock_loader = mocker.patch(
         "swh.loader.mercurial.loader.HgArchiveBundle20Loader.load"
     )
     mock_loader.return_value = {"status": "uneventful"}
 
-    res = swh_app.send_task(
+    res = swh_scheduler_celery_app.send_task(
         "swh.loader.mercurial.tasks.LoadArchiveMercurial",
         kwargs={
             "url": "another_url",

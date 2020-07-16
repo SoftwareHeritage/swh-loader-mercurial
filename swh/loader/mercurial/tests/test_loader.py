@@ -11,7 +11,7 @@ import time
 import hglib
 import pytest
 
-from swh.model import hashutil
+from swh.model.hashutil import hash_to_bytes
 from swh.model.model import RevisionType
 from swh.storage.algos.snapshot import snapshot_get_latest
 from swh.loader.tests import (
@@ -39,7 +39,7 @@ def test_loader_hg_new_visit_no_release(swh_config, datadir, tmp_path):
         repo_url,
         status="full",
         type="hg",
-        snapshot=hashutil.hash_to_bytes("3b8fe58e467deb7597b12a5fd3b2c096b8c02028"),
+        snapshot=hash_to_bytes("3b8fe58e467deb7597b12a5fd3b2c096b8c02028"),
     )
 
     stats = get_stats(loader.storage)
@@ -58,11 +58,17 @@ def test_loader_hg_new_visit_no_release(swh_config, datadir, tmp_path):
     tip_revision_develop = "a9c4534552df370f43f0ef97146f393ef2f2a08c"
     tip_revision_default = "70e750bb046101fdced06f428e73fee471509c56"
     expected_snapshot = {
-        "id": "3b8fe58e467deb7597b12a5fd3b2c096b8c02028",
+        "id": hash_to_bytes("3b8fe58e467deb7597b12a5fd3b2c096b8c02028"),
         "branches": {
-            "develop": {"target": tip_revision_develop, "target_type": "revision"},
-            "default": {"target": tip_revision_default, "target_type": "revision"},
-            "HEAD": {"target": "develop", "target_type": "alias",},
+            b"develop": {
+                "target": hash_to_bytes(tip_revision_develop),
+                "target_type": "revision",
+            },
+            b"default": {
+                "target": hash_to_bytes(tip_revision_default),
+                "target_type": "revision",
+            },
+            b"HEAD": {"target": b"develop", "target_type": "alias",},
         },
     }
 
@@ -90,7 +96,7 @@ def test_loader_hg_new_visit_no_release(swh_config, datadir, tmp_path):
         archive_path,
         status="full",
         type="hg",
-        snapshot=hashutil.hash_to_bytes("3b8fe58e467deb7597b12a5fd3b2c096b8c02028"),
+        snapshot=hash_to_bytes("3b8fe58e467deb7597b12a5fd3b2c096b8c02028"),
     )
 
 
@@ -121,22 +127,22 @@ def test_loader_hg_new_visit_with_release(swh_config, datadir, tmp_path):
 
     # cf. test_loader.org for explaining from where those hashes
     tip_release = "515c4d72e089404356d0f4b39d60f948b8999140"
-    release = loader.storage.release_get([hashutil.hash_to_bytes(tip_release)])
+    release = loader.storage.release_get([hash_to_bytes(tip_release)])
     assert release is not None
 
     tip_revision_default = "c3dbe4fbeaaa98dd961834e4007edb3efb0e2a27"
-    revision = loader.storage.revision_get(
-        [hashutil.hash_to_bytes(tip_revision_default)]
-    )
+    revision = loader.storage.revision_get([hash_to_bytes(tip_revision_default)])
     assert revision is not None
 
-    expected_snapshot_id = "d35668e02e2ba4321dc951cd308cf883786f918a"
     expected_snapshot = {
-        "id": expected_snapshot_id,
+        "id": hash_to_bytes("d35668e02e2ba4321dc951cd308cf883786f918a"),
         "branches": {
-            "default": {"target": tip_revision_default, "target_type": "revision"},
-            "0.1": {"target": tip_release, "target_type": "release"},
-            "HEAD": {"target": "default", "target_type": "alias",},
+            b"default": {
+                "target": hash_to_bytes(tip_revision_default),
+                "target_type": "revision",
+            },
+            b"0.1": {"target": hash_to_bytes(tip_release), "target_type": "release",},
+            b"HEAD": {"target": b"default", "target_type": "alias",},
         },
     }
 
@@ -167,7 +173,7 @@ def test_loader_hg_new_visit_with_release(swh_config, datadir, tmp_path):
         archive_path,
         status="full",
         type="hg",
-        snapshot=hashutil.hash_to_bytes(expected_snapshot_id),
+        snapshot=expected_snapshot["id"],
     )
 
 

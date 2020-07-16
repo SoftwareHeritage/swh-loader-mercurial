@@ -58,7 +58,7 @@ def test_loader_hg_new_visit_no_release(swh_config, datadir, tmp_path):
     tip_revision_develop = "a9c4534552df370f43f0ef97146f393ef2f2a08c"
     tip_revision_default = "70e750bb046101fdced06f428e73fee471509c56"
     expected_snapshot = {
-        "id": "3b8fe58e467deb7597b12a5fd3b2c096b8c02028",
+        "id": hash_to_bytes("3b8fe58e467deb7597b12a5fd3b2c096b8c02028"),
         "branches": {
             b"develop": {
                 "target": hash_to_bytes(tip_revision_develop),
@@ -134,9 +134,8 @@ def test_loader_hg_new_visit_with_release(swh_config, datadir, tmp_path):
     revision = loader.storage.revision_get([hash_to_bytes(tip_revision_default)])
     assert revision is not None
 
-    expected_snapshot_id = "d35668e02e2ba4321dc951cd308cf883786f918a"
     expected_snapshot = {
-        "id": expected_snapshot_id,
+        "id": hash_to_bytes("d35668e02e2ba4321dc951cd308cf883786f918a"),
         "branches": {
             b"default": {
                 "target": hash_to_bytes(tip_revision_default),
@@ -174,7 +173,7 @@ def test_loader_hg_new_visit_with_release(swh_config, datadir, tmp_path):
         archive_path,
         status="full",
         type="hg",
-        snapshot=hash_to_bytes(expected_snapshot_id),
+        snapshot=expected_snapshot["id"],
     )
 
 

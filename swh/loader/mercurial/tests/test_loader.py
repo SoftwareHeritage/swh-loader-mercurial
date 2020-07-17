@@ -12,7 +12,7 @@ import hglib
 import pytest
 
 from swh.model.hashutil import hash_to_bytes
-from swh.model.model import RevisionType
+from swh.model.model import RevisionType, Snapshot, SnapshotBranch, TargetType
 from swh.storage.algos.snapshot import snapshot_get_latest
 from swh.loader.tests import (
     assert_last_visit_matches,
@@ -34,13 +34,31 @@ def test_loader_hg_new_visit_no_release(swh_config, datadir, tmp_path):
 
     assert loader.load() == {"status": "eventful"}
 
+    tip_revision_develop = "a9c4534552df370f43f0ef97146f393ef2f2a08c"
+    tip_revision_default = "70e750bb046101fdced06f428e73fee471509c56"
+    expected_snapshot = Snapshot(
+        id=hash_to_bytes("3b8fe58e467deb7597b12a5fd3b2c096b8c02028"),
+        branches={
+            b"develop": SnapshotBranch(
+                target=hash_to_bytes(tip_revision_develop),
+                target_type=TargetType.REVISION,
+            ),
+            b"default": SnapshotBranch(
+                target=hash_to_bytes(tip_revision_default),
+                target_type=TargetType.REVISION,
+            ),
+            b"HEAD": SnapshotBranch(target=b"develop", target_type=TargetType.ALIAS,),
+        },
+    )
+
     assert_last_visit_matches(
         loader.storage,
         repo_url,
         status="full",
         type="hg",
-        snapshot=hash_to_bytes("3b8fe58e467deb7597b12a5fd3b2c096b8c02028"),
+        snapshot=expected_snapshot.id,
     )
+    check_snapshot(expected_snapshot, loader.storage)
 
     stats = get_stats(loader.storage)
     assert stats == {
@@ -54,25 +72,6 @@ def test_loader_hg_new_visit_no_release(swh_config, datadir, tmp_path):
         "skipped_content": 0,
         "snapshot": 1,
     }
-
-    tip_revision_develop = "a9c4534552df370f43f0ef97146f393ef2f2a08c"
-    tip_revision_default = "70e750bb046101fdced06f428e73fee471509c56"
-    expected_snapshot = {
-        "id": hash_to_bytes("3b8fe58e467deb7597b12a5fd3b2c096b8c02028"),
-        "branches": {
-            b"develop": {
-                "target": hash_to_bytes(tip_revision_develop),
-                "target_type": "revision",
-            },
-            b"default": {
-                "target": hash_to_bytes(tip_revision_default),
-                "target_type": "revision",
-            },
-            b"HEAD": {"target": b"develop", "target_type": "alias",},
-        },
-    }
-
-    check_snapshot(expected_snapshot, loader.storage)
 
     # Ensure archive loader yields the same snapshot
     loader2 = HgArchiveBundle20Loader(
@@ -96,7 +95,7 @@ def test_loader_hg_new_visit_no_release(swh_config, datadir, tmp_path):
         archive_path,
         status="full",
         type="hg",
-        snapshot=hash_to_bytes("3b8fe58e467deb7597b12a5fd3b2c096b8c02028"),
+        snapshot=expected_snapshot.id,
     )
 
 
@@ -126,29 +125,32 @@ def test_loader_hg_new_visit_with_release(swh_config, datadir, tmp_path):
     }
 
     # cf. test_loader.org for explaining from where those hashes
-    tip_release = "515c4d72e089404356d0f4b39d60f948b8999140"
-    release = loader.storage.release_get([hash_to_bytes(tip_release)])
+    tip_release = hash_to_bytes("515c4d72e089404356d0f4b39d60f948b8999140")
+    release = loader.storage.release_get([tip_release])
     assert release is not None
 
-    tip_revision_default = "c3dbe4fbeaaa98dd961834e4007edb3efb0e2a27"
-    revision = loader.storage.revision_get([hash_to_bytes(tip_revision_default)])
+    tip_revision_default = hash_to_bytes("c3dbe4fbeaaa98dd961834e4007edb3efb0e2a27")
+    revision = loader.storage.revision_get([tip_revision_default])
     assert revision is not None
 
-    expected_snapshot = {
-        "id": hash_to_bytes("d35668e02e2ba4321dc951cd308cf883786f918a"),
-        "branches": {
-            b"default": {
-                "target": hash_to_bytes(tip_revision_default),
-                "target_type": "revision",
-            },
-            b"0.1": {"target": hash_to_bytes(tip_release), "target_type": "release",},
-            b"HEAD": {"target": b"default", "target_type": "alias",},
+    expected_snapshot = Snapshot(
+        id=hash_to_bytes("d35668e02e2ba4321dc951cd308cf883786f918a"),
+        branches={
+            b"default": SnapshotBranch(
+                target=tip_revision_default, target_type=TargetType.REVISION,
+            ),
+            b"0.1": SnapshotBranch(target=tip_release, target_type=TargetType.RELEASE,),
+            b"HEAD": SnapshotBranch(target=b"default", target_type=TargetType.ALIAS,),
         },
-    }
+    )
 
     check_snapshot(expected_snapshot, loader.storage)
     assert_last_visit_matches(
-        loader.storage, repo_url, type=RevisionType.MERCURIAL.value, status="full",
+        loader.storage,
+        repo_url,
+        type=RevisionType.MERCURIAL.value,
+        status="full",
+        snapshot=expected_snapshot.id,
     )
 
     # Ensure archive loader yields the same snapshot
@@ -173,7 +175,7 @@ def test_loader_hg_new_visit_with_release(swh_config, datadir, tmp_path):
         archive_path,
         status="full",
         type="hg",
-        snapshot=expected_snapshot["id"],
+        snapshot=expected_snapshot.id,
     )
 
 

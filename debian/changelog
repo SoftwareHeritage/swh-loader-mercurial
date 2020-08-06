@@ -1,3 +1,13 @@
+swh-loader-mercurial (0.0.33-1~swh1) unstable-swh; urgency=medium
+
+  * New upstream release 0.0.33     - (tagged by Antoine R. Dumont
+    (@ardumont) <ardumont@softwareheritage.org> on 2020-08-06 16:49:47
+    +0200)
+  * Upstream changes:     - v0.0.33     - Adapt code according to
+    storage signature
+
+ -- Software Heritage autobuilder (on jenkins-debian1) <jenkins@jenkins-debian1.internal.softwareheritage.org>  Thu, 06 Aug 2020 14:51:01 +0000
+
 swh-loader-mercurial (0.0.32-1~swh1) unstable-swh; urgency=medium
 
   * New upstream release 0.0.32     - (tagged by Antoine R. Dumont

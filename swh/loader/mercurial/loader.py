@@ -28,7 +28,7 @@ import time
 from dateutil import parser
 from shutil import rmtree
 from tempfile import mkdtemp
-from typing import Dict, Iterable, Optional
+from typing import Dict, Iterable, List, Optional
 
 import billiard
 
@@ -44,6 +44,7 @@ from swh.model.model import (
     Revision,
     RevisionType,
     SkippedContent,
+    Sha1Git,
     Snapshot,
     SnapshotBranch,
     TargetType,
@@ -437,20 +438,19 @@ class HgBundle20Loader(DVCSLoader):
         """Compute directories to load
 
         """
-        dirs = {}
+        dirs: Dict[Sha1Git, Directory] = {}
         self.num_directories = 0
         for _, _, new_dirs in self.load_directories():
             for d in new_dirs:
                 self.num_directories += 1
                 dirs[d["id"]] = Directory.from_dict(d)
 
-        missing_dirs = list(dirs.keys())
+        missing_dirs: List[Sha1Git] = list(dirs.keys())
         if missing_dirs:
-            missing_dirs = self.storage.directory_missing(missing_dirs)
+            missing_dirs = list(self.storage.directory_missing(missing_dirs))
 
         for _id in missing_dirs:
             yield dirs[_id]
-        dirs = {}
 
     def get_revisions(self) -> Iterable[Revision]:
         """Compute revisions to load

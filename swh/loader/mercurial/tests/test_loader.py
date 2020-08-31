@@ -126,7 +126,7 @@ def test_loader_hg_new_visit_with_release(swh_config, datadir, tmp_path):
 
     # cf. test_loader.org for explaining from where those hashes
     tip_release = hash_to_bytes("515c4d72e089404356d0f4b39d60f948b8999140")
-    release = loader.storage.release_get([tip_release])
+    release = loader.storage.release_get([tip_release])[0]
     assert release is not None
 
     tip_revision_default = hash_to_bytes("c3dbe4fbeaaa98dd961834e4007edb3efb0e2a27")

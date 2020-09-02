@@ -130,7 +130,7 @@ def test_loader_hg_new_visit_with_release(swh_config, datadir, tmp_path):
     assert release is not None
 
     tip_revision_default = hash_to_bytes("c3dbe4fbeaaa98dd961834e4007edb3efb0e2a27")
-    revision = loader.storage.revision_get([tip_revision_default])
+    revision = loader.storage.revision_get([tip_revision_default])[0]
     assert revision is not None
 
     expected_snapshot = Snapshot(

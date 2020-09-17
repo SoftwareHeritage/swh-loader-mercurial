@@ -18,21 +18,29 @@ from Mercurial version 2 bundle files.
 
 
 import datetime
-import hglib
 import os
 from queue import Empty
 import random
 import re
-import time
-
-from dateutil import parser
 from shutil import rmtree
 from tempfile import mkdtemp
+import time
 from typing import Dict, Iterable, List, Optional
 
 import billiard
+from dateutil import parser
+import hglib
 
+from swh.loader.core.loader import DVCSLoader
+from swh.loader.core.utils import clean_dangling_folders
 from swh.model import identifiers
+from swh.model.hashutil import (
+    DEFAULT_ALGORITHMS,
+    MultiHash,
+    hash_to_bytehex,
+    hash_to_bytes,
+    hash_to_hex,
+)
 from swh.model.model import (
     BaseContent,
     Content,
@@ -43,22 +51,13 @@ from swh.model.model import (
     Release,
     Revision,
     RevisionType,
-    SkippedContent,
     Sha1Git,
+    SkippedContent,
     Snapshot,
     SnapshotBranch,
     TargetType,
     TimestampWithTimezone,
 )
-from swh.model.hashutil import (
-    MultiHash,
-    hash_to_hex,
-    hash_to_bytehex,
-    hash_to_bytes,
-    DEFAULT_ALGORITHMS,
-)
-from swh.loader.core.loader import DVCSLoader
-from swh.loader.core.utils import clean_dangling_folders
 from swh.storage.algos.origin import origin_get_latest_visit_status
 
 from . import converters
@@ -66,7 +65,6 @@ from .archive_extract import tmp_extract
 from .bundle20_reader import Bundle20Reader
 from .converters import PRIMARY_ALGO as ALGO
 from .objects import SelectiveCache, SimpleTree
-
 
 TAG_PATTERN = re.compile("[0-9A-Fa-f]{40}")
 

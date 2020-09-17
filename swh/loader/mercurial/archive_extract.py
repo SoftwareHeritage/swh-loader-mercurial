@@ -4,10 +4,10 @@
 # See top-level LICENSE file for more information
 
 import os
+import shutil
 import tempfile
 
 import patoolib
-import shutil
 
 
 def tmp_extract(archive, dir=None, prefix=None, suffix=None, log=None, source=None):

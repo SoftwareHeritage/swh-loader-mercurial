@@ -135,12 +135,11 @@ bundle20_loader.py
 # ============================================================================
 ##
 
-import itertools
-import struct
-
 from binascii import unhexlify
 from collections import OrderedDict
 from datetime import datetime
+import itertools
+import struct
 
 from .chunked_reader import ChunkedFileReader
 from .objects import SelectiveCache

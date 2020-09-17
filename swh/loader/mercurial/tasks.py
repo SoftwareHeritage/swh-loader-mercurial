@@ -5,7 +5,7 @@
 
 from celery import shared_task
 
-from .loader import HgBundle20Loader, HgArchiveBundle20Loader
+from .loader import HgArchiveBundle20Loader, HgBundle20Loader
 
 
 @shared_task(name=__name__ + ".LoadMercurial")

@@ -11,17 +11,17 @@ import time
 import hglib
 import pytest
 
-from swh.model.hashutil import hash_to_bytes
-from swh.model.model import RevisionType, Snapshot, SnapshotBranch, TargetType
-from swh.storage.algos.snapshot import snapshot_get_latest
 from swh.loader.tests import (
     assert_last_visit_matches,
     check_snapshot,
     get_stats,
     prepare_repository_from_archive,
 )
+from swh.model.hashutil import hash_to_bytes
+from swh.model.model import RevisionType, Snapshot, SnapshotBranch, TargetType
+from swh.storage.algos.snapshot import snapshot_get_latest
 
-from ..loader import HgBundle20Loader, HgArchiveBundle20Loader, CloneTimeoutError
+from ..loader import CloneTimeoutError, HgArchiveBundle20Loader, HgBundle20Loader
 
 
 def test_loader_hg_new_visit_no_release(swh_config, datadir, tmp_path):

@@ -1,10 +1,12 @@
-# Copyright (C) 2018-2019  The Software Heritage developers
+# Copyright (C) 2018-2020  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
 
-def test_loader(mocker, swh_scheduler_celery_app, swh_scheduler_celery_worker):
+def test_loader(
+    mocker, swh_config, swh_scheduler_celery_app, swh_scheduler_celery_worker
+):
     mock_loader = mocker.patch("swh.loader.mercurial.loader.HgBundle20Loader.load")
     mock_loader.return_value = {"status": "eventful"}
 
@@ -21,7 +23,9 @@ def test_loader(mocker, swh_scheduler_celery_app, swh_scheduler_celery_worker):
     mock_loader.assert_called_once_with()
 
 
-def test_archive_loader(mocker, swh_scheduler_celery_app, swh_scheduler_celery_worker):
+def test_archive_loader(
+    mocker, swh_config, swh_scheduler_celery_app, swh_scheduler_celery_worker
+):
     mock_loader = mocker.patch(
         "swh.loader.mercurial.loader.HgArchiveBundle20Loader.load"
     )

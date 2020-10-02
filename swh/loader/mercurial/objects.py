@@ -8,14 +8,14 @@ bundle files into SWH Contents, Directories, etc.
 """
 
 import binascii
+from collections import OrderedDict
 import copy
 import os
-import sys
 import pickle
 import sqlite3
+import sys
 import zlib
 
-from collections import OrderedDict
 from sqlitedict import SqliteDict
 
 from swh.model import identifiers

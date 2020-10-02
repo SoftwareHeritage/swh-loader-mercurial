@@ -11,17 +11,17 @@ import time
 import hglib
 import pytest
 
-from swh.model.hashutil import hash_to_bytes
-from swh.model.model import RevisionType, Snapshot, SnapshotBranch, TargetType
-from swh.storage.algos.snapshot import snapshot_get_latest
 from swh.loader.tests import (
     assert_last_visit_matches,
     check_snapshot,
     get_stats,
     prepare_repository_from_archive,
 )
+from swh.model.hashutil import hash_to_bytes
+from swh.model.model import RevisionType, Snapshot, SnapshotBranch, TargetType
+from swh.storage.algos.snapshot import snapshot_get_latest
 
-from ..loader import HgBundle20Loader, HgArchiveBundle20Loader, CloneTimeoutError
+from ..loader import CloneTimeoutError, HgArchiveBundle20Loader, HgBundle20Loader
 
 
 def test_loader_hg_new_visit_no_release(swh_config, datadir, tmp_path):
@@ -66,7 +66,6 @@ def test_loader_hg_new_visit_no_release(swh_config, datadir, tmp_path):
         "directory": 3,
         "origin": 1,
         "origin_visit": 1,
-        "person": 1,
         "release": 0,
         "revision": 58,
         "skipped_content": 0,
@@ -117,7 +116,6 @@ def test_loader_hg_new_visit_with_release(swh_config, datadir, tmp_path):
         "directory": 3,
         "origin": 1,
         "origin_visit": 1,
-        "person": 3,
         "release": 1,
         "revision": 3,
         "skipped_content": 0,
@@ -126,11 +124,11 @@ def test_loader_hg_new_visit_with_release(swh_config, datadir, tmp_path):
 
     # cf. test_loader.org for explaining from where those hashes
     tip_release = hash_to_bytes("515c4d72e089404356d0f4b39d60f948b8999140")
-    release = loader.storage.release_get([tip_release])
+    release = loader.storage.release_get([tip_release])[0]
     assert release is not None
 
     tip_revision_default = hash_to_bytes("c3dbe4fbeaaa98dd961834e4007edb3efb0e2a27")
-    revision = loader.storage.revision_get([tip_revision_default])
+    revision = loader.storage.revision_get([tip_revision_default])[0]
     assert revision is not None
 
     expected_snapshot = Snapshot(
@@ -200,7 +198,6 @@ def test_visit_with_archive_decompression_failure(swh_config, mocker, datadir):
         "directory": 0,
         "origin": 1,
         "origin_visit": 1,
-        "person": 0,
         "release": 0,
         "revision": 0,
         "skipped_content": 0,

@@ -25,12 +25,13 @@ import re
 from shutil import rmtree
 from tempfile import mkdtemp
 import time
-from typing import Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 import billiard
 from dateutil import parser
 import hglib
 
+from swh.core.config import merge_configs
 from swh.loader.core.loader import DVCSLoader
 from swh.loader.core.utils import clean_dangling_folders
 from swh.model import identifiers
@@ -77,21 +78,20 @@ class CloneTimeoutError(Exception):
     pass
 
 
+DEFAULT_CONFIG: Dict[str, Any] = {
+    "bundle_filename": "HG20_none_bundle",
+    "reduce_effort": False,
+    "temp_directory": "/tmp",
+    "cache1_size": 800 * 1024 * 1024,
+    "cache2_size": 800 * 1024 * 1024,
+    "clone_timeout_seconds": 7200,
+}
+
+
 class HgBundle20Loader(DVCSLoader):
     """Mercurial loader able to deal with remote or local repository.
 
     """
-
-    CONFIG_BASE_FILENAME = "loader/mercurial"
-
-    ADDITIONAL_CONFIG = {
-        "bundle_filename": ("str", "HG20_none_bundle"),
-        "reduce_effort": ("bool", False),
-        "temp_directory": ("str", "/tmp"),
-        "cache1_size": ("int", 800 * 1024 * 1024),
-        "cache2_size": ("int", 800 * 1024 * 1024),
-        "clone_timeout_seconds": ("int", 7200),
-    }
 
     visit_type = "hg"
 
@@ -103,6 +103,7 @@ class HgBundle20Loader(DVCSLoader):
         logging_class="swh.loader.mercurial.Bundle20Loader",
     ):
         super().__init__(logging_class=logging_class)
+        self.config = merge_configs(DEFAULT_CONFIG, self.config)
         self.origin_url = url
         self.visit_date = visit_date
         self.directory = directory

@@ -3,11 +3,11 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-import click
 import datetime
+from itertools import chain
 import logging
 
-from itertools import chain
+import click
 
 LOGLEVELS = list(
     chain.from_iterable(

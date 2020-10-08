@@ -54,6 +54,8 @@ setup(
     entry_points="""
         [swh.workers]
         loader.mercurial=swh.loader.mercurial:register
+        [console_scripts]
+        swh-hg-identify=swh.loader.mercurial.identify:main
     """,
     classifiers=[
         "Programming Language :: Python :: 3",

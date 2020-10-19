@@ -22,6 +22,18 @@ from swh.model.model import RevisionType, Snapshot, SnapshotBranch, TargetType
 from swh.storage.algos.snapshot import snapshot_get_latest
 
 from ..loader import CloneTimeoutError, HgArchiveBundle20Loader, HgBundle20Loader
+from .loader_checker import ExpectedSwhids, LoaderChecker
+
+
+def test_examples(swh_config, datadir, tmp_path):
+    for archive_name in ("hello", "transplant", "the-sandbox"):
+        archive_path = os.path.join(datadir, f"{archive_name}.tgz")
+        json_path = os.path.join(datadir, f"{archive_name}.json")
+        repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
+
+        LoaderChecker(
+            loader=HgBundle20Loader(repo_url), expected=ExpectedSwhids.load(json_path),
+        ).check()
 
 
 def test_loader_hg_new_visit_no_release(swh_config, datadir, tmp_path):

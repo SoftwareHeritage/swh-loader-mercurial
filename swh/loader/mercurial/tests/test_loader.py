@@ -26,7 +26,7 @@ from .loader_checker import ExpectedSwhids, LoaderChecker
 
 
 def test_examples(swh_config, datadir, tmp_path):
-    for archive_name in ("hello", "transplant", "the-sandbox"):
+    for archive_name in ("hello", "transplant", "the-sandbox", "example"):
         archive_path = os.path.join(datadir, f"{archive_name}.tgz")
         json_path = os.path.join(datadir, f"{archive_name}.json")
         repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)

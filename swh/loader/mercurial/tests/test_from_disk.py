@@ -1,15 +1,9 @@
-# Copyright (C) 2018-2020  The Software Heritage developers
+# Copyright (C) 2020  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-import copy
-import logging
 import os
-import time
-
-import hglib
-import pytest
 
 from swh.loader.tests import (
     assert_last_visit_matches,
@@ -17,20 +11,52 @@ from swh.loader.tests import (
     get_stats,
     prepare_repository_from_archive,
 )
+from swh.model.from_disk import Content
 from swh.model.hashutil import hash_to_bytes
 from swh.model.model import RevisionType, Snapshot, SnapshotBranch, TargetType
 from swh.storage.algos.snapshot import snapshot_get_latest
 
-from ..loader import CloneTimeoutError, HgArchiveBundle20Loader, HgBundle20Loader
+from ..from_disk import HgDirectory, HgLoaderFromDisk
+from .loader_checker import ExpectedSwhids, LoaderChecker
 
 
+def test_hg_directory_creates_missing_directories():
+    directory = HgDirectory()
+    directory[b"path/to/some/content"] = Content()
+
+
+# Those tests assert expectations on repository loading
+# by reading expected values from associated json files
+# produced by the `swh-hg-identify` command line utility.
+#
+# It has more granularity than historical tests.
+# Assertions will tell if the error comes from the directories
+# revisions or release rather than only checking the snapshot.
+#
+# With more work it should event be possible to know which part
+# of an object is faulty.
+def test_examples(swh_config, datadir, tmp_path):
+    for archive_name in ("hello", "transplant", "the-sandbox", "example"):
+        archive_path = os.path.join(datadir, f"{archive_name}.tgz")
+        json_path = os.path.join(datadir, f"{archive_name}.json")
+        repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
+
+        LoaderChecker(
+            loader=HgLoaderFromDisk(repo_url), expected=ExpectedSwhids.load(json_path),
+        ).check()
+
+
+# This test has as been adapted from the historical `HgBundle20Loader` tests
+# to ensure compatibility of `HgLoaderFromDisk`.
+# Hashes as been produced by copy pasting the result of the implementation
+# to prevent regressions.
 def test_loader_hg_new_visit_no_release(swh_config, datadir, tmp_path):
     """Eventful visit should yield 1 snapshot"""
     archive_name = "the-sandbox"
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
 
-    loader = HgBundle20Loader(repo_url)
+    loader = HgLoaderFromDisk(url=repo_url)
 
     assert loader.load() == {"status": "eventful"}
 
@@ -72,39 +98,19 @@ def test_loader_hg_new_visit_no_release(swh_config, datadir, tmp_path):
         "snapshot": 1,
     }
 
-    # Ensure archive loader yields the same snapshot
-    loader2 = HgArchiveBundle20Loader(
-        url=archive_path,
-        archive_path=archive_path,
-        visit_date="2016-05-03 15:16:32+00",
-    )
 
-    actual_load_status = loader2.load()
-    assert actual_load_status == {"status": "eventful"}
-
-    stats2 = get_stats(loader2.storage)
-    expected_stats = copy.deepcopy(stats)
-    expected_stats["origin"] += 1
-    expected_stats["origin_visit"] += 1
-    assert stats2 == expected_stats
-
-    # That visit yields the same snapshot
-    assert_last_visit_matches(
-        loader2.storage,
-        archive_path,
-        status="full",
-        type="hg",
-        snapshot=expected_snapshot.id,
-    )
-
-
+# This test has as been adapted from the historical `HgBundle20Loader` tests
+# to ensure compatibility of `HgLoaderFromDisk`.
+# Hashes as been produced by copy pasting the result of the implementation
+# to prevent regressions.
 def test_loader_hg_new_visit_with_release(swh_config, datadir, tmp_path):
     """Eventful visit with release should yield 1 snapshot"""
+
     archive_name = "hello"
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
 
-    loader = HgBundle20Loader(url=repo_url, visit_date="2016-05-03 15:16:32+00",)
+    loader = HgLoaderFromDisk(url=repo_url, visit_date="2016-05-03 15:16:32+00")
 
     actual_load_status = loader.load()
     assert actual_load_status == {"status": "eventful"}
@@ -151,64 +157,11 @@ def test_loader_hg_new_visit_with_release(swh_config, datadir, tmp_path):
         snapshot=expected_snapshot.id,
     )
 
-    # Ensure archive loader yields the same snapshot
-    loader2 = HgArchiveBundle20Loader(
-        url=archive_path,
-        archive_path=archive_path,
-        visit_date="2016-05-03 15:16:32+00",
-    )
 
-    actual_load_status = loader2.load()
-    assert actual_load_status == {"status": "eventful"}
-
-    stats2 = get_stats(loader2.storage)
-    expected_stats = copy.deepcopy(stats)
-    expected_stats["origin"] += 1
-    expected_stats["origin_visit"] += 1
-    assert stats2 == expected_stats
-
-    # That visit yields the same snapshot
-    assert_last_visit_matches(
-        loader2.storage,
-        archive_path,
-        status="full",
-        type="hg",
-        snapshot=expected_snapshot.id,
-    )
-
-
-def test_visit_with_archive_decompression_failure(swh_config, mocker, datadir):
-    """Failure to decompress should fail early, no data is ingested"""
-    mock_patoo = mocker.patch("swh.loader.mercurial.archive_extract.patoolib")
-    mock_patoo.side_effect = ValueError
-
-    archive_name = "hello"
-    archive_path = os.path.join(datadir, f"{archive_name}.tgz")
-    # Ensure archive loader yields the same snapshot
-    loader = HgArchiveBundle20Loader(
-        url=archive_path, visit_date="2016-05-03 15:16:32+00",
-    )
-
-    actual_load_status = loader.load()
-    assert actual_load_status == {"status": "failed"}
-
-    stats = get_stats(loader.storage)
-    assert stats == {
-        "content": 0,
-        "directory": 0,
-        "origin": 1,
-        "origin_visit": 1,
-        "release": 0,
-        "revision": 0,
-        "skipped_content": 0,
-        "snapshot": 0,
-    }
-    # That visit yields the same snapshot
-    assert_last_visit_matches(
-        loader.storage, archive_path, status="partial", type="hg", snapshot=None
-    )
-
-
+# This test has as been adapted from the historical `HgBundle20Loader` tests
+# to ensure compatibility of `HgLoaderFromDisk`.
+# Hashes as been produced by copy pasting the result of the implementation
+# to prevent regressions.
 def test_visit_repository_with_transplant_operations(swh_config, datadir, tmp_path):
     """Visit a mercurial repository visit transplant operations within should yield a
     snapshot as well.
@@ -218,7 +171,8 @@ def test_visit_repository_with_transplant_operations(swh_config, datadir, tmp_pa
     archive_name = "transplant"
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
-    loader = HgBundle20Loader(url=repo_url, visit_date="2019-05-23 12:06:00+00",)
+
+    loader = HgLoaderFromDisk(url=repo_url, visit_date="2016-05-03 15:16:32+00")
 
     # load hg repository
     actual_load_status = loader.load()
@@ -249,50 +203,3 @@ def test_visit_repository_with_transplant_operations(swh_config, datadir, tmp_pa
     assert len(hg_changesets) > 0
     assert len(transplant_sources) > 0
     assert transplant_sources.issubset(hg_changesets)
-
-
-def test_clone_with_timeout_timeout(caplog, tmp_path, monkeypatch):
-    log = logging.getLogger("test_clone_with_timeout")
-
-    def clone_timeout(source, dest):
-        time.sleep(60)
-
-    monkeypatch.setattr(hglib, "clone", clone_timeout)
-
-    with pytest.raises(CloneTimeoutError):
-        HgBundle20Loader.clone_with_timeout(
-            log, "https://www.mercurial-scm.org/repo/hello", tmp_path, 1
-        )
-
-    for record in caplog.records:
-        assert record.levelname == "WARNING"
-        assert "https://www.mercurial-scm.org/repo/hello" in record.getMessage()
-        assert record.args == ("https://www.mercurial-scm.org/repo/hello", 1)
-
-
-def test_clone_with_timeout_returns(caplog, tmp_path, monkeypatch):
-    log = logging.getLogger("test_clone_with_timeout")
-
-    def clone_return(source, dest):
-        return (source, dest)
-
-    monkeypatch.setattr(hglib, "clone", clone_return)
-
-    assert HgBundle20Loader.clone_with_timeout(
-        log, "https://www.mercurial-scm.org/repo/hello", tmp_path, 1
-    ) == ("https://www.mercurial-scm.org/repo/hello", tmp_path)
-
-
-def test_clone_with_timeout_exception(caplog, tmp_path, monkeypatch):
-    log = logging.getLogger("test_clone_with_timeout")
-
-    def clone_return(source, dest):
-        raise ValueError("Test exception")
-
-    monkeypatch.setattr(hglib, "clone", clone_return)
-
-    with pytest.raises(ValueError) as excinfo:
-        HgBundle20Loader.clone_with_timeout(
-            log, "https://www.mercurial-scm.org/repo/hello", tmp_path, 1
-        )
-    assert "Test exception" in excinfo.value.args[0]

@@ -125,6 +125,11 @@ class HgLoaderFromDisk(BaseLoader):
         self._revision_nodeid_to_swhid: Dict[HgNodeId, Sha1Git] = {}
         self._repo_directory: Optional[str] = None
 
+        # Cache the content hash across revisions to avoid recalculation.
+        self._content_hash_cache: hgutil.LRUCacheDict = hgutil.LRUCacheDict(
+            self.config["content_cache_size"],
+        )
+
     def pre_cleanup(self) -> None:
         """As a first step, will try and check for dangling data to cleanup.
         This should do its best to avoid raising issues.
@@ -358,8 +363,18 @@ class HgLoaderFromDisk(BaseLoader):
         hg_nodeid = rev_ctx.node()
         file_ctx = rev_ctx[file_path]
 
+        file_nodeid = file_ctx.filenode()
         perms = FLAG_PERMS[file_ctx.flags()]
-        data = file_ctx.data()  # caching is simple and will come in the next revision.
+
+        # Key is file_nodeid + perms because permissions does not participate
+        # in content hash in hg while it is the case in swh.
+        cache_key = (file_nodeid, perms)
+
+        sha1_git = self._content_hash_cache.get(cache_key)
+        if sha1_git is not None:
+            return Content({"sha1_git": sha1_git, "perms": perms})
+
+        data = file_ctx.data()
 
         content_data = MultiHash.from_data(data).digest()
         content_data["length"] = len(data)
@@ -376,6 +391,8 @@ class HgLoaderFromDisk(BaseLoader):
                 f"{file_path!r} at rev {hg_nodeid.hex()!r} "
                 "produced {type(model)!r} instead of {ModelContent!r}"
             )
+
+        self._content_hash_cache[cache_key] = content.hash
 
         # Here we make sure to return only necessary data.
         return Content({"sha1_git": content.hash, "perms": perms})

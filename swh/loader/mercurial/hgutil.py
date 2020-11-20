@@ -5,12 +5,13 @@ from typing import Dict, NewType
 
 # The internal Mercurial API is not guaranteed to be stable.
 import mercurial.ui  # type: ignore
-from mercurial import context, hg
+from mercurial import context, hg, util
 
 NULLID = mercurial.node.nullid
 HgNodeId = NewType("HgNodeId", bytes)
 Repository = hg.localrepo
 BaseContext = context.basectx
+LRUCacheDict = util.lrucachedict
 
 
 def repository(path: str) -> hg.localrepo:

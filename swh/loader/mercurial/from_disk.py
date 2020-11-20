@@ -8,7 +8,7 @@ from collections import deque
 from datetime import datetime, timezone
 from shutil import rmtree
 from tempfile import mkdtemp
-from typing import Any, Deque, Dict, Optional, Tuple, Union
+from typing import Any, Deque, Dict, Optional, Tuple, TypeVar, Union
 
 import dateutil
 
@@ -49,6 +49,9 @@ DEFAULT_CONFIG: Dict[str, Any] = {
 TEMPORARY_DIR_PREFIX_PATTERN = "swh.loader.mercurial.from_disk"
 
 
+T = TypeVar("T")
+
+
 def parse_visit_date(visit_date: Optional[Union[datetime, str]]) -> Optional[datetime]:
     """Convert visit date from Optional[Union[str, datetime]] to Optional[datetime].
 
@@ -71,20 +74,43 @@ def parse_visit_date(visit_date: Optional[Union[datetime, str]]) -> Optional[dat
 
 
 class HgDirectory(Directory):
-    """A directory that creates parent directories if missing."""
+    """A more practical directory.
+
+    - creates missing parent directories
+    - removes empty directories
+    """
 
     def __setitem__(self, path: bytes, value: Union[Content, "HgDirectory"]) -> None:
         if b"/" in path:
             head, tail = path.split(b"/", 1)
 
             directory = self.get(head)
-            if directory is None:
+            if directory is None or isinstance(directory, Content):
                 directory = HgDirectory()
                 self[head] = directory
 
             directory[tail] = value
         else:
             super().__setitem__(path, value)
+
+    def __delitem__(self, path: bytes) -> None:
+        super().__delitem__(path)
+
+        while b"/" in path:  # remove empty parent directories
+            path = path.rsplit(b"/", 1)[0]
+            if len(self[path]) == 0:
+                super().__delitem__(path)
+            else:
+                break
+
+    def get(
+        self, path: bytes, default: Optional[T] = None
+    ) -> Optional[Union[Content, "HgDirectory", T]]:
+        # TODO move to swh.model.from_disk.Directory
+        try:
+            return self[path]
+        except KeyError:
+            return default
 
 
 class HgLoaderFromDisk(BaseLoader):
@@ -124,6 +150,15 @@ class HgLoaderFromDisk(BaseLoader):
         self._repo: Optional[hgutil.Repository] = None
         self._revision_nodeid_to_swhid: Dict[HgNodeId, Sha1Git] = {}
         self._repo_directory: Optional[str] = None
+
+        # keeps the last processed hg nodeid
+        # it is used for differential tree update by store_directories
+        # NULLID is the parent of the first revision
+        self._last_hg_nodeid = hgutil.NULLID
+
+        # keeps the last revision tree
+        # it is used for differential tree update by store_directories
+        self._last_root = HgDirectory()
 
         # Cache the content hash across revisions to avoid recalculation.
         self._content_hash_cache: hgutil.LRUCacheDict = hgutil.LRUCacheDict(
@@ -409,12 +444,26 @@ class HgLoaderFromDisk(BaseLoader):
         Returns:
             the swhid of the top level directory.
         """
-        root = HgDirectory()
-        for file_path in rev_ctx.manifest():
-            content = self.store_content(rev_ctx, file_path)
-            root[file_path] = content
+        repo: hgutil.Repository = self._repo  # mypy can't infer that repo is not None
+        prev_ctx = repo[self._last_hg_nodeid]
 
-        directories: Deque[Directory] = deque([root])
+        # TODO maybe do diff on parents
+        status = prev_ctx.status(rev_ctx)
+
+        for file_path in status.removed:
+            del self._last_root[file_path]
+
+        for file_path in status.added:
+            content = self.store_content(rev_ctx, file_path)
+            self._last_root[file_path] = content
+
+        for file_path in status.modified:
+            content = self.store_content(rev_ctx, file_path)
+            self._last_root[file_path] = content
+
+        self._last_hg_nodeid = rev_ctx.node()
+
+        directories: Deque[Directory] = deque([self._last_root])
         while directories:
             directory = directories.pop()
             self.storage.directory_add([directory.to_model()])
@@ -422,7 +471,7 @@ class HgLoaderFromDisk(BaseLoader):
                 [item for item in directory.values() if isinstance(item, Directory)]
             )
 
-        return root.hash
+        return self._last_root.hash
 
 
 class HgArchiveLoaderFromDisk(HgLoaderFromDisk):

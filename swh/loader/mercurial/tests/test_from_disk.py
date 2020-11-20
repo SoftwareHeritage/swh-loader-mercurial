@@ -4,6 +4,8 @@
 # See top-level LICENSE file for more information
 
 import os
+from datetime import datetime
+from hashlib import sha1
 
 from swh.loader.tests import (
     assert_last_visit_matches,
@@ -11,7 +13,7 @@ from swh.loader.tests import (
     get_stats,
     prepare_repository_from_archive,
 )
-from swh.model.from_disk import Content
+from swh.model.from_disk import Content, DentryPerms
 from swh.model.hashutil import hash_to_bytes
 from swh.model.model import RevisionType, Snapshot, SnapshotBranch, TargetType
 from swh.storage.algos.snapshot import snapshot_get_latest
@@ -20,9 +22,45 @@ from ..from_disk import HgDirectory, HgLoaderFromDisk
 from .loader_checker import ExpectedSwhids, LoaderChecker
 
 
+def random_content() -> Content:
+    """Create minimal content object."""
+    data = str(datetime.now()).encode()
+    return Content({"sha1_git": sha1(data).digest(), "perms": DentryPerms.content})
+
+
 def test_hg_directory_creates_missing_directories():
     directory = HgDirectory()
-    directory[b"path/to/some/content"] = Content()
+    directory[b"path/to/some/content"] = random_content()
+
+
+def test_hg_directory_get():
+    content = random_content()
+    directory = HgDirectory()
+
+    assert directory.get(b"path/to/content") is None
+    assert directory.get(b"path/to/content", content) == content
+
+    directory[b"path/to/content"] = content
+    assert directory.get(b"path/to/content") == content
+
+
+def test_hg_directory_deletes_empty_directories():
+    directory = HgDirectory()
+    content = random_content()
+    directory[b"path/to/content"] = content
+    directory[b"path/to/some/deep/content"] = random_content()
+
+    del directory[b"path/to/some/deep/content"]
+
+    assert directory.get(b"path/to/some/deep") is None
+    assert directory.get(b"path/to/some") is None
+    assert directory.get(b"path/to/content") == content
+
+
+def test_hg_directory_when_directory_replaces_file():
+    directory = HgDirectory()
+    directory[b"path/to/some"] = random_content()
+    directory[b"path/to/some/content"] = random_content()
 
 
 # Those tests assert expectations on repository loading

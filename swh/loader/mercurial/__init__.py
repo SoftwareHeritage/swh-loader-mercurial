@@ -15,3 +15,13 @@ def register() -> Mapping[str, Any]:
         "task_modules": [f"{__name__}.tasks"],
         "loader": HgBundle20Loader,
     }
+
+
+def register_from_disk() -> Mapping[str, Any]:
+    """Register the current worker module's definition"""
+    from .from_disk import HgLoaderFromDisk
+
+    return {
+        "task_modules": [f"{__name__}.tasks_from_disk"],
+        "loader": HgLoaderFromDisk,
+    }

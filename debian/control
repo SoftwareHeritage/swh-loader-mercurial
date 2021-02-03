@@ -17,19 +17,20 @@ Build-Depends: debhelper (>= 9),
                python3-retrying,
                python3-sqlitedict,
                python3-swh.core (>= 0.1.0~),
+               python3-swh.core.db.pytestplugin,
                python3-swh.model (>= 0.4.0~),
-               python3-swh.storage (>= 0.10.0~),
+               python3-swh.storage (>= 0.22~),
                python3-swh.scheduler (>= 0.3.0~),
-               python3-swh.loader.core (>= 0.5.9~)
+               python3-swh.loader.core (>= 0.16~)
 Standards-Version: 3.9.6
 Homepage: https://forge.softwareheritage.org/source/swh-loader-mercurial/
 
 Package: python3-swh.loader.mercurial
 Architecture: all
 Depends: python3-swh.core (>= 0.1.0~),
-         python3-swh.loader.core (>= 0.5.9~),
+         python3-swh.loader.core (>= 0.16~),
          python3-swh.model (>= 0.4.0~),
-         python3-swh.storage (>= 0.10.0~),
+         python3-swh.storage (>= 0.22~),
          python3-swh.scheduler (>= 0.3.0~),
          patool,
          python3-sqlitedict,

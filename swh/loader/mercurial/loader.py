@@ -170,14 +170,10 @@ class HgBundle20Loader(DVCSLoader):
         if isinstance(visit_date, str):  # visit_date can be string or datetime
             visit_date = parser.parse(visit_date)
         self.visit_date = visit_date
-        visit_and_status = origin_get_latest_visit_status(
+        visit_status = origin_get_latest_visit_status(
             self.storage, self.origin_url, require_snapshot=True
         )
-        if visit_and_status is None:
-            self.last_snapshot_id = None
-        else:
-            _, visit_status = visit_and_status
-            self.last_snapshot_id = visit_status.snapshot
+        self.last_snapshot_id = None if visit_status is None else visit_status.snapshot
 
     @staticmethod
     def clone_with_timeout(log, origin, destination, timeout):

@@ -1,8 +1,29 @@
-swh-loader-mercurial (0.1.0-1~swh1~bpo10+1) buster-swh; urgency=medium
+swh-loader-mercurial (0.2.1-1~swh1) unstable-swh; urgency=medium
 
-  * Rebuild for buster-swh
+  * New upstream release 0.2.1     - (tagged by Antoine R. Dumont
+    (@ardumont) <ardumont@softwareheritage.org> on 2021-02-03 15:49:32
+    +0100)
+  * Upstream changes:     - v0.2.1     - conftest: Reference the tasks
+    from disk module in test
 
- -- Software Heritage autobuilder (on jenkins-debian1) <jenkins@jenkins-debian1.internal.softwareheritage.org>  Fri, 02 Oct 2020 12:19:49 +0000
+ -- Software Heritage autobuilder (on jenkins-debian1) <jenkins@jenkins-debian1.internal.softwareheritage.org>  Wed, 03 Feb 2021 14:52:11 +0000
+
+swh-loader-mercurial (0.2.0-1~swh1) unstable-swh; urgency=medium
+
+  * New upstream release 0.2.0     - (tagged by Antoine R. Dumont
+    (@ardumont) <ardumont@softwareheritage.org> on 2021-02-03 14:34:00
+    +0100)
+  * Upstream changes:     - v0.2.0     - Adapt
+    origin_get_latest_visit_status according to latest api change     -
+    origin/master Add tree diffing in HgLoaderFromDisk     - Add content
+    lru cache to HgLoaderFromDisk     - Add
+    mercurial.from_disk.HgLoaderFromDisk     - Add new example
+    repository generated from script     - Add `Hg20BundleLoader` tests
+    from json files     - Add testing repository builder     - add swh-
+    hg-identify a cli to identify hg objects     - tox.ini: pin black to
+    the pre-commit version (19.10b0) to avoid flip-flops
+
+ -- Software Heritage autobuilder (on jenkins-debian1) <jenkins@jenkins-debian1.internal.softwareheritage.org>  Wed, 03 Feb 2021 13:38:16 +0000
 
 swh-loader-mercurial (0.1.0-1~swh1) unstable-swh; urgency=medium
 

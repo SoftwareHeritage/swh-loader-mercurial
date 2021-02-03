@@ -1,8 +1,8 @@
-swh-loader-mercurial (0.2.1-1~swh1~bpo10+1) buster-swh; urgency=medium
+swh-loader-mercurial (0.2.1-1~swh2) unstable-swh; urgency=medium
 
-  * Rebuild for buster-swh
+  * Update dependencies
 
- -- Software Heritage autobuilder (on jenkins-debian1) <jenkins@jenkins-debian1.internal.softwareheritage.org>  Wed, 03 Feb 2021 14:53:29 +0000
+ -- Antoine R. Dumont (@ardumont) <ardumont@softwareheritage.org>  Wed, 03 Feb 2021 16:45:03 +0100
 
 swh-loader-mercurial (0.2.1-1~swh1) unstable-swh; urgency=medium
 

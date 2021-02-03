@@ -1,3 +1,13 @@
+swh-loader-mercurial (0.2.1-1~swh1) unstable-swh; urgency=medium
+
+  * New upstream release 0.2.1     - (tagged by Antoine R. Dumont
+    (@ardumont) <ardumont@softwareheritage.org> on 2021-02-03 15:49:32
+    +0100)
+  * Upstream changes:     - v0.2.1     - conftest: Reference the tasks
+    from disk module in test
+
+ -- Software Heritage autobuilder (on jenkins-debian1) <jenkins@jenkins-debian1.internal.softwareheritage.org>  Wed, 03 Feb 2021 14:52:11 +0000
+
 swh-loader-mercurial (0.2.0-1~swh1) unstable-swh; urgency=medium
 
   * New upstream release 0.2.0     - (tagged by Antoine R. Dumont

@@ -1,4 +1,4 @@
-# Copyright (C) 2018-2020  The Software Heritage developers
+# Copyright (C) 2018-2021  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -12,6 +12,7 @@ import hglib
 from hglib.error import CommandError
 import pytest
 
+from swh.loader.mercurial.utils import parse_visit_date
 from swh.loader.tests import (
     assert_last_visit_matches,
     check_snapshot,
@@ -24,14 +25,17 @@ from swh.storage.algos.snapshot import snapshot_get_latest
 
 from ..loader import CloneTimeoutError, HgArchiveBundle20Loader, HgBundle20Loader
 
+VISIT_DATE = parse_visit_date("2016-05-03 15:16:32+00")
+assert VISIT_DATE is not None
 
-def test_loader_hg_new_visit_no_release(swh_config, datadir, tmp_path):
+
+def test_loader_hg_new_visit_no_release(swh_storage, datadir, tmp_path):
     """Eventful visit should yield 1 snapshot"""
     archive_name = "the-sandbox"
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
 
-    loader = HgBundle20Loader(repo_url)
+    loader = HgBundle20Loader(swh_storage, repo_url)
 
     assert loader.load() == {"status": "eventful"}
 
@@ -53,15 +57,15 @@ def test_loader_hg_new_visit_no_release(swh_config, datadir, tmp_path):
     )
 
     assert_last_visit_matches(
-        loader.storage,
+        swh_storage,
         repo_url,
         status="full",
         type="hg",
         snapshot=expected_snapshot.id,
     )
-    check_snapshot(expected_snapshot, loader.storage)
+    check_snapshot(expected_snapshot, swh_storage)
 
-    stats = get_stats(loader.storage)
+    stats = get_stats(swh_storage)
     assert stats == {
         "content": 2,
         "directory": 3,
@@ -75,9 +79,7 @@ def test_loader_hg_new_visit_no_release(swh_config, datadir, tmp_path):
 
     # Ensure archive loader yields the same snapshot
     loader2 = HgArchiveBundle20Loader(
-        url=archive_path,
-        archive_path=archive_path,
-        visit_date="2016-05-03 15:16:32+00",
+        swh_storage, url=archive_path, archive_path=archive_path, visit_date=VISIT_DATE,
     )
 
     actual_load_status = loader2.load()
@@ -99,19 +101,19 @@ def test_loader_hg_new_visit_no_release(swh_config, datadir, tmp_path):
     )
 
 
-def test_loader_hg_new_visit_with_release(swh_config, datadir, tmp_path):
+def test_loader_hg_new_visit_with_release(swh_storage, datadir, tmp_path):
     """Eventful visit with release should yield 1 snapshot"""
     archive_name = "hello"
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
 
-    loader = HgBundle20Loader(url=repo_url, visit_date="2016-05-03 15:16:32+00",)
+    loader = HgBundle20Loader(swh_storage, url=repo_url, visit_date=VISIT_DATE,)
 
     actual_load_status = loader.load()
     assert actual_load_status == {"status": "eventful"}
 
     # then
-    stats = get_stats(loader.storage)
+    stats = get_stats(swh_storage)
     assert stats == {
         "content": 3,
         "directory": 3,
@@ -125,11 +127,11 @@ def test_loader_hg_new_visit_with_release(swh_config, datadir, tmp_path):
 
     # cf. test_loader.org for explaining from where those hashes
     tip_release = hash_to_bytes("515c4d72e089404356d0f4b39d60f948b8999140")
-    release = loader.storage.release_get([tip_release])[0]
+    release = swh_storage.release_get([tip_release])[0]
     assert release is not None
 
     tip_revision_default = hash_to_bytes("c3dbe4fbeaaa98dd961834e4007edb3efb0e2a27")
-    revision = loader.storage.revision_get([tip_revision_default])[0]
+    revision = swh_storage.revision_get([tip_revision_default])[0]
     assert revision is not None
 
     expected_snapshot = Snapshot(
@@ -143,9 +145,9 @@ def test_loader_hg_new_visit_with_release(swh_config, datadir, tmp_path):
         },
     )
 
-    check_snapshot(expected_snapshot, loader.storage)
+    check_snapshot(expected_snapshot, swh_storage)
     assert_last_visit_matches(
-        loader.storage,
+        swh_storage,
         repo_url,
         type=RevisionType.MERCURIAL.value,
         status="full",
@@ -154,9 +156,7 @@ def test_loader_hg_new_visit_with_release(swh_config, datadir, tmp_path):
 
     # Ensure archive loader yields the same snapshot
     loader2 = HgArchiveBundle20Loader(
-        url=archive_path,
-        archive_path=archive_path,
-        visit_date="2016-05-03 15:16:32+00",
+        swh_storage, url=archive_path, archive_path=archive_path, visit_date=VISIT_DATE,
     )
 
     actual_load_status = loader2.load()
@@ -178,7 +178,7 @@ def test_loader_hg_new_visit_with_release(swh_config, datadir, tmp_path):
     )
 
 
-def test_visit_with_archive_decompression_failure(swh_config, mocker, datadir):
+def test_visit_with_archive_decompression_failure(swh_storage, mocker, datadir):
     """Failure to decompress should fail early, no data is ingested"""
     mock_patoo = mocker.patch("swh.loader.mercurial.archive_extract.patoolib")
     mock_patoo.side_effect = ValueError
@@ -187,13 +187,13 @@ def test_visit_with_archive_decompression_failure(swh_config, mocker, datadir):
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
 
     loader = HgArchiveBundle20Loader(
-        url=archive_path, visit_date="2016-05-03 15:16:32+00",
+        swh_storage, url=archive_path, visit_date=VISIT_DATE,
     )
 
     actual_load_status = loader.load()
     assert actual_load_status == {"status": "failed"}
 
-    stats = get_stats(loader.storage)
+    stats = get_stats(swh_storage)
     assert stats == {
         "content": 0,
         "directory": 0,
@@ -206,11 +206,11 @@ def test_visit_with_archive_decompression_failure(swh_config, mocker, datadir):
     }
     # That visit yields the same snapshot
     assert_last_visit_matches(
-        loader.storage, archive_path, status="failed", type="hg", snapshot=None
+        swh_storage, archive_path, status="failed", type="hg", snapshot=None
     )
 
 
-def test_visit_error_with_snapshot_partial(swh_config, datadir, tmp_path, mocker):
+def test_visit_error_with_snapshot_partial(swh_storage, datadir, tmp_path, mocker):
     """Incomplete ingestion leads to a 'partial' ingestion status"""
     mock = mocker.patch("swh.loader.mercurial.loader.HgBundle20Loader.store_metadata")
     mock.side_effect = ValueError
@@ -219,12 +219,12 @@ def test_visit_error_with_snapshot_partial(swh_config, datadir, tmp_path, mocker
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
 
-    loader = HgBundle20Loader(repo_url)
+    loader = HgBundle20Loader(swh_storage, repo_url)
 
     assert loader.load() == {"status": "failed"}
 
     assert_last_visit_matches(
-        loader.storage,
+        swh_storage,
         repo_url,
         status="partial",
         type="hg",
@@ -242,7 +242,7 @@ def test_visit_error_with_snapshot_partial(swh_config, datadir, tmp_path, mocker
     ],
 )
 def test_visit_error_with_status_not_found(
-    swh_config, datadir, tmp_path, mocker, error_msg
+    swh_storage, datadir, tmp_path, mocker, error_msg
 ):
     """Not reaching the repo leads to a 'not_found' ingestion status"""
     mock = mocker.patch("hglib.clone")
@@ -252,16 +252,16 @@ def test_visit_error_with_status_not_found(
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
 
-    loader = HgBundle20Loader(repo_url)
+    loader = HgBundle20Loader(swh_storage, repo_url)
 
     assert loader.load() == {"status": "uneventful"}
 
     assert_last_visit_matches(
-        loader.storage, repo_url, status="not_found", type="hg", snapshot=None,
+        swh_storage, repo_url, status="not_found", type="hg", snapshot=None,
     )
 
 
-def test_visit_error_with_clone_error(swh_config, datadir, tmp_path, mocker):
+def test_visit_error_with_clone_error(swh_storage, datadir, tmp_path, mocker):
     """Testing failures other than 'not_found'"""
 
     mock = mocker.patch("hglib.clone")
@@ -271,16 +271,16 @@ def test_visit_error_with_clone_error(swh_config, datadir, tmp_path, mocker):
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
 
-    loader = HgBundle20Loader(repo_url)
+    loader = HgBundle20Loader(swh_storage, repo_url)
 
     assert loader.load() == {"status": "failed"}
 
     assert_last_visit_matches(
-        loader.storage, repo_url, status="failed", type="hg", snapshot=None,
+        swh_storage, repo_url, status="failed", type="hg", snapshot=None,
     )
 
 
-def test_visit_repository_with_transplant_operations(swh_config, datadir, tmp_path):
+def test_visit_repository_with_transplant_operations(swh_storage, datadir, tmp_path):
     """Visit a mercurial repository visit transplant operations within should yield a
     snapshot as well.
 
@@ -289,7 +289,7 @@ def test_visit_repository_with_transplant_operations(swh_config, datadir, tmp_pa
     archive_name = "transplant"
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
-    loader = HgBundle20Loader(url=repo_url, visit_date="2019-05-23 12:06:00+00",)
+    loader = HgBundle20Loader(swh_storage, url=repo_url, visit_date=VISIT_DATE,)
 
     # load hg repository
     actual_load_status = loader.load()
@@ -297,11 +297,11 @@ def test_visit_repository_with_transplant_operations(swh_config, datadir, tmp_pa
 
     # collect swh revisions
     assert_last_visit_matches(
-        loader.storage, repo_url, type=RevisionType.MERCURIAL.value, status="full"
+        swh_storage, repo_url, type=RevisionType.MERCURIAL.value, status="full"
     )
 
     revisions = []
-    snapshot = snapshot_get_latest(loader.storage, repo_url)
+    snapshot = snapshot_get_latest(swh_storage, repo_url)
     for branch in snapshot.branches.values():
         if branch.target_type.value != "revision":
             continue
@@ -310,7 +310,7 @@ def test_visit_repository_with_transplant_operations(swh_config, datadir, tmp_pa
     # extract original changesets info and the transplant sources
     hg_changesets = set()
     transplant_sources = set()
-    for rev in loader.storage.revision_log(revisions):
+    for rev in swh_storage.revision_log(revisions):
         hg_changesets.add(rev["metadata"]["node"])
         for k, v in rev["extra_headers"]:
             if k == b"transplant_source":

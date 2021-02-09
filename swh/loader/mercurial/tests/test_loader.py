@@ -9,6 +9,7 @@ import os
 import time
 
 import hglib
+from hglib.error import CommandError
 import pytest
 
 from swh.loader.tests import (
@@ -228,6 +229,53 @@ def test_visit_error_with_snapshot_partial(swh_config, datadir, tmp_path, mocker
         status="partial",
         type="hg",
         snapshot=hash_to_bytes("3b8fe58e467deb7597b12a5fd3b2c096b8c02028"),
+    )
+
+
+@pytest.mark.parametrize(
+    "error_msg",
+    [
+        b"does not appear to be an hg repository",
+        b"404: Not Found",
+        b" Name or service not known",
+    ],
+)
+def test_visit_error_with_status_not_found(
+    swh_config, datadir, tmp_path, mocker, error_msg
+):
+    """Not reaching the repo leads to a 'not_found' ingestion status"""
+    mock = mocker.patch("hglib.clone")
+    mock.side_effect = CommandError((), 255, b"", error_msg)
+
+    archive_name = "the-sandbox"
+    archive_path = os.path.join(datadir, f"{archive_name}.tgz")
+    repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
+
+    loader = HgBundle20Loader(repo_url)
+
+    assert loader.load() == {"status": "uneventful"}
+
+    assert_last_visit_matches(
+        loader.storage, repo_url, status="not_found", type="hg", snapshot=None,
+    )
+
+
+def test_visit_error_with_clone_error(swh_config, datadir, tmp_path, mocker):
+    """Testing failures other than 'not_found'"""
+
+    mock = mocker.patch("hglib.clone")
+    mock.side_effect = CommandError((), 255, b"", b"out of disk space")
+
+    archive_name = "the-sandbox"
+    archive_path = os.path.join(datadir, f"{archive_name}.tgz")
+    repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
+
+    loader = HgBundle20Loader(repo_url)
+
+    assert loader.load() == {"status": "failed"}
+
+    assert_last_visit_matches(
+        loader.storage, repo_url, status="failed", type="hg", snapshot=None,
     )
 
 

@@ -235,9 +235,10 @@ def test_visit_error_with_snapshot_partial(swh_config, datadir, tmp_path, mocker
 @pytest.mark.parametrize(
     "error_msg",
     [
-        b"does not appear to be an hg repository",
+        b"does not appear to be an HG repository",
         b"404: Not Found",
-        b" Name or service not known",
+        b"404: NOT FOUND",
+        b"Name or service not known",
     ],
 )
 def test_visit_error_with_status_not_found(

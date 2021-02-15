@@ -278,10 +278,10 @@ class HgBundle20Loader(DVCSLoader):
             except CommandErrorWrapper as e:
                 for msg in [
                     b"does not appear to be an hg repository",
-                    b"404: Not Found",
-                    b"Name or service not known",
+                    b"404: not found",
+                    b"name or service not known",
                 ]:
-                    if msg in e.err:
+                    if msg in e.err.lower():
                         raise NotFound(e.args[0]) from None
                 raise e
 

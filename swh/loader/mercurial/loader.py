@@ -1,4 +1,4 @@
-# Copyright (C) 2017-2020  The Software Heritage developers
+# Copyright (C) 2017-2021  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -30,10 +30,12 @@ from typing import Any, Dict, Iterable, List, Optional
 import billiard
 from dateutil import parser
 import hglib
+from hglib.error import CommandError
 
 from swh.core.config import merge_configs
 from swh.loader.core.loader import DVCSLoader
 from swh.loader.core.utils import clean_dangling_folders
+from swh.loader.exception import NotFound
 from swh.model import identifiers
 from swh.model.hashutil import (
     DEFAULT_ALGORITHMS,
@@ -72,6 +74,19 @@ TAG_PATTERN = re.compile("[0-9A-Fa-f]{40}")
 TEMPORARY_DIR_PREFIX_PATTERN = "swh.loader.mercurial."
 
 HEAD_POINTER_NAME = b"tip"
+
+
+class CommandErrorWrapper(Exception):
+    """This exception is raised in place of a 'CommandError'
+       exception (raised by the underlying hglib library)
+
+       This is needed because billiard.Queue is serializing the
+       queued object and as CommandError doesn't have a constructor without
+       parameters, the deserialization is failing
+    """
+
+    def __init__(self, err: Optional[bytes]):
+        self.err = err
 
 
 class CloneTimeoutError(Exception):
@@ -183,6 +198,9 @@ class HgBundle20Loader(DVCSLoader):
         def do_clone(queue, origin, destination):
             try:
                 result = hglib.clone(source=origin, dest=destination)
+            except CommandError as e:
+                # the queued object need an empty constructor to be deserialized later
+                queue.put(CommandErrorWrapper(e.err))
             except BaseException as e:
                 queue.put(e)
             else:
@@ -207,6 +225,7 @@ class HgBundle20Loader(DVCSLoader):
                 continue
 
         process.join()
+
         if isinstance(result, Exception):
             raise result from None
 
@@ -252,9 +271,19 @@ class HgBundle20Loader(DVCSLoader):
                 self.clone_timeout,
             )
 
-            self.clone_with_timeout(
-                self.log, self.origin_url, self.hgdir, self.clone_timeout
-            )
+            try:
+                self.clone_with_timeout(
+                    self.log, self.origin_url, self.hgdir, self.clone_timeout
+                )
+            except CommandErrorWrapper as e:
+                for msg in [
+                    b"does not appear to be an hg repository",
+                    b"404: Not Found",
+                    b"Name or service not known",
+                ]:
+                    if msg in e.err:
+                        raise NotFound(e.args[0]) from None
+                raise e
 
         else:  # local repository
             self.working_directory = None
@@ -262,6 +291,7 @@ class HgBundle20Loader(DVCSLoader):
 
         self.bundle_path = os.path.join(self.hgdir, self.bundle_filename)
         self.log.debug("Bundling at %s" % self.bundle_path)
+
         with hglib.open(self.hgdir) as repo:
             self.heads = self.get_heads(repo)
             repo.bundle(bytes(self.bundle_path, "utf-8"), all=True, type=b"none-v2")

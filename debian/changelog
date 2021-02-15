@@ -1,8 +1,11 @@
-swh-loader-mercurial (0.2.1-1~swh2~bpo10+1) buster-swh; urgency=medium
+swh-loader-mercurial (0.3.0-1~swh1) unstable-swh; urgency=medium
 
-  * Rebuild for buster-swh
+  * New upstream release 0.3.0     - (tagged by Vincent SELLIER
+    <vincent.sellier@softwareheritage.org> on 2021-02-15 16:24:36 +0100)
+  * Upstream changes:     - v0.3.0     - mark visit as 'not_found' and
+    'failed' when relevant
 
- -- Software Heritage autobuilder (on jenkins-debian1) <jenkins@jenkins-debian1.internal.softwareheritage.org>  Wed, 03 Feb 2021 15:50:07 +0000
+ -- Software Heritage autobuilder (on jenkins-debian1) <jenkins@jenkins-debian1.internal.softwareheritage.org>  Mon, 15 Feb 2021 15:27:27 +0000
 
 swh-loader-mercurial (0.2.1-1~swh2) unstable-swh; urgency=medium
 

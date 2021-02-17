@@ -28,11 +28,9 @@ import time
 from typing import Any, Dict, Iterable, List, Optional
 
 import billiard
-from dateutil import parser
 import hglib
 from hglib.error import CommandError
 
-from swh.core.config import merge_configs
 from swh.loader.core.loader import DVCSLoader
 from swh.loader.core.utils import clean_dangling_folders
 from swh.loader.exception import NotFound
@@ -62,6 +60,7 @@ from swh.model.model import (
     TimestampWithTimezone,
 )
 from swh.storage.algos.origin import origin_get_latest_visit_status
+from swh.storage.interface import StorageInterface
 
 from . import converters
 from .archive_extract import tmp_extract
@@ -93,16 +92,6 @@ class CloneTimeoutError(Exception):
     pass
 
 
-DEFAULT_CONFIG: Dict[str, Any] = {
-    "bundle_filename": "HG20_none_bundle",
-    "reduce_effort": False,
-    "temp_directory": "/tmp",
-    "cache1_size": 800 * 1024 * 1024,
-    "cache2_size": 800 * 1024 * 1024,
-    "clone_timeout_seconds": 7200,
-}
-
-
 class HgBundle20Loader(DVCSLoader):
     """Mercurial loader able to deal with remote or local repository.
 
@@ -112,27 +101,40 @@ class HgBundle20Loader(DVCSLoader):
 
     def __init__(
         self,
-        url,
-        visit_date=None,
-        directory=None,
+        storage: StorageInterface,
+        url: str,
+        visit_date: Optional[datetime.datetime] = None,
+        directory: Optional[str] = None,
         logging_class="swh.loader.mercurial.Bundle20Loader",
+        bundle_filename: Optional[str] = "HG20_none_bundle",
+        reduce_effort: bool = False,
+        temp_directory: str = "/tmp",
+        cache1_size: int = 800 * 1024 * 1024,
+        cache2_size: int = 800 * 1024 * 1024,
+        clone_timeout_seconds: int = 7200,
+        save_data_path: Optional[str] = None,
+        max_content_size: Optional[int] = None,
     ):
-        super().__init__(logging_class=logging_class)
-        self.config = merge_configs(DEFAULT_CONFIG, self.config)
+        super().__init__(
+            storage=storage,
+            logging_class=logging_class,
+            save_data_path=save_data_path,
+            max_content_size=max_content_size,
+        )
         self.origin_url = url
         self.visit_date = visit_date
         self.directory = directory
-        self.bundle_filename = self.config["bundle_filename"]
-        self.reduce_effort_flag = self.config["reduce_effort"]
+        self.bundle_filename = bundle_filename
+        self.reduce_effort_flag = reduce_effort
         self.empty_repository = None
-        self.temp_directory = self.config["temp_directory"]
-        self.cache1_size = self.config["cache1_size"]
-        self.cache2_size = self.config["cache2_size"]
-        self.clone_timeout = self.config["clone_timeout_seconds"]
+        self.temp_directory = temp_directory
+        self.cache1_size = cache1_size
+        self.cache2_size = cache2_size
+        self.clone_timeout = clone_timeout_seconds
         self.working_directory = None
         self.bundle_path = None
-        self.heads = {}
-        self.releases = {}
+        self.heads: Dict[bytes, Any] = {}
+        self.releases: Dict[bytes, Any] = {}
         self.last_snapshot_id: Optional[bytes] = None
 
     def pre_cleanup(self):
@@ -179,12 +181,8 @@ class HgBundle20Loader(DVCSLoader):
 
         return b
 
-    def prepare_origin_visit(self, *args, **kwargs) -> None:
+    def prepare_origin_visit(self) -> None:
         self.origin = Origin(url=self.origin_url)
-        visit_date = self.visit_date
-        if isinstance(visit_date, str):  # visit_date can be string or datetime
-            visit_date = parser.parse(visit_date)
-        self.visit_date = visit_date
         visit_status = origin_get_latest_visit_status(
             self.storage, self.origin_url, require_snapshot=True
         )
@@ -231,7 +229,7 @@ class HgBundle20Loader(DVCSLoader):
 
         return result
 
-    def prepare(self, *args, **kwargs):
+    def prepare(self):
         """Prepare the necessary steps to load an actual remote or local
            repository.
 
@@ -638,17 +636,28 @@ class HgArchiveBundle20Loader(HgBundle20Loader):
 
     """
 
-    def __init__(self, url, visit_date=None, archive_path=None):
+    def __init__(
+        self,
+        storage: StorageInterface,
+        url: str,
+        visit_date: Optional[datetime.datetime] = None,
+        archive_path=None,
+        temp_directory: str = "/tmp",
+        max_content_size: Optional[int] = None,
+    ):
         super().__init__(
-            url,
+            storage=storage,
+            url=url,
             visit_date=visit_date,
             logging_class="swh.loader.mercurial.HgArchiveBundle20Loader",
+            temp_directory=temp_directory,
+            max_content_size=max_content_size,
         )
-        self.temp_dir = None
+        self.archive_extract_temp_dir = None
         self.archive_path = archive_path
 
-    def prepare(self, *args, **kwargs):
-        self.temp_dir = tmp_extract(
+    def prepare(self):
+        self.archive_extract_temp_dir = tmp_extract(
             archive=self.archive_path,
             dir=self.temp_directory,
             prefix=TEMPORARY_DIR_PREFIX_PATTERN,
@@ -657,11 +666,6 @@ class HgArchiveBundle20Loader(HgBundle20Loader):
             source=self.origin_url,
         )
 
-        repo_name = os.listdir(self.temp_dir)[0]
-        self.directory = os.path.join(self.temp_dir, repo_name)
-        super().prepare(*args, **kwargs)
-
-    def cleanup(self):
-        if self.temp_dir and os.path.exists(self.temp_dir):
-            rmtree(self.temp_dir)
-        super().cleanup()
+        repo_name = os.listdir(self.archive_extract_temp_dir)[0]
+        self.directory = os.path.join(self.archive_extract_temp_dir, repo_name)
+        super().prepare()

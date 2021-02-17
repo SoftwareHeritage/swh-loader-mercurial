@@ -1,23 +1,20 @@
-# Copyright (C) 2020  The Software Heritage developers
+# Copyright (C) 2020-2021  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-import os
 from collections import deque
-from datetime import datetime, timezone
+from datetime import datetime
+import os
 from shutil import rmtree
 from tempfile import mkdtemp
-from typing import Any, Deque, Dict, Optional, Tuple, TypeVar, Union
+from typing import Deque, Dict, Optional, Tuple, TypeVar, Union
 
-import dateutil
-
-from swh.core.config import merge_configs
 from swh.loader.core.loader import BaseLoader
 from swh.loader.core.utils import clean_dangling_folders
+from swh.loader.mercurial.utils import parse_visit_date
 from swh.model.from_disk import Content, DentryPerms, Directory
 from swh.model.hashutil import MultiHash, hash_to_bytehex
-from swh.model.model import Content as ModelContent
 from swh.model.model import (
     ObjectType,
     Origin,
@@ -31,6 +28,8 @@ from swh.model.model import (
     TargetType,
     TimestampWithTimezone,
 )
+from swh.model.model import Content as ModelContent
+from swh.storage.interface import StorageInterface
 
 from . import hgutil
 from .archive_extract import tmp_extract
@@ -41,36 +40,11 @@ FLAG_PERMS = {
     b"x": DentryPerms.executable_content,
     b"": DentryPerms.content,
 }  # type: Dict[bytes, DentryPerms]
-DEFAULT_CONFIG: Dict[str, Any] = {
-    "temp_directory": "/tmp",
-    "clone_timeout_seconds": 7200,
-    "content_cache_size": 10_000,
-}
+
 TEMPORARY_DIR_PREFIX_PATTERN = "swh.loader.mercurial.from_disk"
 
 
 T = TypeVar("T")
-
-
-def parse_visit_date(visit_date: Optional[Union[datetime, str]]) -> Optional[datetime]:
-    """Convert visit date from Optional[Union[str, datetime]] to Optional[datetime].
-
-    `HgLoaderFromDisk` accepts `str` and `datetime` as visit date
-    while `BaseLoader` only deals with `datetime`.
-    """
-    if visit_date is None:
-        return None
-
-    if isinstance(visit_date, datetime):
-        return visit_date
-
-    if visit_date == "now":
-        return datetime.now(tz=timezone.utc)
-
-    if isinstance(visit_date, str):
-        return dateutil.parser.parse(visit_date)
-
-    return ValueError(f"invalid visit date {visit_date!r}")
 
 
 class HgDirectory(Directory):
@@ -122,11 +96,15 @@ class HgLoaderFromDisk(BaseLoader):
 
     def __init__(
         self,
+        storage: StorageInterface,
         url: str,
         directory: Optional[str] = None,
         logging_class: str = "swh.loader.mercurial.LoaderFromDisk",
-        visit_date: Optional[Union[datetime, str]] = None,
-        config: Optional[Dict[str, Any]] = None,
+        visit_date: Optional[datetime] = None,
+        temp_directory: str = "/tmp",
+        clone_timeout_seconds: int = 7200,
+        content_cache_size: int = 10_000,
+        max_content_size: Optional[int] = None,
     ):
         """Initialize the loader.
 
@@ -137,14 +115,17 @@ class HgLoaderFromDisk(BaseLoader):
             visit_date: visit date of the repository
             config: loader configuration
         """
-        super().__init__(logging_class=logging_class, config=config or {})
+        super().__init__(
+            storage=storage,
+            logging_class=logging_class,
+            max_content_size=max_content_size,
+        )
 
-        self.config = merge_configs(DEFAULT_CONFIG, self.config)
-        self._temp_directory = self.config["temp_directory"]
-        self._clone_timeout = self.config["clone_timeout_seconds"]
+        self._temp_directory = temp_directory
+        self._clone_timeout = clone_timeout_seconds
 
         self.origin_url = url
-        self.visit_date = parse_visit_date(visit_date)
+        self.visit_date = visit_date
         self.directory = directory
 
         self._repo: Optional[hgutil.Repository] = None
@@ -162,7 +143,7 @@ class HgLoaderFromDisk(BaseLoader):
 
         # Cache the content hash across revisions to avoid recalculation.
         self._content_hash_cache: hgutil.LRUCacheDict = hgutil.LRUCacheDict(
-            self.config["content_cache_size"],
+            content_cache_size,
         )
 
     def pre_cleanup(self) -> None:
@@ -182,7 +163,7 @@ class HgLoaderFromDisk(BaseLoader):
             self.log.debug(f"Cleanup up repository {self._repo_directory}")
             rmtree(self._repo_directory)
 
-    def prepare_origin_visit(self, *args, **kwargs) -> None:
+    def prepare_origin_visit(self) -> None:
         """First step executed by the loader to prepare origin and visit
         references. Set/update self.origin, and
         optionally self.origin_url, self.visit_date.
@@ -190,7 +171,7 @@ class HgLoaderFromDisk(BaseLoader):
         """
         self.origin = Origin(url=self.origin_url)
 
-    def prepare(self, *args, **kwargs) -> None:
+    def prepare(self) -> None:
         """Second step executed by the loader to prepare some state needed by
         the loader.
 
@@ -478,19 +459,28 @@ class HgArchiveLoaderFromDisk(HgLoaderFromDisk):
     """Mercurial loader for repository wrapped within tarballs."""
 
     def __init__(
-        self, url: str, visit_date: Optional[datetime] = None, archive_path: str = None
+        self,
+        storage: StorageInterface,
+        url: str,
+        visit_date: Optional[datetime] = None,
+        archive_path: str = None,
+        temp_directory: str = "/tmp",
+        max_content_size: Optional[int] = None,
     ):
         super().__init__(
-            url,
+            storage=storage,
+            url=url,
             visit_date=visit_date,
             logging_class="swh.loader.mercurial.ArchiveLoaderFromDisk",
+            temp_directory=temp_directory,
+            max_content_size=max_content_size,
         )
-        self.temp_dir = None
+        self.archive_extract_temp_dir = None
         self.archive_path = archive_path
 
-    def prepare(self, *args, **kwargs):
+    def prepare(self):
         """Extract the archive instead of cloning."""
-        self._temp_directory = tmp_extract(
+        self.archive_extract_temp_dir = tmp_extract(
             archive=self.archive_path,
             dir=self._temp_directory,
             prefix=TEMPORARY_DIR_PREFIX_PATTERN,
@@ -500,14 +490,8 @@ class HgArchiveLoaderFromDisk(HgLoaderFromDisk):
         )
 
         repo_name = os.listdir(self.temp_dir)[0]
-        self.directory = os.path.join(self.temp_dir, repo_name)
-        super().prepare(*args, **kwargs)
-
-    def cleanup(self) -> None:
-        """Remove the extracted archive instead of the cloned repository."""
-        if self.temp_dir and os.path.exists(self.temp_dir):
-            rmtree(self.temp_dir)
-        super().cleanup()
+        self.directory = os.path.join(self.archive_extract_temp_dir, repo_name)
+        super().prepare()
 
 
 # Allow direct usage of the loader from the command line with
@@ -526,8 +510,14 @@ if __name__ == "__main__":
     @click.option("--hg-directory", help="Path to mercurial repository to load")
     @click.option("--visit-date", default=None, help="Visit date")
     def main(origin_url, hg_directory, visit_date):
+        from swh.storage import get_storage
+
+        storage = get_storage(cls="memory")
         return HgLoaderFromDisk(
-            origin_url, directory=hg_directory, visit_date=visit_date
+            storage,
+            origin_url,
+            directory=hg_directory,
+            visit_date=parse_visit_date(visit_date),
         ).load()
 
     main()

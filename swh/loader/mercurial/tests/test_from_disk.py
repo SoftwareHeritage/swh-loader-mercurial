@@ -1,12 +1,13 @@
-# Copyright (C) 2020  The Software Heritage developers
+# Copyright (C) 2020-2021  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-import os
 from datetime import datetime
 from hashlib import sha1
+import os
 
+from swh.loader.mercurial.utils import parse_visit_date
 from swh.loader.tests import (
     assert_last_visit_matches,
     check_snapshot,
@@ -20,6 +21,9 @@ from swh.storage.algos.snapshot import snapshot_get_latest
 
 from ..from_disk import HgDirectory, HgLoaderFromDisk
 from .loader_checker import ExpectedSwhids, LoaderChecker
+
+VISIT_DATE = parse_visit_date("2016-05-03 15:16:32+00")
+assert VISIT_DATE is not None
 
 
 def random_content() -> Content:
@@ -73,14 +77,15 @@ def test_hg_directory_when_directory_replaces_file():
 #
 # With more work it should event be possible to know which part
 # of an object is faulty.
-def test_examples(swh_config, datadir, tmp_path):
+def test_examples(swh_storage, datadir, tmp_path):
     for archive_name in ("hello", "transplant", "the-sandbox", "example"):
         archive_path = os.path.join(datadir, f"{archive_name}.tgz")
         json_path = os.path.join(datadir, f"{archive_name}.json")
         repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
 
         LoaderChecker(
-            loader=HgLoaderFromDisk(repo_url), expected=ExpectedSwhids.load(json_path),
+            loader=HgLoaderFromDisk(swh_storage, repo_url),
+            expected=ExpectedSwhids.load(json_path),
         ).check()
 
 
@@ -88,13 +93,13 @@ def test_examples(swh_config, datadir, tmp_path):
 # to ensure compatibility of `HgLoaderFromDisk`.
 # Hashes as been produced by copy pasting the result of the implementation
 # to prevent regressions.
-def test_loader_hg_new_visit_no_release(swh_config, datadir, tmp_path):
+def test_loader_hg_new_visit_no_release(swh_storage, datadir, tmp_path):
     """Eventful visit should yield 1 snapshot"""
     archive_name = "the-sandbox"
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
 
-    loader = HgLoaderFromDisk(url=repo_url)
+    loader = HgLoaderFromDisk(swh_storage, url=repo_url)
 
     assert loader.load() == {"status": "eventful"}
 
@@ -141,14 +146,14 @@ def test_loader_hg_new_visit_no_release(swh_config, datadir, tmp_path):
 # to ensure compatibility of `HgLoaderFromDisk`.
 # Hashes as been produced by copy pasting the result of the implementation
 # to prevent regressions.
-def test_loader_hg_new_visit_with_release(swh_config, datadir, tmp_path):
+def test_loader_hg_new_visit_with_release(swh_storage, datadir, tmp_path):
     """Eventful visit with release should yield 1 snapshot"""
 
     archive_name = "hello"
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
 
-    loader = HgLoaderFromDisk(url=repo_url, visit_date="2016-05-03 15:16:32+00")
+    loader = HgLoaderFromDisk(swh_storage, url=repo_url, visit_date=VISIT_DATE,)
 
     actual_load_status = loader.load()
     assert actual_load_status == {"status": "eventful"}
@@ -200,7 +205,7 @@ def test_loader_hg_new_visit_with_release(swh_config, datadir, tmp_path):
 # to ensure compatibility of `HgLoaderFromDisk`.
 # Hashes as been produced by copy pasting the result of the implementation
 # to prevent regressions.
-def test_visit_repository_with_transplant_operations(swh_config, datadir, tmp_path):
+def test_visit_repository_with_transplant_operations(swh_storage, datadir, tmp_path):
     """Visit a mercurial repository visit transplant operations within should yield a
     snapshot as well.
 
@@ -210,7 +215,7 @@ def test_visit_repository_with_transplant_operations(swh_config, datadir, tmp_pa
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
 
-    loader = HgLoaderFromDisk(url=repo_url, visit_date="2016-05-03 15:16:32+00")
+    loader = HgLoaderFromDisk(swh_storage, url=repo_url, visit_date=VISIT_DATE,)
 
     # load hg repository
     actual_load_status = loader.load()

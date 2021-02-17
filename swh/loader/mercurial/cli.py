@@ -1,4 +1,4 @@
-# Copyright (C) 2018  The Software Heritage developers
+# Copyright (C) 2018-2021  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -34,6 +34,7 @@ LOGLEVELS = list(
 def main(
     origin_url, hg_directory=None, hg_archive=None, visit_date=None, log_level=None
 ):
+    from swh.storage import get_storage
 
     logging.basicConfig(
         level=(log_level or "DEBUG").upper(),
@@ -52,7 +53,8 @@ def main(
 
         kwargs["directory"] = hg_directory
 
-    return HgLoader().load(**kwargs)
+    storage = get_storage(cls="memory")
+    return HgLoader(storage, **kwargs).load()
 
 
 if __name__ == "__main__":

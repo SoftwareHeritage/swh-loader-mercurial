@@ -43,7 +43,7 @@ def main(
 
     if not visit_date:
         visit_date = datetime.datetime.now(tz=datetime.timezone.utc)
-    kwargs = {"visit_date": visit_date, "origin_url": origin_url}
+    kwargs = {"visit_date": visit_date, "url": origin_url}
     if hg_archive:
         from .loader import HgArchiveBundle20Loader as HgLoader
 

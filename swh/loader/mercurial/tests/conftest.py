@@ -3,6 +3,7 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+import os
 from typing import Any, Dict
 
 import pytest
@@ -37,3 +38,12 @@ def swh_loader_config(swh_storage_backend_config, tmp_path) -> Dict[str, Any]:
         "max_content_size": 104857600,
         "temp_directory": str(tmp_path),
     }
+
+
+@pytest.fixture(autouse=True, scope="session")
+def swh_mercurial_set_plain():
+    """Mercurial is customizable by users, so we use built-in environment
+    variables to turn off all customization in tests.
+    """
+    os.environ["HGPLAIN"] = ""
+    os.environ["HGRCPATH"] = ""

@@ -213,7 +213,11 @@ class Hg:
 
     def _get_env(self) -> Dict[str, str]:
         """Return the smallest viable environment for `hg` suprocesses"""
-        env = {"PATH": os.environ["PATH"]}
+        env = {
+            "PATH": os.environ["PATH"],
+            "HGPLAIN": "",  # Tells Mercurial to disable output customization
+            "HGRCPATH": "",  # Tells Mercurial to ignore config files
+        }
         return env
 
     def root(self) -> Path:

@@ -3,11 +3,11 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+from codecs import escape_decode  # type: ignore
 import json
+from pathlib import Path
 import re
 import subprocess
-from codecs import escape_decode  # type: ignore
-from pathlib import Path
 from typing import Any, Dict, Iterator, List, NamedTuple, Optional, Union
 
 # WARNING: do not import unnecessary things here to keep cli startup time under

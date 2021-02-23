@@ -5,6 +5,7 @@
 
 from codecs import escape_decode  # type: ignore
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -196,7 +197,9 @@ class Hg:
 
     def _output(self, *args) -> bytes:
         """Return the outpout of a `hg` call."""
-        return subprocess.check_output(["hg", *args], cwd=self._root)
+        return subprocess.check_output(
+            ["hg", *args], cwd=self._root, env=self._get_env()
+        )
 
     def _call(self, *args) -> None:
         """Perform a `hg` call."""
@@ -205,7 +208,13 @@ class Hg:
             cwd=self._root,
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE,
+            env=self._get_env(),
         )
+
+    def _get_env(self) -> Dict[str, str]:
+        """Return the smallest viable environment for `hg` suprocesses"""
+        env = {"PATH": os.environ["PATH"]}
+        return env
 
     def root(self) -> Path:
         """Return the root of the Mercurial repository."""

@@ -6,7 +6,7 @@
 from datetime import datetime, timezone
 from typing import Optional, Union
 
-import dateutil
+from dateutil.parser import parse
 
 
 def parse_visit_date(visit_date: Optional[Union[datetime, str]]) -> Optional[datetime]:
@@ -24,6 +24,6 @@ def parse_visit_date(visit_date: Optional[Union[datetime, str]]) -> Optional[dat
         return datetime.now(tz=timezone.utc)
 
     if isinstance(visit_date, str):
-        return dateutil.parser.parse(visit_date)
+        return parse(visit_date)
 
     raise ValueError(f"invalid visit date {visit_date!r}")

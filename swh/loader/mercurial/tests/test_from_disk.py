@@ -246,3 +246,36 @@ def test_visit_repository_with_transplant_operations(swh_storage, datadir, tmp_p
     assert len(hg_changesets) > 0
     assert len(transplant_sources) > 0
     assert transplant_sources.issubset(hg_changesets)
+
+
+def test_load_unchanged_repo_should_be_uneventfull(swh_storage, datadir, tmp_path):
+    archive_name = "hello"
+    archive_path = os.path.join(datadir, f"{archive_name}.tgz")
+    repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
+    repo_path = repo_url.replace("file://", "")
+
+    loader = HgLoaderFromDisk(swh_storage, repo_path)
+
+    assert loader.load() == {"status": "eventful"}
+    assert get_stats(loader.storage) == {
+        "content": 3,
+        "directory": 3,
+        "origin": 1,
+        "origin_visit": 1,
+        "release": 1,
+        "revision": 3,
+        "skipped_content": 0,
+        "snapshot": 1,
+    }
+
+    assert loader.load() == {"status": "uneventful"}
+    assert get_stats(loader.storage) == {
+        "content": 3,
+        "directory": 3,
+        "origin": 1,
+        "origin_visit": 2,
+        "release": 1,
+        "revision": 3,
+        "skipped_content": 0,
+        "snapshot": 1,
+    }

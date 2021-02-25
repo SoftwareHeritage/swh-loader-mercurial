@@ -8,13 +8,13 @@ from datetime import datetime
 import os
 from shutil import rmtree
 from tempfile import mkdtemp
-from typing import Deque, Dict, Optional, Tuple, TypeVar, Union
+from typing import Deque, Dict, List, Optional, Tuple, TypeVar, Union
 
 from swh.loader.core.loader import BaseLoader
 from swh.loader.core.utils import clean_dangling_folders
 from swh.loader.mercurial.utils import parse_visit_date
 from swh.model.from_disk import Content, DentryPerms, Directory
-from swh.model.hashutil import MultiHash, hash_to_bytehex
+from swh.model.hashutil import MultiHash, hash_to_bytehex, hash_to_bytes
 from swh.model.model import (
     ObjectType,
     Origin,
@@ -29,11 +29,12 @@ from swh.model.model import (
     TimestampWithTimezone,
 )
 from swh.model.model import Content as ModelContent
+from swh.storage.algos.snapshot import snapshot_get_latest
 from swh.storage.interface import StorageInterface
 
 from . import hgutil
 from .archive_extract import tmp_extract
-from .hgutil import HgNodeId
+from .hgutil import HgFilteredSet, HgNodeId, HgSpanSet
 
 FLAG_PERMS = {
     b"l": DentryPerms.symlink,
@@ -146,6 +147,12 @@ class HgLoaderFromDisk(BaseLoader):
             content_cache_size,
         )
 
+        # hg node id of the latest snapshot branch heads
+        # used to find what are the new revisions since last snapshot
+        self._latest_heads: List[HgNodeId] = []
+
+        self._load_status = "eventful"
+
     def pre_cleanup(self) -> None:
         """As a first step, will try and check for dangling data to cleanup.
         This should do its best to avoid raising issues.
@@ -176,6 +183,21 @@ class HgLoaderFromDisk(BaseLoader):
         the loader.
 
         """
+        # Set here to allow multiple calls to load on the same loader instance
+        self._latest_heads = []
+
+        latest_snapshot = snapshot_get_latest(self.storage, self.origin_url)
+        if latest_snapshot:
+            snapshot_branches = [
+                branch.target
+                for branch in latest_snapshot.branches.values()
+                if branch.target_type != TargetType.ALIAS
+            ]
+            self._latest_heads = [
+                hash_to_bytes(revision.metadata["node"])
+                for revision in self.storage.revision_get(snapshot_branches)
+                if revision and revision.metadata
+            ]
 
     def fetch_data(self) -> bool:
         """Fetch the data from the source the loader is currently loading
@@ -205,9 +227,41 @@ class HgLoaderFromDisk(BaseLoader):
 
         return False
 
+    def get_hg_revs_to_load(self) -> Union[HgFilteredSet, HgSpanSet]:
+        """Return the hg revision numbers to load."""
+        assert self._repo is not None
+        repo: hgutil.Repository = self._repo
+        if self._latest_heads:
+            existing_heads = []  # heads that still exist in the repository
+            for hg_nodeid in self._latest_heads:
+                try:
+                    rev = repo[hg_nodeid].rev()
+                    existing_heads.append(rev)
+                except KeyError:  # the node does not exist anymore
+                    pass
+
+            # select revisions that are not ancestors of heads
+            # and not the heads themselves
+            new_revs = repo.revs("not ::(%ld)", existing_heads)
+
+            # for now, reload all revisions if there are new commits
+            # otherwise the loader will crash on missing parents
+            # incremental loading will come in next commits
+            if new_revs:
+                return repo.revs("all()")
+            else:
+                return new_revs
+        else:
+            return repo.revs("all()")
+
     def store_data(self):
         """Store fetched data in the database."""
-        for rev in self._repo:
+        revs = self.get_hg_revs_to_load()
+        if not revs:
+            self._load_status = "uneventful"
+            return
+
+        for rev in revs:
             self.store_revision(self._repo[rev])
 
         branch_by_hg_nodeid: Dict[HgNodeId, bytes] = {
@@ -249,6 +303,19 @@ class HgLoaderFromDisk(BaseLoader):
 
         self.flush()
         self.loaded_snapshot_id = snapshot.id
+
+    def load_status(self) -> Dict[str, str]:
+        """Detailed loading status.
+
+        Defaults to logging an eventful load.
+
+        Returns: a dictionary that is eventually passed back as the task's
+          result to the scheduler, allowing tuning of the task recurrence
+          mechanism.
+        """
+        return {
+            "status": self._load_status,
+        }
 
     def get_revision_id_from_hg_nodeid(self, hg_nodeid: HgNodeId) -> Sha1Git:
         """Return the swhid of a revision given its hg nodeid.

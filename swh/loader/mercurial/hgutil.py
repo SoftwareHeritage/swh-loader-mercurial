@@ -9,7 +9,7 @@ import traceback
 from typing import Dict, NewType
 
 # The internal Mercurial API is not guaranteed to be stable.
-from mercurial import context, hg, util  # type: ignore
+from mercurial import context, hg, smartset, util  # type: ignore
 import mercurial.ui  # type: ignore
 
 NULLID = mercurial.node.nullid
@@ -17,6 +17,8 @@ HgNodeId = NewType("HgNodeId", bytes)
 Repository = hg.localrepo
 BaseContext = context.basectx
 LRUCacheDict = util.lrucachedict
+HgSpanSet = smartset._spanset
+HgFilteredSet = smartset.filteredset
 
 
 def repository(path: str) -> hg.localrepo:

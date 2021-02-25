@@ -1,11 +1,10 @@
-# Copyright (C) 2020  The Software Heritage developers
+# Copyright (C) 2020-2021  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
 from codecs import escape_decode  # type: ignore
 import json
-import os
 from pathlib import Path
 import re
 import subprocess
@@ -15,6 +14,7 @@ from typing import Any, Dict, Iterator, List, NamedTuple, Optional, Union
 # control
 import click
 
+from swh.loader.mercurial.utils import get_minimum_env
 from swh.model.cli import identify_object
 from swh.model.hashutil import hash_to_bytehex
 from swh.model.identifiers import normalize_timestamp, swhid
@@ -198,7 +198,7 @@ class Hg:
     def _output(self, *args) -> bytes:
         """Return the outpout of a `hg` call."""
         return subprocess.check_output(
-            ["hg", *args], cwd=self._root, env=self._get_env()
+            ["hg", *args], cwd=self._root, env=get_minimum_env()
         )
 
     def _call(self, *args) -> None:
@@ -208,17 +208,8 @@ class Hg:
             cwd=self._root,
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            env=self._get_env(),
+            env=get_minimum_env(),
         )
-
-    def _get_env(self) -> Dict[str, str]:
-        """Return the smallest viable environment for `hg` suprocesses"""
-        env = {
-            "PATH": os.environ["PATH"],
-            "HGPLAIN": "",  # Tells Mercurial to disable output customization
-            "HGRCPATH": "",  # Tells Mercurial to ignore config files
-        }
-        return env
 
     def root(self) -> Path:
         """Return the root of the Mercurial repository."""

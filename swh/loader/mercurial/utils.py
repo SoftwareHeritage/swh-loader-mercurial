@@ -4,7 +4,8 @@
 # See top-level LICENSE file for more information
 
 from datetime import datetime, timezone
-from typing import Optional, Union
+import os
+from typing import Dict, Optional, Union
 
 from dateutil.parser import parse
 
@@ -27,3 +28,17 @@ def parse_visit_date(visit_date: Optional[Union[datetime, str]]) -> Optional[dat
         return parse(visit_date)
 
     raise ValueError(f"invalid visit date {visit_date!r}")
+
+
+def get_minimum_env() -> Dict[str, str]:
+    """Return the smallest viable environment for `hg` suprocesses"""
+    env = {
+        "HGPLAIN": "",  # Tells Mercurial to disable output customization
+        "HGRCPATH": "",  # Tells Mercurial to ignore config files
+    }
+    path = os.environ.get("PATH")
+    if path:
+        # Sometimes (in tests for example), there is no PATH. An empty PATH could be
+        # interpreted differently than a lack of PATH by some programs.
+        env["PATH"] = path
+    return env

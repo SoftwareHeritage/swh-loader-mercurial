@@ -34,6 +34,7 @@ from hglib.error import CommandError
 from swh.loader.core.loader import DVCSLoader
 from swh.loader.core.utils import clean_dangling_folders
 from swh.loader.exception import NotFound
+from swh.loader.mercurial.utils import get_minimum_env
 from swh.model import identifiers
 from swh.model.hashutil import (
     DEFAULT_ALGORITHMS,
@@ -136,6 +137,9 @@ class HgBundle20Loader(DVCSLoader):
         self.heads: Dict[bytes, Any] = {}
         self.releases: Dict[bytes, Any] = {}
         self.last_snapshot_id: Optional[bytes] = None
+        self.old_environ = os.environ.copy()
+        os.environ.clear()
+        os.environ.update(get_minimum_env())
 
     def pre_cleanup(self):
         """Cleanup potential dangling files from prior runs (e.g. OOM killed
@@ -152,6 +156,8 @@ class HgBundle20Loader(DVCSLoader):
         """Clean temporary working directory
 
         """
+        os.environ.clear()
+        os.environ.update(self.old_environ)
         if self.bundle_path and os.path.exists(self.bundle_path):
             self.log.debug("Cleanup up working bundle %s" % self.bundle_path)
             os.unlink(self.bundle_path)

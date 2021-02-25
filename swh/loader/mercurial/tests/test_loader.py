@@ -57,11 +57,7 @@ def test_loader_hg_new_visit_no_release(swh_storage, datadir, tmp_path):
     )
 
     assert_last_visit_matches(
-        swh_storage,
-        repo_url,
-        status="full",
-        type="hg",
-        snapshot=expected_snapshot.id,
+        swh_storage, repo_url, status="full", type="hg", snapshot=expected_snapshot.id,
     )
     check_snapshot(expected_snapshot, swh_storage)
 
@@ -325,7 +321,7 @@ def test_visit_repository_with_transplant_operations(swh_storage, datadir, tmp_p
 def test_clone_with_timeout_timeout(caplog, tmp_path, monkeypatch):
     log = logging.getLogger("test_clone_with_timeout")
 
-    def clone_timeout(source, dest):
+    def clone_timeout(source, dest, *args, **kwargs):
         time.sleep(60)
 
     monkeypatch.setattr(hglib, "clone", clone_timeout)
@@ -344,7 +340,7 @@ def test_clone_with_timeout_timeout(caplog, tmp_path, monkeypatch):
 def test_clone_with_timeout_returns(caplog, tmp_path, monkeypatch):
     log = logging.getLogger("test_clone_with_timeout")
 
-    def clone_return(source, dest):
+    def clone_return(source, dest, *args, **kwargs):
         return (source, dest)
 
     monkeypatch.setattr(hglib, "clone", clone_return)
@@ -357,7 +353,7 @@ def test_clone_with_timeout_returns(caplog, tmp_path, monkeypatch):
 def test_clone_with_timeout_exception(caplog, tmp_path, monkeypatch):
     log = logging.getLogger("test_clone_with_timeout")
 
-    def clone_return(source, dest):
+    def clone_return(source, dest, *args, **kwargs):
         raise ValueError("Test exception")
 
     monkeypatch.setattr(hglib, "clone", clone_return)

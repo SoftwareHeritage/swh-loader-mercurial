@@ -195,7 +195,7 @@ class HgBundle20Loader(DVCSLoader):
 
         def do_clone(queue, origin, destination):
             try:
-                result = hglib.clone(source=origin, dest=destination)
+                result = hglib.clone(source=origin, dest=destination, noupdate=True)
             except CommandError as e:
                 # the queued object need an empty constructor to be deserialized later
                 queue.put(CommandErrorWrapper(e.err))

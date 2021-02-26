@@ -279,3 +279,22 @@ def test_load_unchanged_repo_should_be_uneventfull(swh_storage, datadir, tmp_pat
         "skipped_content": 0,
         "snapshot": 1,
     }
+
+
+def test_missing_filelog_should_not_crash(swh_storage, datadir, tmp_path):
+    archive_name = "missing-filelog"
+    archive_path = os.path.join(datadir, f"{archive_name}.tgz")
+    repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
+    directory = repo_url.replace("file://", "")
+
+    loader = HgLoaderFromDisk(
+        storage=swh_storage,
+        url=repo_url,
+        directory=directory,  # specify directory to avoid clone
+        visit_date=VISIT_DATE,
+    )
+
+    actual_load_status = loader.load()
+    assert actual_load_status == {"status": "eventful"}
+
+    assert_last_visit_matches(swh_storage, repo_url, status="partial", type="hg")

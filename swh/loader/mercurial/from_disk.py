@@ -48,6 +48,14 @@ TEMPORARY_DIR_PREFIX_PATTERN = "swh.loader.mercurial.from_disk"
 T = TypeVar("T")
 
 
+class CorruptedRevision(ValueError):
+    """Raised when a revision is corrupted."""
+
+    def __init__(self, hg_nodeid: HgNodeId) -> None:
+        super().__init__(hg_nodeid.hex())
+        self.hg_nodeid = hg_nodeid
+
+
 class HgDirectory(Directory):
     """A more practical directory.
 
@@ -152,6 +160,8 @@ class HgLoaderFromDisk(BaseLoader):
         self._latest_heads: List[HgNodeId] = []
 
         self._load_status = "eventful"
+        # If set, will override the default value
+        self._visit_status = None
 
     def pre_cleanup(self) -> None:
         """As a first step, will try and check for dangling data to cleanup.
@@ -261,13 +271,25 @@ class HgLoaderFromDisk(BaseLoader):
             self._load_status = "uneventful"
             return
 
+        assert self._repo is not None
+        repo = self._repo
+
+        blacklisted_revs: List[int] = []
         for rev in revs:
-            self.store_revision(self._repo[rev])
+            if rev in blacklisted_revs:
+                continue
+            try:
+                self.store_revision(repo[rev])
+            except CorruptedRevision as e:
+                self._visit_status = "partial"
+                self.log.warning("Corrupted revision %s", e)
+                descendents = repo.revs("(%ld)::", [rev])
+                blacklisted_revs.extend(descendents)
 
         branch_by_hg_nodeid: Dict[HgNodeId, bytes] = {
-            hg_nodeid: name for name, hg_nodeid in hgutil.branches(self._repo).items()
+            hg_nodeid: name for name, hg_nodeid in hgutil.branches(repo).items()
         }
-        tags_by_name: Dict[bytes, HgNodeId] = self._repo.tags()
+        tags_by_name: Dict[bytes, HgNodeId] = repo.tags()
         tags_by_hg_nodeid: Dict[HgNodeId, bytes] = {
             hg_nodeid: name for name, hg_nodeid in tags_by_name.items()
         }
@@ -316,6 +338,12 @@ class HgLoaderFromDisk(BaseLoader):
         return {
             "status": self._load_status,
         }
+
+    def visit_status(self) -> str:
+        """Allow overriding the visit status in case of partial load"""
+        if self._visit_status is not None:
+            return self._visit_status
+        return super().visit_status()
 
     def get_revision_id_from_hg_nodeid(self, hg_nodeid: HgNodeId) -> Sha1Git:
         """Return the swhid of a revision given its hg nodeid.
@@ -446,7 +474,18 @@ class HgLoaderFromDisk(BaseLoader):
         hg_nodeid = rev_ctx.node()
         file_ctx = rev_ctx[file_path]
 
-        file_nodeid = file_ctx.filenode()
+        try:
+            file_nodeid = file_ctx.filenode()
+        except hgutil.LookupError:
+            # TODO
+            # Raising CorruptedRevision avoid crashing the whole loading
+            # but can lead to a lot of missing revisions.
+            # SkippedContent could be used but need actual content to calculate its id.
+            # Maybe the hg_nodeid can be used instead.
+            # Another option could be to just ignore the missing content.
+            # This point is left to future commits.
+            raise CorruptedRevision(hg_nodeid)
+
         perms = FLAG_PERMS[file_ctx.flags()]
 
         # Key is file_nodeid + perms because permissions does not participate

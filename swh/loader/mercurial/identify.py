@@ -16,8 +16,8 @@ import click
 
 from swh.loader.mercurial.utils import get_minimum_env
 from swh.model.cli import identify_object
-from swh.model.hashutil import hash_to_bytehex
-from swh.model.identifiers import normalize_timestamp, swhid
+from swh.model.hashutil import hash_to_bytehex, hash_to_bytes
+from swh.model.identifiers import CoreSWHID, ObjectType, normalize_timestamp
 from swh.model.model import RevisionType
 
 TAG_PATTERN = re.compile(b"([0-9A-Fa-f]{40}) +(.+)")
@@ -314,7 +314,7 @@ def identify_directory(path: Path) -> str:
     """Return the SWHID of the given path."""
     uri = identify_object(
         "directory", follow_symlinks=True, exclude_patterns=[".hg"], obj=str(path)
-    )[1]
+    )
     return uri.split(":")[-1]
 
 
@@ -335,7 +335,7 @@ class RevisionIdentity(NamedTuple):
 
     def __str__(self) -> str:
         """Return the string representation of a RevisionIdentity."""
-        uri = swhid("revision", self.swhid.hex())
+        uri = CoreSWHID(object_type=ObjectType.REVISION, object_id=self.swhid)
         return f"{uri}\t{self.node_id.decode()}"
 
 
@@ -397,7 +397,9 @@ class ReleaseIdentity(NamedTuple):
 
     def __str__(self) -> str:
         """Return the string representation of a ReleaseIdentity."""
-        uri = swhid("release", self.swhid)
+        uri = CoreSWHID(
+            object_type=ObjectType.RELEASE, object_id=hash_to_bytes(self.swhid)
+        )
         return f"{uri}\t{self.name.decode()}"
 
 
@@ -410,7 +412,8 @@ def identify_release(
     node_id_2_swhid: An optional cache mapping hg node ids to SWHIDs
         If not provided it will be computed using `identify_revision`.
     """
-    from swh.model.model import ObjectType, Release
+    from swh.model.model import ObjectType as ModelObjectType
+    from swh.model.model import Release
 
     if node_id_2_swhid is None:
         node_id_2_swhid = {
@@ -421,7 +424,7 @@ def identify_release(
         data = {
             "name": tag.name,
             "target": node_id_2_swhid[tag.node_id],
-            "target_type": ObjectType.REVISION.value,
+            "target_type": ModelObjectType.REVISION.value,
             "message": None,
             "metadata": None,
             "synthetic": False,
@@ -506,7 +509,7 @@ def snapshot(ctx):
 
     snapshot_swhid = identify_snapshot(hg)
 
-    uri = swhid("snapshot", snapshot_swhid)
+    uri = CoreSWHID(object_type=ObjectType.SNAPSHOT, object_id=snapshot_swhid)
     click.echo(f"{uri}\t{root}")
 
 
@@ -537,7 +540,7 @@ def all(ctx):
     for uri in dir_uris + rev_uris + rel_uris:
         click.echo(uri)
 
-    uri = swhid("snapshot", snapshot_swhid)
+    uri = CoreSWHID(object_type=ObjectType.SNAPSHOT, object_id=snapshot_swhid)
     click.echo(f"{uri}\t{root}")
 
 

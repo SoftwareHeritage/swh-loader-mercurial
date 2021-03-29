@@ -198,11 +198,13 @@ class HgLoaderFromDisk(BaseLoader):
 
         latest_snapshot = snapshot_get_latest(self.storage, self.origin_url)
         if latest_snapshot:
+            # TODO: add support for releases
             snapshot_branches = [
                 branch.target
                 for branch in latest_snapshot.branches.values()
-                if branch.target_type != TargetType.ALIAS
+                if branch.target_type == TargetType.REVISION
             ]
+
             self._latest_heads = [
                 hash_to_bytes(revision.metadata["node"])
                 for revision in self.storage.revision_get(snapshot_branches)

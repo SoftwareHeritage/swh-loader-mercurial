@@ -14,7 +14,7 @@ from swh.loader.core.loader import BaseLoader
 from swh.loader.core.utils import clean_dangling_folders
 from swh.loader.mercurial.utils import parse_visit_date
 from swh.model.from_disk import Content, DentryPerms, Directory
-from swh.model.hashutil import MultiHash, hash_to_bytehex, hash_to_bytes
+from swh.model.hashutil import hash_to_bytehex, hash_to_bytes
 from swh.model.model import (
     ObjectType,
     Origin,
@@ -493,31 +493,18 @@ class HgLoaderFromDisk(BaseLoader):
         cache_key = (file_nodeid, perms)
 
         sha1_git = self._content_hash_cache.get(cache_key)
-        if sha1_git is not None:
-            return Content({"sha1_git": sha1_git, "perms": perms})
+        if sha1_git is None:
+            data = file_ctx.data()
 
-        data = file_ctx.data()
+            content = ModelContent.from_data(data)
 
-        content_data = MultiHash.from_data(data).digest()
-        content_data["length"] = len(data)
-        content_data["perms"] = perms
-        content_data["data"] = data
-        content_data["status"] = "visible"
-        content = Content(content_data)
+            self.storage.content_add([content])
 
-        model = content.to_model()
-        if isinstance(model, ModelContent):
-            self.storage.content_add([model])
-        else:
-            raise ValueError(
-                f"{file_path!r} at rev {hg_nodeid.hex()!r} "
-                "produced {type(model)!r} instead of {ModelContent!r}"
-            )
-
-        self._content_hash_cache[cache_key] = content.hash
+            sha1_git = content.sha1_git
+            self._content_hash_cache[cache_key] = sha1_git
 
         # Here we make sure to return only necessary data.
-        return Content({"sha1_git": content.hash, "perms": perms})
+        return Content({"sha1_git": sha1_git, "perms": perms})
 
     def store_directories(self, rev_ctx: hgutil.BaseContext) -> Sha1Git:
         """Store a revision directories given its hg nodeid.

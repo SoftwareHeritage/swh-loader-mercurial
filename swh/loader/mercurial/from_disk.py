@@ -157,7 +157,7 @@ class HgLoaderFromDisk(BaseLoader):
 
         # hg node id of the latest snapshot branch heads
         # used to find what are the new revisions since last snapshot
-        self._latest_heads: List[HgNodeId] = []
+        self._latest_heads: List[bytes] = []
 
         self._load_status = "eventful"
         # If set, will override the default value

@@ -142,7 +142,7 @@ class HgLoaderFromDisk(BaseLoader):
         self.directory = directory
 
         self._repo: Optional[hgutil.Repository] = None
-        self._revision_nodeid_to_swhid: Dict[HgNodeId, Sha1Git] = {}
+        self._revision_nodeid_to_sha1git: Dict[HgNodeId, Sha1Git] = {}
         self._repo_directory: Optional[str] = None
 
         # keeps the last processed hg nodeid
@@ -348,21 +348,21 @@ class HgLoaderFromDisk(BaseLoader):
 
         extids = []
 
-        for hg_nodeid, revision_swhid in self._revision_nodeid_to_swhid.items():
+        for hg_nodeid, revision_sha1git in self._revision_nodeid_to_sha1git.items():
             tag_name = tags_by_hg_nodeid.get(hg_nodeid)
 
             # tip is listed in the tags by the mercurial api
             # but its not a tag defined by the user in `.hgtags`
             if tag_name and tag_name != b"tip":
                 snapshot_branches[tag_name] = SnapshotBranch(
-                    target=self.store_release(tag_name, revision_swhid),
+                    target=self.store_release(tag_name, revision_sha1git),
                     target_type=TargetType.RELEASE,
                 )
 
             if hg_nodeid in branch_by_hg_nodeid:
                 name = branch_by_hg_nodeid[hg_nodeid]
                 snapshot_branches[name] = SnapshotBranch(
-                    target=revision_swhid, target_type=TargetType.REVISION,
+                    target=revision_sha1git, target_type=TargetType.REVISION,
                 )
 
             # The tip is mapped to `HEAD` to match
@@ -376,15 +376,11 @@ class HgLoaderFromDisk(BaseLoader):
             # already exists.
             # When we are done migrating away from revision metadata, this will
             # be as simple as checking if the target is in self._latest_heads
+            revision_swhid = identifiers.CoreSWHID(
+                object_type=identifiers.ObjectType.REVISION, object_id=revision_sha1git
+            )
             extids.append(
-                ExtID(
-                    extid_type=EXTID_TYPE,
-                    extid=hg_nodeid,
-                    target=identifiers.CoreSWHID(
-                        object_type=identifiers.ObjectType.REVISION,
-                        object_id=revision_swhid,
-                    ),
-                )
+                ExtID(extid_type=EXTID_TYPE, extid=hg_nodeid, target=revision_swhid)
             )
 
         snapshot = Snapshot(branches=snapshot_branches)
@@ -415,24 +411,24 @@ class HgLoaderFromDisk(BaseLoader):
         return super().visit_status()
 
     def get_revision_id_from_hg_nodeid(self, hg_nodeid: HgNodeId) -> Sha1Git:
-        """Return the swhid of a revision given its hg nodeid.
+        """Return the git sha1 of a revision given its hg nodeid.
 
         Args:
             hg_nodeid: the hg nodeid of the revision.
 
         Returns:
-            the swhid of the revision.
+            the sha1_git of the revision.
         """
-        return self._revision_nodeid_to_swhid[hg_nodeid]
+        return self._revision_nodeid_to_sha1git[hg_nodeid]
 
     def get_revision_parents(self, rev_ctx: hgutil.BaseContext) -> Tuple[Sha1Git, ...]:
-        """Return the swhids of the parent revisions.
+        """Return the git sha1 of the parent revisions.
 
         Args:
             hg_nodeid: the hg nodeid of the revision.
 
         Returns:
-            the swhids of the parent revisions.
+            the sha1_git of the parent revisions.
         """
         parents = []
         for parent_ctx in rev_ctx.parents():
@@ -451,11 +447,11 @@ class HgLoaderFromDisk(BaseLoader):
             rev_ctx: the he revision context.
 
         Returns:
-            the swhid of the stored revision.
+            the sha1_git of the stored revision.
         """
         hg_nodeid = rev_ctx.node()
 
-        root_swhid = self.store_directories(rev_ctx)
+        root_sha1git = self.store_directories(rev_ctx)
 
         # `Person.from_fullname` is compatible with mercurial's freeform author
         # as fullname is what is used in revision hash when available.
@@ -488,7 +484,7 @@ class HgLoaderFromDisk(BaseLoader):
             committer=author,
             committer_date=rev_date,
             type=RevisionType.MERCURIAL,
-            directory=root_swhid,
+            directory=root_sha1git,
             message=rev_ctx.description(),
             metadata={"node": hg_nodeid.hex()},
             extra_headers=tuple(extra_headers),
@@ -496,7 +492,7 @@ class HgLoaderFromDisk(BaseLoader):
             parents=self.get_revision_parents(rev_ctx),
         )
 
-        self._revision_nodeid_to_swhid[hg_nodeid] = revision.id
+        self._revision_nodeid_to_sha1git[hg_nodeid] = revision.id
         self.storage.revision_add([revision])
 
     def store_release(self, name: bytes, target: Sha1Git) -> Sha1Git:
@@ -507,10 +503,10 @@ class HgLoaderFromDisk(BaseLoader):
 
         Args:
             name: name of the release.
-            target: swhid of the target revision.
+            target: sha1_git of the target revision.
 
         Returns:
-            the swhid of the stored release.
+            the sha1_git of the stored release.
         """
         release = Release(
             name=name,
@@ -538,7 +534,7 @@ class HgLoaderFromDisk(BaseLoader):
             file_path: the hg path of the content.
 
         Returns:
-            the swhid of the top level directory.
+            the sha1_git of the top level directory.
         """
         hg_nodeid = rev_ctx.node()
         file_ctx = rev_ctx[file_path]
@@ -585,7 +581,7 @@ class HgLoaderFromDisk(BaseLoader):
             rev_ctx: the he revision context.
 
         Returns:
-            the swhid of the top level directory.
+            the sha1_git of the top level directory.
         """
         repo: hgutil.Repository = self._repo  # mypy can't infer that repo is not None
         prev_ctx = repo[self._last_hg_nodeid]

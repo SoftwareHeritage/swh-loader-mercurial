@@ -499,7 +499,7 @@ class HgLoaderFromDisk(BaseLoader):
         self._revision_nodeid_to_swhid[hg_nodeid] = revision.id
         self.storage.revision_add([revision])
 
-    def store_release(self, name: bytes, target=Sha1Git) -> Sha1Git:
+    def store_release(self, name: bytes, target: Sha1Git) -> Sha1Git:
         """Store a release given its name and its target.
 
         A release correspond to a user defined tag in mercurial.

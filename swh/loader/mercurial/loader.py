@@ -41,12 +41,12 @@ from swh.model.hashutil import (
     MultiHash,
     hash_to_bytehex,
     hash_to_bytes,
-    hash_to_hex,
 )
 from swh.model.model import (
     BaseContent,
     Content,
     Directory,
+    ExtID,
     ObjectType,
     Origin,
     Person,
@@ -74,6 +74,8 @@ TAG_PATTERN = re.compile("[0-9A-Fa-f]{40}")
 TEMPORARY_DIR_PREFIX_PATTERN = "swh.loader.mercurial."
 
 HEAD_POINTER_NAME = b"tip"
+
+EXTID_TYPE = "hg-nodeid"
 
 
 class CommandErrorWrapper(Exception):
@@ -256,6 +258,7 @@ class HgBundle20Loader(DVCSLoader):
         self.releases = {}
         self.node_2_rev = {}
         self.heads = {}
+        self.extids = []
 
         directory = self.directory
 
@@ -531,7 +534,6 @@ class HgBundle20Loader(DVCSLoader):
                 type=RevisionType.MERCURIAL,
                 directory=directory_id,
                 message=commit["message"],
-                metadata={"node": hash_to_hex(header["node"]),},
                 extra_headers=tuple(extra_headers),
                 synthetic=False,
                 parents=tuple(parents),
@@ -539,6 +541,15 @@ class HgBundle20Loader(DVCSLoader):
 
             self.node_2_rev[header["node"]] = revision.id
             revisions[revision.id] = revision
+
+            revision_swhid = identifiers.CoreSWHID(
+                object_type=identifiers.ObjectType.REVISION, object_id=revision.id,
+            )
+            self.extids.append(
+                ExtID(
+                    extid_type=EXTID_TYPE, extid=header["node"], target=revision_swhid
+                )
+            )
 
         # Converts heads to use swh ids
         self.heads = {
@@ -617,6 +628,10 @@ class HgBundle20Loader(DVCSLoader):
 
         self.snapshot = Snapshot(branches=branches)
         return self.snapshot
+
+    def store_data(self) -> None:
+        super().store_data()
+        self.storage.extid_add(self.extids)
 
     def get_fetch_history_result(self):
         """Return the data to store in fetch_history."""

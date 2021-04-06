@@ -19,7 +19,8 @@ from swh.loader.tests import (
     get_stats,
     prepare_repository_from_archive,
 )
-from swh.model.hashutil import hash_to_bytes
+from swh.model.hashutil import hash_to_bytes, hash_to_hex
+from swh.model.identifiers import ObjectType
 from swh.model.model import RevisionType, Snapshot, SnapshotBranch, TargetType
 from swh.storage.algos.snapshot import snapshot_get_latest
 
@@ -307,7 +308,11 @@ def test_visit_repository_with_transplant_operations(swh_storage, datadir, tmp_p
     hg_changesets = set()
     transplant_sources = set()
     for rev in swh_storage.revision_log(revisions):
-        hg_changesets.add(rev["metadata"]["node"])
+        extids = list(
+            loader.storage.extid_get_from_target(ObjectType.REVISION, [rev["id"]])
+        )
+        assert len(extids) == 1
+        hg_changesets.add(hash_to_hex(extids[0].extid))
         for k, v in rev["extra_headers"]:
             if k == b"transplant_source":
                 transplant_sources.add(v.decode("ascii"))

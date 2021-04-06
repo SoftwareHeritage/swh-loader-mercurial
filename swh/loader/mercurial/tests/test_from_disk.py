@@ -18,7 +18,7 @@ from swh.loader.tests import (
     prepare_repository_from_archive,
 )
 from swh.model.from_disk import Content, DentryPerms
-from swh.model.hashutil import hash_to_bytes
+from swh.model.hashutil import hash_to_bytes, hash_to_hex
 from swh.model.identifiers import ObjectType
 from swh.model.model import RevisionType, Snapshot, SnapshotBranch, TargetType
 from swh.storage import get_storage
@@ -242,7 +242,11 @@ def test_visit_repository_with_transplant_operations(swh_storage, datadir, tmp_p
     hg_changesets = set()
     transplant_sources = set()
     for rev in loader.storage.revision_log(revisions):
-        hg_changesets.add(rev["metadata"]["node"])
+        extids = list(
+            loader.storage.extid_get_from_target(ObjectType.REVISION, [rev["id"]])
+        )
+        assert len(extids) == 1
+        hg_changesets.add(hash_to_hex(extids[0].extid))
         for k, v in rev["extra_headers"]:
             if k == b"transplant_source":
                 transplant_sources.add(v.decode("ascii"))
@@ -250,7 +254,7 @@ def test_visit_repository_with_transplant_operations(swh_storage, datadir, tmp_p
     # check extracted data are valid
     assert len(hg_changesets) > 0
     assert len(transplant_sources) > 0
-    assert transplant_sources.issubset(hg_changesets)
+    assert transplant_sources <= hg_changesets
 
 
 def _partial_copy_storage(
@@ -275,13 +279,6 @@ def _partial_copy_storage(
             ]
             new_storage.revision_add(revisions)
 
-    elif mechanism == "revision metadata":
-        assert (
-            copy_revisions
-        ), "copy_revisions must be True if mechanism='revision metadata'"
-        revisions = [rev for rev in old_storage.revision_get(heads) if rev]
-        new_storage.revision_add(revisions)
-
     else:
         assert mechanism == "same storage"
         return old_storage
@@ -297,12 +294,11 @@ def _partial_copy_storage(
     return new_storage
 
 
-@pytest.mark.parametrize("mechanism", ("extid", "revision metadata", "same storage"))
+@pytest.mark.parametrize("mechanism", ("extid", "same storage"))
 def test_load_unchanged_repo_should_be_uneventful(
     swh_storage, datadir, tmp_path, mechanism
 ):
-    """Checks the loader can find which revisions it already loaded, using either
-    ExtIDs or revision metadata."""
+    """Checks the loader can find which revisions it already loaded, using ExtIDs."""
     archive_name = "hello"
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)

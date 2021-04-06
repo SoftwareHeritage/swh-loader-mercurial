@@ -15,7 +15,7 @@ from swh.loader.core.utils import clean_dangling_folders
 from swh.loader.mercurial.utils import parse_visit_date
 from swh.model import identifiers
 from swh.model.from_disk import Content, DentryPerms, Directory
-from swh.model.hashutil import hash_to_bytehex, hash_to_bytes
+from swh.model.hashutil import hash_to_bytehex
 from swh.model.model import (
     ExtID,
     ObjectType,
@@ -206,18 +206,8 @@ class HgLoaderFromDisk(BaseLoader):
 
     def _set_latest_heads(self, latest_snapshot: Snapshot) -> None:
         """
-        Looks up the nodeid for all revisions in the snapshot, and adds them to
-        self._latest_heads.
-
-        This works in two steps:
-
-        1. Query the revisions with extid_get_from_target, to find nodeids from
-           revision ids, using the new ExtID architecture
-        2. For all revisions that were not found this way, fetch the revision
-           and look for the nodeid in its metadata.
-
-        This is a temporary process. When we are done migrating away from revision
-        metadata, step 2 will be removed.
+        Looks up the nodeid for all revisions in the snapshot via extid_get_from_target,
+        and adds them to self._latest_heads.
         """
         # TODO: add support for releases
         snapshot_branches = [
@@ -247,17 +237,6 @@ class HgLoaderFromDisk(BaseLoader):
 
             # Add the found nodeids to self.latest_heads
             self._latest_heads.extend(extid.extid for extid in extids)
-
-        # For each revision without a nodeid, get the revision metadata
-        # to see if it is found there.
-        found_revisions = {extid.target.object_id for extid in extids if extid}
-        revisions_without_extid = list(set(snapshot_branches) - found_revisions)
-
-        self._latest_heads.extend(
-            hash_to_bytes(revision.metadata["node"])
-            for revision in self.storage.revision_get(revisions_without_extid)
-            if revision and revision.metadata
-        )
 
     def fetch_data(self) -> bool:
         """Fetch the data from the source the loader is currently loading
@@ -372,16 +351,14 @@ class HgLoaderFromDisk(BaseLoader):
                     target=name, target_type=TargetType.ALIAS,
                 )
 
-            # TODO: do not write an ExtID if we got this branch from an ExtID that
-            # already exists.
-            # When we are done migrating away from revision metadata, this will
-            # be as simple as checking if the target is in self._latest_heads
-            revision_swhid = identifiers.CoreSWHID(
-                object_type=identifiers.ObjectType.REVISION, object_id=revision_sha1git
-            )
-            extids.append(
-                ExtID(extid_type=EXTID_TYPE, extid=hg_nodeid, target=revision_swhid)
-            )
+            if hg_nodeid not in self._latest_heads:
+                revision_swhid = identifiers.CoreSWHID(
+                    object_type=identifiers.ObjectType.REVISION,
+                    object_id=revision_sha1git,
+                )
+                extids.append(
+                    ExtID(extid_type=EXTID_TYPE, extid=hg_nodeid, target=revision_swhid)
+                )
 
         snapshot = Snapshot(branches=snapshot_branches)
         self.storage.snapshot_add([snapshot])
@@ -486,7 +463,6 @@ class HgLoaderFromDisk(BaseLoader):
             type=RevisionType.MERCURIAL,
             directory=root_sha1git,
             message=rev_ctx.description(),
-            metadata={"node": hg_nodeid.hex()},
             extra_headers=tuple(extra_headers),
             synthetic=False,
             parents=self.get_revision_parents(rev_ctx),

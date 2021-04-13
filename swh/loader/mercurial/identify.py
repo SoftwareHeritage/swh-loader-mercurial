@@ -347,11 +347,12 @@ def identify_revision(
 ) -> Iterator[RevisionIdentity]:
     """Return the repository revision identities.
 
-    hg: A `Hg` repository instance
-    rev: An optional revision or Mercurial revsets (See `hg help revsets`)
-         If not provided all the repository revisions will be computed.
-    node_id_2_swhid: An optional cache mapping hg node ids to SWHIDs
-        It will be updated in place with new mappings.
+    Args:
+        hg: A `Hg` repository instance
+        rev: An optional revision or Mercurial revsets (See `hg help revsets`)
+             If not provided all the repository revisions will be computed.
+        node_id_2_swhid: An optional cache mapping hg node ids to SWHIDs
+            It will be updated in place with new mappings.
     """
     from swh.model.model import Revision
 
@@ -406,9 +407,10 @@ def identify_release(
 ) -> Iterator[ReleaseIdentity]:
     """Return the repository's release identities.
 
-    hg: A `Hg` repository instance
-    node_id_2_swhid: An optional cache mapping hg node ids to SWHIDs
-        If not provided it will be computed using `identify_revision`.
+    Args:
+        hg: A `Hg` repository instance
+        node_id_2_swhid: An optional cache mapping hg node ids to SWHIDs
+            If not provided it will be computed using `identify_revision`.
     """
     from swh.model.model import ObjectType as ModelObjectType
     from swh.model.model import Release
@@ -445,11 +447,12 @@ def identify_snapshot(
 ) -> CoreSWHID:
     """Return the repository snapshot identity.
 
-    hg: A `Hg` repository instance
-    node_id_2_swhid: An optional cache mapping hg node ids to SWHIDs
-         If not provided it will be computed using `identify_revision`.
-    release: an optional list of `ReleaseIdentity`.
-        If not provided it will be computed using `identify_release`.
+    Args:
+        hg: A `Hg` repository instance
+        node_id_2_swhid: An optional cache mapping hg node ids to SWHIDs
+             If not provided it will be computed using `identify_revision`.
+        release: an optional list of `ReleaseIdentity`.
+            If not provided it will be computed using `identify_release`.
     """
     from swh.model.model import Snapshot, TargetType
 

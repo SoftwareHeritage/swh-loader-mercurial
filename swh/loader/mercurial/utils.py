@@ -34,7 +34,8 @@ def get_minimum_env() -> Dict[str, str]:
     """Return the smallest viable environment for `hg` suprocesses"""
     env = {
         "HGPLAIN": "",  # Tells Mercurial to disable output customization
-        "HGRCPATH": "",  # Tells Mercurial to ignore config files
+        "HGRCPATH": "",  # Tells Mercurial to ignore user's config files
+        "HGRCSKIPREPO": "",  # Tells Mercurial to ignore repo's config file
     }
     path = os.environ.get("PATH")
     if path:

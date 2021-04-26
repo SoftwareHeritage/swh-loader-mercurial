@@ -12,7 +12,7 @@ from typing import Deque, Dict, List, Optional, Tuple, TypeVar, Union
 
 from swh.loader.core.loader import BaseLoader
 from swh.loader.core.utils import clean_dangling_folders
-from swh.loader.mercurial.utils import parse_visit_date
+from swh.loader.mercurial.utils import get_minimum_env, parse_visit_date
 from swh.model import identifiers
 from swh.model.from_disk import Content, DentryPerms, Directory
 from swh.model.hashutil import hash_to_bytehex
@@ -167,6 +167,10 @@ class HgLoaderFromDisk(BaseLoader):
         # If set, will override the default value
         self._visit_status = None
 
+        self.old_environ = os.environ.copy()
+        os.environ.clear()
+        os.environ.update(get_minimum_env())
+
     def pre_cleanup(self) -> None:
         """As a first step, will try and check for dangling data to cleanup.
         This should do its best to avoid raising issues.
@@ -180,6 +184,9 @@ class HgLoaderFromDisk(BaseLoader):
 
     def cleanup(self) -> None:
         """Last step executed by the loader."""
+        os.environ.clear()
+        os.environ.update(self.old_environ)
+
         if self._repo_directory and os.path.exists(self._repo_directory):
             self.log.debug(f"Cleanup up repository {self._repo_directory}")
             rmtree(self._repo_directory)

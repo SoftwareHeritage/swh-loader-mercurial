@@ -532,6 +532,7 @@ class HgLoaderFromDisk(BaseLoader):
             # Maybe the hg_nodeid can be used instead.
             # Another option could be to just ignore the missing content.
             # This point is left to future commits.
+            # Check for other uses to apply the same logic there.
             raise CorruptedRevision(hg_nodeid)
 
         perms = FLAG_PERMS[file_ctx.flags()]
@@ -542,7 +543,12 @@ class HgLoaderFromDisk(BaseLoader):
 
         sha1_git = self._content_hash_cache.get(cache_key)
         if sha1_git is None:
-            data = file_ctx.data()
+            try:
+                data = file_ctx.data()
+            except hgutil.error.RevlogError:
+                # TODO
+                # See above use of `CorruptedRevision`
+                raise CorruptedRevision(hg_nodeid)
 
             content = ModelContent.from_data(data)
 
@@ -570,10 +576,16 @@ class HgLoaderFromDisk(BaseLoader):
         prev_ctx = repo[self._last_hg_nodeid]
 
         # TODO maybe do diff on parents
-        status = prev_ctx.status(rev_ctx)
+        try:
+            status = prev_ctx.status(rev_ctx)
+        except hgutil.error.LookupError:
+            raise CorruptedRevision(rev_ctx.node())
 
         for file_path in status.removed:
-            del self._last_root[file_path]
+            try:
+                del self._last_root[file_path]
+            except KeyError:
+                raise CorruptedRevision(rev_ctx.node())
 
         for file_path in status.added:
             content = self.store_content(rev_ctx, file_path)

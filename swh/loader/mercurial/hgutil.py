@@ -4,9 +4,13 @@
 # See top-level LICENSE file for more information
 
 import io
-from multiprocessing import Process, Queue
+import os
+import signal
+import time
 import traceback
 from typing import Dict, NewType
+
+from billiard import Process, Queue
 
 # The internal Mercurial API is not guaranteed to be stable.
 from mercurial import context, error, hg, smartset, util  # type: ignore
@@ -68,7 +72,7 @@ def _clone_task(src: str, dest: str, errors: Queue) -> None:
         raise e
 
 
-def clone(src: str, dest: str, timeout: int) -> None:
+def clone(src: str, dest: str, timeout: float) -> None:
     """Clone a repository with timeout.
 
     Args:
@@ -83,10 +87,18 @@ def clone(src: str, dest: str, timeout: int) -> None:
 
     if process.is_alive():
         process.terminate()
-        process.join(1)
-        if process.is_alive():
-            process.kill()
-        raise CloneTimeout(src, timeout)
+        # Give it a second (literally), then kill it
+        # Can't use `process.join(1)` here, billiard appears to be bugged
+        # https://github.com/celery/billiard/issues/270
+        killed = False
+        for _ in range(10):
+            time.sleep(0.1)
+            if not process.is_alive():
+                break
+        else:
+            killed = True
+            os.kill(process.pid, signal.SIGKILL)
+        raise CloneTimeout(src, timeout, killed)
 
     if not errors.empty():
         raise CloneFailure(src, dest, errors.get())

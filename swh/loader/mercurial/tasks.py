@@ -9,7 +9,7 @@ from celery import shared_task
 
 from swh.loader.mercurial.utils import parse_visit_date
 
-from .loader import HgArchiveBundle20Loader, HgBundle20Loader
+from .from_disk import HgArchiveLoaderFromDisk, HgLoaderFromDisk
 
 
 @shared_task(name=__name__ + ".LoadMercurial")
@@ -20,11 +20,11 @@ def load_hg(
 
     Import a mercurial tarball into swh.
 
-    Args: see :func:`HgBundle20Loader.load`.
+    Args: see :func:`HgLoaderFromDisk.load`.
 
     """
 
-    loader = HgBundle20Loader.from_configfile(
+    loader = HgLoaderFromDisk.from_configfile(
         url=url, directory=directory, visit_date=parse_visit_date(visit_date)
     )
     return loader.load()
@@ -36,9 +36,9 @@ def load_hg_from_archive(
 ):
     """Import a mercurial tarball into swh.
 
-    Args: see :func:`HgArchiveBundle20Loader.load`.
+    Args: see :func:`HgArchiveLoaderFromDisk.load`.
     """
-    loader = HgArchiveBundle20Loader.from_configfile(
+    loader = HgArchiveLoaderFromDisk.from_configfile(
         url=url, archive_path=archive_path, visit_date=parse_visit_date(visit_date)
     )
     return loader.load()

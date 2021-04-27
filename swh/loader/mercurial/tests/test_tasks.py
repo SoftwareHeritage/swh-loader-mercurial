@@ -7,7 +7,7 @@
 def test_loader(
     mocker, swh_config, swh_scheduler_celery_app, swh_scheduler_celery_worker
 ):
-    mock_loader = mocker.patch("swh.loader.mercurial.loader.HgBundle20Loader.load")
+    mock_loader = mocker.patch("swh.loader.mercurial.from_disk.HgLoaderFromDisk.load")
     mock_loader.return_value = {"status": "eventful"}
 
     res = swh_scheduler_celery_app.send_task(
@@ -27,7 +27,7 @@ def test_archive_loader(
     mocker, swh_config, swh_scheduler_celery_app, swh_scheduler_celery_worker
 ):
     mock_loader = mocker.patch(
-        "swh.loader.mercurial.loader.HgArchiveBundle20Loader.load"
+        "swh.loader.mercurial.from_disk.HgArchiveLoaderFromDisk.load"
     )
     mock_loader.return_value = {"status": "uneventful"}
 

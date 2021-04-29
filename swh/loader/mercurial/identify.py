@@ -1,22 +1,23 @@
-# Copyright (C) 2020  The Software Heritage developers
+# Copyright (C) 2020-2021  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+from codecs import escape_decode  # type: ignore
 import json
+from pathlib import Path
 import re
 import subprocess
-from codecs import escape_decode  # type: ignore
-from pathlib import Path
 from typing import Any, Dict, Iterator, List, NamedTuple, Optional, Union
 
 # WARNING: do not import unnecessary things here to keep cli startup time under
 # control
 import click
 
+from swh.loader.mercurial.utils import get_minimum_env
 from swh.model.cli import identify_object
 from swh.model.hashutil import hash_to_bytehex
-from swh.model.identifiers import normalize_timestamp, swhid
+from swh.model.identifiers import CoreSWHID, ObjectType, normalize_timestamp
 from swh.model.model import RevisionType
 
 TAG_PATTERN = re.compile(b"([0-9A-Fa-f]{40}) +(.+)")
@@ -196,7 +197,9 @@ class Hg:
 
     def _output(self, *args) -> bytes:
         """Return the outpout of a `hg` call."""
-        return subprocess.check_output(["hg", *args], cwd=self._root)
+        return subprocess.check_output(
+            ["hg", *args], cwd=self._root, env=get_minimum_env()
+        )
 
     def _call(self, *args) -> None:
         """Perform a `hg` call."""
@@ -205,6 +208,7 @@ class Hg:
             cwd=self._root,
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE,
+            env=get_minimum_env(),
         )
 
     def root(self) -> Path:
@@ -306,49 +310,50 @@ def main(ctx, directory=None):
     ctx.obj["HG_ROOT"] = root
 
 
-def identify_directory(path: Path) -> str:
+def identify_directory(path: Path) -> CoreSWHID:
     """Return the SWHID of the given path."""
-    uri = identify_object(
-        "directory", follow_symlinks=True, exclude_patterns=[".hg"], obj=str(path)
-    )[1]
-    return uri.split(":")[-1]
+    return CoreSWHID.from_string(
+        identify_object(
+            "directory", follow_symlinks=True, exclude_patterns=[".hg"], obj=str(path)
+        )
+    )
 
 
 class RevisionIdentity(NamedTuple):
     """Represent a swh revision identity."""
 
-    swhid: bytes
-    """SWHID raw bytes"""
+    swhid: CoreSWHID
+    """SWH Identifier of the revision."""
 
     node_id: bytes
     """node_id hex bytes"""
 
-    directory_swhid: bytes
+    directory_swhid: CoreSWHID
+    """SWH Identifier of the directory"""
 
     def dir_uri(self) -> str:
         """Return the SWHID uri of the revision's directory."""
-        return f"swh:1:dir:{self.directory_swhid.hex()}\t{self.node_id.decode()}"
+        return f"{self.directory_swhid}\t{self.node_id.decode()}"
 
     def __str__(self) -> str:
         """Return the string representation of a RevisionIdentity."""
-        uri = swhid("revision", self.swhid.hex())
-        return f"{uri}\t{self.node_id.decode()}"
+        return f"{self.swhid}\t{self.node_id.decode()}"
 
 
 def identify_revision(
     hg: Hg,
     rev: Optional[bytes] = None,
-    node_id_2_swhid: Optional[Dict[bytes, bytes]] = None,
+    node_id_2_swhid: Optional[Dict[bytes, CoreSWHID]] = None,
 ) -> Iterator[RevisionIdentity]:
     """Return the repository revision identities.
 
-    hg: A `Hg` repository instance
-    rev: An optional revision or Mercurial revsets (See `hg help revsets`)
-         If not provided all the repository revisions will be computed.
-    node_id_2_swhid: An optional cache mapping hg node ids to SWHIDs
-        It will be updated in place with new mappings.
+    Args:
+        hg: A `Hg` repository instance
+        rev: An optional revision or Mercurial revsets (See `hg help revsets`)
+             If not provided all the repository revisions will be computed.
+        node_id_2_swhid: An optional cache mapping hg node ids to SWHIDs
+            It will be updated in place with new mappings.
     """
-    from swh.model.hashutil import hash_to_bytes
     from swh.model.model import Revision
 
     if node_id_2_swhid is None:
@@ -358,18 +363,19 @@ def identify_revision(
         data = revision.to_dict()
 
         hg.up(revision.node_id)
-        directory_swhid = hash_to_bytes(identify_directory(hg.root()))
-        data["directory"] = directory_swhid
+        directory_swhid = identify_directory(hg.root())
+        data["directory"] = directory_swhid.object_id
 
         parents = []
         for parent in data["parents"]:
             if parent not in node_id_2_swhid:
                 parent_revision = next(identify_revision(hg, parent, node_id_2_swhid))
                 node_id_2_swhid[parent] = parent_revision.swhid
-            parents.append(node_id_2_swhid[parent])
+            assert node_id_2_swhid[parent].object_type == ObjectType.REVISION
+            parents.append(node_id_2_swhid[parent].object_id)
         data["parents"] = parents
 
-        revision_swhid = hash_to_bytes(Revision.from_dict(data).id)
+        revision_swhid = Revision.from_dict(data).swhid()
         node_id_2_swhid[revision.node_id] = revision_swhid
 
         yield RevisionIdentity(
@@ -382,8 +388,8 @@ def identify_revision(
 class ReleaseIdentity(NamedTuple):
     """Represent a swh release identity."""
 
-    swhid: str
-    """SWHID hex string"""
+    swhid: CoreSWHID
+    """SWH Identifier of the release."""
 
     node_id: bytes
     """node_id hex bytes"""
@@ -393,20 +399,21 @@ class ReleaseIdentity(NamedTuple):
 
     def __str__(self) -> str:
         """Return the string representation of a ReleaseIdentity."""
-        uri = swhid("release", self.swhid)
-        return f"{uri}\t{self.name.decode()}"
+        return f"{self.swhid}\t{self.name.decode()}"
 
 
 def identify_release(
-    hg: Hg, node_id_2_swhid: Optional[Dict[bytes, bytes]] = None,
+    hg: Hg, node_id_2_swhid: Optional[Dict[bytes, CoreSWHID]] = None,
 ) -> Iterator[ReleaseIdentity]:
     """Return the repository's release identities.
 
-    hg: A `Hg` repository instance
-    node_id_2_swhid: An optional cache mapping hg node ids to SWHIDs
-        If not provided it will be computed using `identify_revision`.
+    Args:
+        hg: A `Hg` repository instance
+        node_id_2_swhid: An optional cache mapping hg node ids to SWHIDs
+            If not provided it will be computed using `identify_revision`.
     """
-    from swh.model.model import ObjectType, Release
+    from swh.model.model import ObjectType as ModelObjectType
+    from swh.model.model import Release
 
     if node_id_2_swhid is None:
         node_id_2_swhid = {
@@ -414,10 +421,11 @@ def identify_release(
         }
 
     for tag in hg.tags():
+        assert node_id_2_swhid[tag.node_id].object_type == ObjectType.REVISION
         data = {
             "name": tag.name,
-            "target": node_id_2_swhid[tag.node_id],
-            "target_type": ObjectType.REVISION.value,
+            "target": node_id_2_swhid[tag.node_id].object_id,
+            "target_type": ModelObjectType.REVISION.value,
             "message": None,
             "metadata": None,
             "synthetic": False,
@@ -425,7 +433,7 @@ def identify_release(
             "date": None,
         }
 
-        release_swhid = Release.from_dict(data).id
+        release_swhid = Release.from_dict(data).swhid()
 
         yield ReleaseIdentity(
             swhid=release_swhid, node_id=tag.node_id, name=tag.name,
@@ -434,16 +442,17 @@ def identify_release(
 
 def identify_snapshot(
     hg: Hg,
-    node_id_2_swhid: Optional[Dict[bytes, bytes]] = None,
+    node_id_2_swhid: Optional[Dict[bytes, CoreSWHID]] = None,
     releases: Optional[List[ReleaseIdentity]] = None,
-) -> str:
+) -> CoreSWHID:
     """Return the repository snapshot identity.
 
-    hg: A `Hg` repository instance
-    node_id_2_swhid: An optional cache mapping hg node ids to SWHIDs
-         If not provided it will be computed using `identify_revision`.
-    release: an optional list of `ReleaseIdentity`.
-        If not provided it will be computed using `identify_release`.
+    Args:
+        hg: A `Hg` repository instance
+        node_id_2_swhid: An optional cache mapping hg node ids to SWHIDs
+             If not provided it will be computed using `identify_revision`.
+        release: an optional list of `ReleaseIdentity`.
+            If not provided it will be computed using `identify_release`.
     """
     from swh.model.model import Snapshot, TargetType
 
@@ -464,18 +473,20 @@ def identify_snapshot(
     }
 
     for branch in hg.branches():
+        assert node_id_2_swhid[branch.node_id].object_type == ObjectType.REVISION
         branches[branch.name] = {
-            "target": node_id_2_swhid[branch.node_id],
+            "target": node_id_2_swhid[branch.node_id].object_id,
             "target_type": TargetType.REVISION.value,
         }
 
     for release in releases:
+        assert release.swhid.object_type == ObjectType.RELEASE
         branches[release.name] = {
-            "target": release.swhid,
+            "target": release.swhid.object_id,
             "target_type": TargetType.RELEASE.value,
         }
 
-    return Snapshot.from_dict({"branches": branches}).id
+    return Snapshot.from_dict({"branches": branches}).swhid()
 
 
 @main.command()
@@ -502,8 +513,7 @@ def snapshot(ctx):
 
     snapshot_swhid = identify_snapshot(hg)
 
-    uri = swhid("snapshot", snapshot_swhid)
-    click.echo(f"{uri}\t{root}")
+    click.echo(f"{snapshot_swhid}\t{root}")
 
 
 @main.command()
@@ -533,8 +543,7 @@ def all(ctx):
     for uri in dir_uris + rev_uris + rel_uris:
         click.echo(uri)
 
-    uri = swhid("snapshot", snapshot_swhid)
-    click.echo(f"{uri}\t{root}")
+    click.echo(f"{snapshot_swhid}\t{root}")
 
 
 if __name__ == "__main__":

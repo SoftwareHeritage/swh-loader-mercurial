@@ -1,4 +1,4 @@
-# Copyright (C) 2020  The Software Heritage developers
+# Copyright (C) 2020-2021  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -6,8 +6,8 @@
 import time
 import traceback
 
-import pytest
 from mercurial import hg  # type: ignore
+import pytest
 
 from .. import hgutil
 
@@ -17,7 +17,7 @@ def test_clone_timeout(monkeypatch):
     dest = "/dev/null"
     timeout = 1
 
-    def clone(*args):
+    def clone(*args, **kwargs):
         time.sleep(5)
 
     monkeypatch.setattr(hg, "clone", clone)
@@ -32,7 +32,7 @@ def test_clone_error(caplog, tmp_path, monkeypatch):
     dest = "/dev/null"
     expected_traceback = "Some traceback"
 
-    def clone(*args):
+    def clone(*args, **kwargs):
         raise ValueError()
 
     def print_exc(file):

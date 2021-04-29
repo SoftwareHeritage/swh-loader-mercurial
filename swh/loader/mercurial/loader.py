@@ -34,18 +34,19 @@ from hglib.error import CommandError
 from swh.loader.core.loader import DVCSLoader
 from swh.loader.core.utils import clean_dangling_folders
 from swh.loader.exception import NotFound
+from swh.loader.mercurial.utils import get_minimum_env
 from swh.model import identifiers
 from swh.model.hashutil import (
     DEFAULT_ALGORITHMS,
     MultiHash,
     hash_to_bytehex,
     hash_to_bytes,
-    hash_to_hex,
 )
 from swh.model.model import (
     BaseContent,
     Content,
     Directory,
+    ExtID,
     ObjectType,
     Origin,
     Person,
@@ -73,6 +74,8 @@ TAG_PATTERN = re.compile("[0-9A-Fa-f]{40}")
 TEMPORARY_DIR_PREFIX_PATTERN = "swh.loader.mercurial."
 
 HEAD_POINTER_NAME = b"tip"
+
+EXTID_TYPE = "hg-nodeid"
 
 
 class CommandErrorWrapper(Exception):
@@ -136,6 +139,9 @@ class HgBundle20Loader(DVCSLoader):
         self.heads: Dict[bytes, Any] = {}
         self.releases: Dict[bytes, Any] = {}
         self.last_snapshot_id: Optional[bytes] = None
+        self.old_environ = os.environ.copy()
+        os.environ.clear()
+        os.environ.update(get_minimum_env())
 
     def pre_cleanup(self):
         """Cleanup potential dangling files from prior runs (e.g. OOM killed
@@ -152,6 +158,8 @@ class HgBundle20Loader(DVCSLoader):
         """Clean temporary working directory
 
         """
+        os.environ.clear()
+        os.environ.update(self.old_environ)
         if self.bundle_path and os.path.exists(self.bundle_path):
             self.log.debug("Cleanup up working bundle %s" % self.bundle_path)
             os.unlink(self.bundle_path)
@@ -195,7 +203,7 @@ class HgBundle20Loader(DVCSLoader):
 
         def do_clone(queue, origin, destination):
             try:
-                result = hglib.clone(source=origin, dest=destination)
+                result = hglib.clone(source=origin, dest=destination, noupdate=True)
             except CommandError as e:
                 # the queued object need an empty constructor to be deserialized later
                 queue.put(CommandErrorWrapper(e.err))
@@ -250,6 +258,7 @@ class HgBundle20Loader(DVCSLoader):
         self.releases = {}
         self.node_2_rev = {}
         self.heads = {}
+        self.extids = []
 
         directory = self.directory
 
@@ -525,7 +534,6 @@ class HgBundle20Loader(DVCSLoader):
                 type=RevisionType.MERCURIAL,
                 directory=directory_id,
                 message=commit["message"],
-                metadata={"node": hash_to_hex(header["node"]),},
                 extra_headers=tuple(extra_headers),
                 synthetic=False,
                 parents=tuple(parents),
@@ -533,6 +541,15 @@ class HgBundle20Loader(DVCSLoader):
 
             self.node_2_rev[header["node"]] = revision.id
             revisions[revision.id] = revision
+
+            revision_swhid = identifiers.CoreSWHID(
+                object_type=identifiers.ObjectType.REVISION, object_id=revision.id,
+            )
+            self.extids.append(
+                ExtID(
+                    extid_type=EXTID_TYPE, extid=header["node"], target=revision_swhid
+                )
+            )
 
         # Converts heads to use swh ids
         self.heads = {
@@ -611,6 +628,10 @@ class HgBundle20Loader(DVCSLoader):
 
         self.snapshot = Snapshot(branches=branches)
         return self.snapshot
+
+    def store_data(self) -> None:
+        super().store_data()
+        self.storage.extid_add(self.extids)
 
     def get_fetch_history_result(self):
         """Return the data to store in fetch_history."""

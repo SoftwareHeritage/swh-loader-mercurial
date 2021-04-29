@@ -8,14 +8,16 @@ from datetime import datetime
 import os
 from shutil import rmtree
 from tempfile import mkdtemp
-from typing import Deque, Dict, Optional, Tuple, TypeVar, Union
+from typing import Deque, Dict, List, Optional, Tuple, TypeVar, Union
 
 from swh.loader.core.loader import BaseLoader
 from swh.loader.core.utils import clean_dangling_folders
 from swh.loader.mercurial.utils import parse_visit_date
+from swh.model import identifiers
 from swh.model.from_disk import Content, DentryPerms, Directory
-from swh.model.hashutil import MultiHash, hash_to_bytehex
+from swh.model.hashutil import hash_to_bytehex
 from swh.model.model import (
+    ExtID,
     ObjectType,
     Origin,
     Person,
@@ -29,11 +31,12 @@ from swh.model.model import (
     TimestampWithTimezone,
 )
 from swh.model.model import Content as ModelContent
+from swh.storage.algos.snapshot import snapshot_get_latest
 from swh.storage.interface import StorageInterface
 
 from . import hgutil
 from .archive_extract import tmp_extract
-from .hgutil import HgNodeId
+from .hgutil import HgFilteredSet, HgNodeId, HgSpanSet
 
 FLAG_PERMS = {
     b"l": DentryPerms.symlink,
@@ -43,8 +46,18 @@ FLAG_PERMS = {
 
 TEMPORARY_DIR_PREFIX_PATTERN = "swh.loader.mercurial.from_disk"
 
+EXTID_TYPE = "hg-nodeid"
+
 
 T = TypeVar("T")
+
+
+class CorruptedRevision(ValueError):
+    """Raised when a revision is corrupted."""
+
+    def __init__(self, hg_nodeid: HgNodeId) -> None:
+        super().__init__(hg_nodeid.hex())
+        self.hg_nodeid = hg_nodeid
 
 
 class HgDirectory(Directory):
@@ -129,7 +142,7 @@ class HgLoaderFromDisk(BaseLoader):
         self.directory = directory
 
         self._repo: Optional[hgutil.Repository] = None
-        self._revision_nodeid_to_swhid: Dict[HgNodeId, Sha1Git] = {}
+        self._revision_nodeid_to_sha1git: Dict[HgNodeId, Sha1Git] = {}
         self._repo_directory: Optional[str] = None
 
         # keeps the last processed hg nodeid
@@ -145,6 +158,14 @@ class HgLoaderFromDisk(BaseLoader):
         self._content_hash_cache: hgutil.LRUCacheDict = hgutil.LRUCacheDict(
             content_cache_size,
         )
+
+        # hg node id of the latest snapshot branch heads
+        # used to find what are the new revisions since last snapshot
+        self._latest_heads: List[bytes] = []
+
+        self._load_status = "eventful"
+        # If set, will override the default value
+        self._visit_status = None
 
     def pre_cleanup(self) -> None:
         """As a first step, will try and check for dangling data to cleanup.
@@ -176,6 +197,46 @@ class HgLoaderFromDisk(BaseLoader):
         the loader.
 
         """
+        # Set here to allow multiple calls to load on the same loader instance
+        self._latest_heads = []
+
+        latest_snapshot = snapshot_get_latest(self.storage, self.origin_url)
+        if latest_snapshot:
+            self._set_latest_heads(latest_snapshot)
+
+    def _set_latest_heads(self, latest_snapshot: Snapshot) -> None:
+        """
+        Looks up the nodeid for all revisions in the snapshot via extid_get_from_target,
+        and adds them to self._latest_heads.
+        """
+        # TODO: add support for releases
+        snapshot_branches = [
+            branch.target
+            for branch in latest_snapshot.branches.values()
+            if branch.target_type == TargetType.REVISION
+        ]
+
+        # Get all ExtIDs for revisions in the latest snapshot
+        extids = self.storage.extid_get_from_target(
+            identifiers.ObjectType.REVISION, snapshot_branches
+        )
+
+        # Filter out extids not specific to Mercurial
+        extids = [extid for extid in extids if extid.extid_type == EXTID_TYPE]
+
+        if extids:
+            # Filter out dangling extids, we need to load their target again
+            revisions_missing = self.storage.revision_missing(
+                [extid.target.object_id for extid in extids]
+            )
+            extids = [
+                extid
+                for extid in extids
+                if extid.target.object_id not in revisions_missing
+            ]
+
+            # Add the found nodeids to self.latest_heads
+            self._latest_heads.extend(extid.extid for extid in extids)
 
     def fetch_data(self) -> bool:
         """Fetch the data from the source the loader is currently loading
@@ -205,36 +266,82 @@ class HgLoaderFromDisk(BaseLoader):
 
         return False
 
+    def get_hg_revs_to_load(self) -> Union[HgFilteredSet, HgSpanSet]:
+        """Return the hg revision numbers to load."""
+        assert self._repo is not None
+        repo: hgutil.Repository = self._repo
+        if self._latest_heads:
+            existing_heads = []  # heads that still exist in the repository
+            for hg_nodeid in self._latest_heads:
+                try:
+                    rev = repo[hg_nodeid].rev()
+                    existing_heads.append(rev)
+                except KeyError:  # the node does not exist anymore
+                    pass
+
+            # select revisions that are not ancestors of heads
+            # and not the heads themselves
+            new_revs = repo.revs("not ::(%ld)", existing_heads)
+
+            # for now, reload all revisions if there are new commits
+            # otherwise the loader will crash on missing parents
+            # incremental loading will come in next commits
+            if new_revs:
+                return repo.revs("all()")
+            else:
+                return new_revs
+        else:
+            return repo.revs("all()")
+
     def store_data(self):
         """Store fetched data in the database."""
-        for rev in self._repo:
-            self.store_revision(self._repo[rev])
+        revs = self.get_hg_revs_to_load()
+        if not revs:
+            self._load_status = "uneventful"
+            return
+
+        assert self._repo is not None
+        repo = self._repo
+
+        blacklisted_revs: List[int] = []
+        for rev in revs:
+            if rev in blacklisted_revs:
+                continue
+            try:
+                self.store_revision(repo[rev])
+            except CorruptedRevision as e:
+                self._visit_status = "partial"
+                self.log.warning("Corrupted revision %s", e)
+                descendents = repo.revs("(%ld)::", [rev])
+                blacklisted_revs.extend(descendents)
 
         branch_by_hg_nodeid: Dict[HgNodeId, bytes] = {
-            hg_nodeid: name for name, hg_nodeid in hgutil.branches(self._repo).items()
+            hg_nodeid: name for name, hg_nodeid in hgutil.branches(repo).items()
         }
-        tags_by_name: Dict[bytes, HgNodeId] = self._repo.tags()
+        tags_by_name: Dict[bytes, HgNodeId] = repo.tags()
         tags_by_hg_nodeid: Dict[HgNodeId, bytes] = {
             hg_nodeid: name for name, hg_nodeid in tags_by_name.items()
         }
 
         snapshot_branches: Dict[bytes, SnapshotBranch] = {}
 
-        for hg_nodeid, revision_swhid in self._revision_nodeid_to_swhid.items():
+        extids = []
+
+        for hg_nodeid, revision_sha1git in self._revision_nodeid_to_sha1git.items():
             tag_name = tags_by_hg_nodeid.get(hg_nodeid)
 
             # tip is listed in the tags by the mercurial api
             # but its not a tag defined by the user in `.hgtags`
             if tag_name and tag_name != b"tip":
                 snapshot_branches[tag_name] = SnapshotBranch(
-                    target=self.store_release(tag_name, revision_swhid),
+                    target=self.store_release(tag_name, revision_sha1git),
                     target_type=TargetType.RELEASE,
                 )
 
             if hg_nodeid in branch_by_hg_nodeid:
                 name = branch_by_hg_nodeid[hg_nodeid]
                 snapshot_branches[name] = SnapshotBranch(
-                    target=revision_swhid, target_type=TargetType.REVISION,
+                    target=revision_sha1git, target_type=TargetType.REVISION,
                 )
 
             # The tip is mapped to `HEAD` to match
@@ -244,31 +351,61 @@ class HgLoaderFromDisk(BaseLoader):
                     target=name, target_type=TargetType.ALIAS,
                 )
 
+            if hg_nodeid not in self._latest_heads:
+                revision_swhid = identifiers.CoreSWHID(
+                    object_type=identifiers.ObjectType.REVISION,
+                    object_id=revision_sha1git,
+                )
+                extids.append(
+                    ExtID(extid_type=EXTID_TYPE, extid=hg_nodeid, target=revision_swhid)
+                )
+
         snapshot = Snapshot(branches=snapshot_branches)
         self.storage.snapshot_add([snapshot])
+
+        self.storage.extid_add(extids)
 
         self.flush()
         self.loaded_snapshot_id = snapshot.id
 
+    def load_status(self) -> Dict[str, str]:
+        """Detailed loading status.
+
+        Defaults to logging an eventful load.
+
+        Returns: a dictionary that is eventually passed back as the task's
+          result to the scheduler, allowing tuning of the task recurrence
+          mechanism.
+        """
+        return {
+            "status": self._load_status,
+        }
+
+    def visit_status(self) -> str:
+        """Allow overriding the visit status in case of partial load"""
+        if self._visit_status is not None:
+            return self._visit_status
+        return super().visit_status()
+
     def get_revision_id_from_hg_nodeid(self, hg_nodeid: HgNodeId) -> Sha1Git:
-        """Return the swhid of a revision given its hg nodeid.
+        """Return the git sha1 of a revision given its hg nodeid.
 
         Args:
             hg_nodeid: the hg nodeid of the revision.
 
         Returns:
-            the swhid of the revision.
+            the sha1_git of the revision.
         """
-        return self._revision_nodeid_to_swhid[hg_nodeid]
+        return self._revision_nodeid_to_sha1git[hg_nodeid]
 
     def get_revision_parents(self, rev_ctx: hgutil.BaseContext) -> Tuple[Sha1Git, ...]:
-        """Return the swhids of the parent revisions.
+        """Return the git sha1 of the parent revisions.
 
         Args:
             hg_nodeid: the hg nodeid of the revision.
 
         Returns:
-            the swhids of the parent revisions.
+            the sha1_git of the parent revisions.
         """
         parents = []
         for parent_ctx in rev_ctx.parents():
@@ -287,11 +424,11 @@ class HgLoaderFromDisk(BaseLoader):
             rev_ctx: the he revision context.
 
         Returns:
-            the swhid of the stored revision.
+            the sha1_git of the stored revision.
         """
         hg_nodeid = rev_ctx.node()
 
-        root_swhid = self.store_directories(rev_ctx)
+        root_sha1git = self.store_directories(rev_ctx)
 
         # `Person.from_fullname` is compatible with mercurial's freeform author
         # as fullname is what is used in revision hash when available.
@@ -324,18 +461,17 @@ class HgLoaderFromDisk(BaseLoader):
             committer=author,
             committer_date=rev_date,
             type=RevisionType.MERCURIAL,
-            directory=root_swhid,
+            directory=root_sha1git,
             message=rev_ctx.description(),
-            metadata={"node": hg_nodeid.hex()},
             extra_headers=tuple(extra_headers),
             synthetic=False,
             parents=self.get_revision_parents(rev_ctx),
         )
 
-        self._revision_nodeid_to_swhid[hg_nodeid] = revision.id
+        self._revision_nodeid_to_sha1git[hg_nodeid] = revision.id
         self.storage.revision_add([revision])
 
-    def store_release(self, name: bytes, target=Sha1Git) -> Sha1Git:
+    def store_release(self, name: bytes, target: Sha1Git) -> Sha1Git:
         """Store a release given its name and its target.
 
         A release correspond to a user defined tag in mercurial.
@@ -343,10 +479,10 @@ class HgLoaderFromDisk(BaseLoader):
 
         Args:
             name: name of the release.
-            target: swhid of the target revision.
+            target: sha1_git of the target revision.
 
         Returns:
-            the swhid of the stored release.
+            the sha1_git of the stored release.
         """
         release = Release(
             name=name,
@@ -374,12 +510,23 @@ class HgLoaderFromDisk(BaseLoader):
             file_path: the hg path of the content.
 
         Returns:
-            the swhid of the top level directory.
+            the sha1_git of the top level directory.
         """
         hg_nodeid = rev_ctx.node()
         file_ctx = rev_ctx[file_path]
 
-        file_nodeid = file_ctx.filenode()
+        try:
+            file_nodeid = file_ctx.filenode()
+        except hgutil.LookupError:
+            # TODO
+            # Raising CorruptedRevision avoid crashing the whole loading
+            # but can lead to a lot of missing revisions.
+            # SkippedContent could be used but need actual content to calculate its id.
+            # Maybe the hg_nodeid can be used instead.
+            # Another option could be to just ignore the missing content.
+            # This point is left to future commits.
+            raise CorruptedRevision(hg_nodeid)
+
         perms = FLAG_PERMS[file_ctx.flags()]
 
         # Key is file_nodeid + perms because permissions does not participate
@@ -387,31 +534,18 @@ class HgLoaderFromDisk(BaseLoader):
         cache_key = (file_nodeid, perms)
 
         sha1_git = self._content_hash_cache.get(cache_key)
-        if sha1_git is not None:
-            return Content({"sha1_git": sha1_git, "perms": perms})
+        if sha1_git is None:
+            data = file_ctx.data()
 
-        data = file_ctx.data()
+            content = ModelContent.from_data(data)
 
-        content_data = MultiHash.from_data(data).digest()
-        content_data["length"] = len(data)
-        content_data["perms"] = perms
-        content_data["data"] = data
-        content_data["status"] = "visible"
-        content = Content(content_data)
+            self.storage.content_add([content])
 
-        model = content.to_model()
-        if isinstance(model, ModelContent):
-            self.storage.content_add([model])
-        else:
-            raise ValueError(
-                f"{file_path!r} at rev {hg_nodeid.hex()!r} "
-                "produced {type(model)!r} instead of {ModelContent!r}"
-            )
-
-        self._content_hash_cache[cache_key] = content.hash
+            sha1_git = content.sha1_git
+            self._content_hash_cache[cache_key] = sha1_git
 
         # Here we make sure to return only necessary data.
-        return Content({"sha1_git": content.hash, "perms": perms})
+        return Content({"sha1_git": sha1_git, "perms": perms})
 
     def store_directories(self, rev_ctx: hgutil.BaseContext) -> Sha1Git:
         """Store a revision directories given its hg nodeid.
@@ -423,7 +557,7 @@ class HgLoaderFromDisk(BaseLoader):
             rev_ctx: the he revision context.
 
         Returns:
-            the swhid of the top level directory.
+            the sha1_git of the top level directory.
         """
         repo: hgutil.Repository = self._repo  # mypy can't infer that repo is not None
         prev_ctx = repo[self._last_hg_nodeid]

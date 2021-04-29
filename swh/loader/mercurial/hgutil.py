@@ -1,17 +1,25 @@
+# Copyright (C) 2020-2021  The Software Heritage developers
+# See the AUTHORS file at the top-level directory of this distribution
+# License: GNU General Public License version 3, or any later version
+# See top-level LICENSE file for more information
+
 import io
-import traceback
 from multiprocessing import Process, Queue
+import traceback
 from typing import Dict, NewType
 
 # The internal Mercurial API is not guaranteed to be stable.
+from mercurial import context, error, hg, smartset, util  # type: ignore
 import mercurial.ui  # type: ignore
-from mercurial import context, hg, util
 
 NULLID = mercurial.node.nullid
 HgNodeId = NewType("HgNodeId", bytes)
 Repository = hg.localrepo
 BaseContext = context.basectx
 LRUCacheDict = util.lrucachedict
+HgSpanSet = smartset._spanset
+HgFilteredSet = smartset.filteredset
+LookupError = error.LookupError
 
 
 def repository(path: str) -> hg.localrepo:
@@ -46,7 +54,13 @@ def _clone_task(src: str, dest: str, errors: Queue) -> None:
         errors: message queue to communicate errors
     """
     try:
-        hg.clone(mercurial.ui.ui.load(), {}, src.encode(), dest.encode())
+        hg.clone(
+            ui=mercurial.ui.ui.load(),
+            peeropts={},
+            source=src.encode(),
+            dest=dest.encode(),
+            update=False,
+        )
     except Exception as e:
         exc_buffer = io.StringIO()
         traceback.print_exc(file=exc_buffer)

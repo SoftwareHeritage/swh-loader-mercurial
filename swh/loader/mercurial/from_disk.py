@@ -167,10 +167,6 @@ class HgLoaderFromDisk(BaseLoader):
         # If set, will override the default value
         self._visit_status = None
 
-        self.old_environ = os.environ.copy()
-        os.environ.clear()
-        os.environ.update(get_minimum_env())
-
     def pre_cleanup(self) -> None:
         """As a first step, will try and check for dangling data to cleanup.
         This should do its best to avoid raising issues.
@@ -181,6 +177,10 @@ class HgLoaderFromDisk(BaseLoader):
             pattern_check=TEMPORARY_DIR_PREFIX_PATTERN,
             log=self.log,
         )
+
+        self.old_environ = os.environ.copy()
+        os.environ.clear()
+        os.environ.update(get_minimum_env())
 
     def cleanup(self) -> None:
         """Last step executed by the loader."""

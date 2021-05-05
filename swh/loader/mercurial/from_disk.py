@@ -8,7 +8,7 @@ from datetime import datetime
 import os
 from shutil import rmtree
 from tempfile import mkdtemp
-from typing import Deque, Dict, List, Optional, Tuple, TypeVar, Union
+from typing import Deque, Dict, List, Optional, Set, Tuple, TypeVar, Union
 
 from swh.loader.core.loader import BaseLoader
 from swh.loader.core.utils import clean_dangling_folders
@@ -162,6 +162,10 @@ class HgLoaderFromDisk(BaseLoader):
         # hg node id of the latest snapshot branch heads
         # used to find what are the new revisions since last snapshot
         self._latest_heads: List[bytes] = []
+        # hg node ids of all the tags recorded on previous runs
+        # Used to compute which tags need to be added, even across incremental runs
+        # that might separate a changeset introducing a tag from its target.
+        self._saved_tags: Set[bytes] = set()
 
         self._load_status = "eventful"
         # If set, will override the default value
@@ -209,27 +213,41 @@ class HgLoaderFromDisk(BaseLoader):
 
         latest_snapshot = snapshot_get_latest(self.storage, self.origin_url)
         if latest_snapshot:
-            self._set_latest_heads(latest_snapshot)
+            self._set_recorded_state(latest_snapshot)
 
-    def _set_latest_heads(self, latest_snapshot: Snapshot) -> None:
+    def _set_recorded_state(self, latest_snapshot: Snapshot) -> None:
         """
         Looks up the nodeid for all revisions in the snapshot via extid_get_from_target,
-        and adds them to self._latest_heads.
+        and adds them to `self._latest_heads`.
+        Also looks up the currently saved releases ("tags" in Mercurial speak).
+        The tags are all listed for easy comparison at the end, while only the latest
+        heads are needed for revisions.
         """
-        # TODO: add support for releases
-        snapshot_branches = [
-            branch.target
-            for branch in latest_snapshot.branches.values()
-            if branch.target_type == TargetType.REVISION
-        ]
+        heads = []
+        tags = []
 
-        # Get all ExtIDs for revisions in the latest snapshot
-        extids = self.storage.extid_get_from_target(
-            identifiers.ObjectType.REVISION, snapshot_branches
+        for branch in latest_snapshot.branches.values():
+            if branch.target_type == TargetType.REVISION:
+                heads.append(branch.target)
+            elif branch.target_type == TargetType.RELEASE:
+                tags.append(branch.target)
+
+        self._latest_heads.extend(
+            extid.extid for extid in self._get_extids_for_targets(heads)
+        )
+        self._saved_tags.update(
+            extid.extid for extid in self._get_extids_for_targets(tags)
         )
 
-        # Filter out extids not specific to Mercurial
-        extids = [extid for extid in extids if extid.extid_type == EXTID_TYPE]
+    def _get_extids_for_targets(self, targets: List[bytes]) -> List[ExtID]:
+        # Get all Mercurial ExtIDs for the targets in the latest snapshot
+        extids = [
+            extid
+            for extid in self.storage.extid_get_from_target(
+                identifiers.ObjectType.REVISION, targets
+            )
+            if extid.extid_type == EXTID_TYPE
+        ]
 
         if extids:
             # Filter out dangling extids, we need to load their target again
@@ -241,9 +259,7 @@ class HgLoaderFromDisk(BaseLoader):
                 for extid in extids
                 if extid.target.object_id not in revisions_missing
             ]
-
-            # Add the found nodeids to self.latest_heads
-            self._latest_heads.extend(extid.extid for extid in extids)
+        return extids
 
     def fetch_data(self) -> bool:
         """Fetch the data from the source the loader is currently loading
@@ -290,13 +306,9 @@ class HgLoaderFromDisk(BaseLoader):
             # and not the heads themselves
             new_revs = repo.revs("not ::(%ld)", existing_heads)
 
-            # for now, reload all revisions if there are new commits
-            # otherwise the loader will crash on missing parents
-            # incremental loading will come in next commits
             if new_revs:
-                return repo.revs("all()")
-            else:
-                return new_revs
+                self.log.info("New revisions found: %d", len(new_revs))
+            return new_revs
         else:
             return repo.revs("all()")
 
@@ -326,25 +338,24 @@ class HgLoaderFromDisk(BaseLoader):
             hg_nodeid: name for name, hg_nodeid in hgutil.branches(repo).items()
         }
         tags_by_name: Dict[bytes, HgNodeId] = repo.tags()
-        tags_by_hg_nodeid: Dict[HgNodeId, bytes] = {
-            hg_nodeid: name for name, hg_nodeid in tags_by_name.items()
-        }
 
         snapshot_branches: Dict[bytes, SnapshotBranch] = {}
 
-        extids = []
-
-        for hg_nodeid, revision_sha1git in self._revision_nodeid_to_sha1git.items():
-            tag_name = tags_by_hg_nodeid.get(hg_nodeid)
-
-            # tip is listed in the tags by the mercurial api
-            # but its not a tag defined by the user in `.hgtags`
-            if tag_name and tag_name != b"tip":
+        for tag_name, hg_nodeid in tags_by_name.items():
+            if tag_name == b"tip":
+                # tip is listed in the tags by the mercurial api
+                # but its not a tag defined by the user in `.hgtags`
+                continue
+            if hg_nodeid not in self._saved_tags:
+                revision_sha1git = self.get_revision_id_from_hg_nodeid(hg_nodeid)
                 snapshot_branches[tag_name] = SnapshotBranch(
                     target=self.store_release(tag_name, revision_sha1git),
                     target_type=TargetType.RELEASE,
                 )
 
+        extids = []
+
+        for hg_nodeid, revision_sha1git in self._revision_nodeid_to_sha1git.items():
             if hg_nodeid in branch_by_hg_nodeid:
                 name = branch_by_hg_nodeid[hg_nodeid]
                 snapshot_branches[name] = SnapshotBranch(
@@ -403,7 +414,16 @@ class HgLoaderFromDisk(BaseLoader):
         Returns:
             the sha1_git of the revision.
         """
-        return self._revision_nodeid_to_sha1git[hg_nodeid]
+
+        from_cache = self._revision_nodeid_to_sha1git.get(hg_nodeid)
+        if from_cache is not None:
+            return from_cache
+        # The parent was not loaded in this run, get it from storage
+        from_storage = self.storage.extid_get_from_extid(EXTID_TYPE, ids=[hg_nodeid])
+
+        msg = "Expected 1 match from storage for hg node %r, got %d"
+        assert len(from_storage) == 1, msg % (hg_nodeid, len(from_storage))
+        return from_storage[0].target.object_id
 
     def get_revision_parents(self, rev_ctx: hgutil.BaseContext) -> Tuple[Sha1Git, ...]:
         """Return the git sha1 of the parent revisions.
@@ -420,7 +440,8 @@ class HgLoaderFromDisk(BaseLoader):
             # nullid is the value of a parent that does not exist
             if parent_hg_nodeid == hgutil.NULLID:
                 continue
-            parents.append(self.get_revision_id_from_hg_nodeid(parent_hg_nodeid))
+            revision_id = self.get_revision_id_from_hg_nodeid(parent_hg_nodeid)
+            parents.append(revision_id)
 
         return tuple(parents)
 

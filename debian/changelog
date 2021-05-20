@@ -1,8 +1,17 @@
-swh-loader-mercurial (0.5.0-1~swh1~bpo10+1) buster-swh; urgency=medium
+swh-loader-mercurial (1.0.0-1~swh2) unstable-swh; urgency=medium
 
-  * Rebuild for buster-swh
+  * Add build-dependency on mercurial
 
- -- Software Heritage autobuilder (on jenkins-debian1) <jenkins@jenkins-debian1.internal.softwareheritage.org>  Thu, 29 Apr 2021 12:53:40 +0000
+ -- Nicolas Dandrimont <olasd@debian.org>  Fri, 21 May 2021 01:13:47 +0200
+
+swh-loader-mercurial (1.0.0-1~swh1) unstable-swh; urgency=medium
+
+  * New upstream release 1.0.0     - (tagged by Nicolas Dandrimont
+    <nicolas@dandrimont.eu> on 2021-05-20 16:13:36 +0200)
+  * Upstream changes:     - Release swh.loader.mercurial 1.0     -
+    Replace the legacy Bundle20Loader with the new implementation
+
+ -- Software Heritage autobuilder (on jenkins-debian1) <jenkins@jenkins-debian1.internal.softwareheritage.org>  Thu, 20 May 2021 14:18:12 +0000
 
 swh-loader-mercurial (0.5.0-1~swh1) unstable-swh; urgency=medium
 

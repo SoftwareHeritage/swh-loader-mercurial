@@ -47,3 +47,4 @@ def swh_mercurial_set_plain():
     """
     os.environ["HGPLAIN"] = ""
     os.environ["HGRCPATH"] = ""
+    os.environ["HGRCSKIPREPO"] = ""

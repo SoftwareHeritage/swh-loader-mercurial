@@ -3,7 +3,6 @@ click
 patool
 python-dateutil
 python-hglib
-retrying
 sqlitedict
 mercurial
 swh.model>=0.4.0

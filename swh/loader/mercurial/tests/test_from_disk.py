@@ -2,10 +2,11 @@
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
-
 from datetime import datetime
 from hashlib import sha1
 import os
+from pathlib import Path
+import subprocess
 
 import attr
 import pytest
@@ -434,3 +435,52 @@ def test_missing_filelog_should_not_crash(swh_storage, datadir, tmp_path):
     assert actual_load_status == {"status": "eventful"}
 
     assert_last_visit_matches(swh_storage, repo_url, status="partial", type="hg")
+
+
+def hg_strip(repo: str, revset: str) -> None:
+    """Removes `revset` and all of their descendants from the local repository."""
+    # Previously called `hg strip`, it was renamed to `hg debugstrip` in Mercurial 5.7
+    # because it's most likely not what most users want to do (they should use some kind
+    # of history-rewriting tool like `histedit` or `prune`).
+    # But here, it's exactly what we want to do.
+    subprocess.check_call(["hg", "debugstrip", revset], cwd=repo)
+
+
+def test_load_repo_with_new_commits(swh_storage, datadir, tmp_path):
+    archive_name = "hello"
+    archive_path = Path(datadir, f"{archive_name}.tgz")
+    json_path = Path(datadir, f"{archive_name}.json")
+    repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
+
+    # first load with missing commits
+    hg_strip(repo_url.replace("file://", ""), "tip")
+    loader = HgLoaderFromDisk(swh_storage, repo_url)
+    assert loader.load() == {"status": "eventful"}
+    assert get_stats(loader.storage) == {
+        "content": 2,
+        "directory": 2,
+        "origin": 1,
+        "origin_visit": 1,
+        "release": 0,
+        "revision": 2,
+        "skipped_content": 0,
+        "snapshot": 1,
+    }
+
+    # second load with all commits
+    repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
+    loader = HgLoaderFromDisk(swh_storage, repo_url)
+    checker = LoaderChecker(loader=loader, expected=ExpectedSwhids.load(json_path),)
+
+    checker.check()
+
+    assert get_stats(loader.storage) == {
+        "content": 3,
+        "directory": 3,
+        "origin": 1,
+        "origin_visit": 2,
+        "release": 1,
+        "revision": 3,
+        "skipped_content": 0,
+        "snapshot": 2,
+    }

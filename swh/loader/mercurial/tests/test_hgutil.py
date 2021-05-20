@@ -2,7 +2,7 @@
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
-
+import signal
 import time
 import traceback
 
@@ -15,16 +15,19 @@ from .. import hgutil
 def test_clone_timeout(monkeypatch):
     src = "https://www.mercurial-scm.org/repo/hello"
     dest = "/dev/null"
-    timeout = 1
+    timeout = 0.1
 
     def clone(*args, **kwargs):
-        time.sleep(5)
+        # ignore SIGTERM to force sigkill
+        signal.signal(signal.SIGTERM, lambda signum, frame: None)
+        time.sleep(2)
 
     monkeypatch.setattr(hg, "clone", clone)
 
     with pytest.raises(hgutil.CloneTimeout) as e:
         hgutil.clone(src, dest, timeout)
-    assert e.value.args == (src, timeout)
+    killed = True
+    assert e.value.args == (src, timeout, killed)
 
 
 def test_clone_error(caplog, tmp_path, monkeypatch):

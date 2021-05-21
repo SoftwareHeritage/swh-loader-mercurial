@@ -353,8 +353,6 @@ class HgLoaderFromDisk(BaseLoader):
                     target_type=TargetType.RELEASE,
                 )
 
-        extids = []
-
         for hg_nodeid, revision_sha1git in self._revision_nodeid_to_sha1git.items():
             if hg_nodeid in branch_by_hg_nodeid:
                 name = branch_by_hg_nodeid[hg_nodeid]
@@ -369,19 +367,8 @@ class HgLoaderFromDisk(BaseLoader):
                     target=name, target_type=TargetType.ALIAS,
                 )
 
-            if hg_nodeid not in self._latest_heads:
-                revision_swhid = identifiers.CoreSWHID(
-                    object_type=identifiers.ObjectType.REVISION,
-                    object_id=revision_sha1git,
-                )
-                extids.append(
-                    ExtID(extid_type=EXTID_TYPE, extid=hg_nodeid, target=revision_swhid)
-                )
-
         snapshot = Snapshot(branches=snapshot_branches)
         self.storage.snapshot_add([snapshot])
-
-        self.storage.extid_add(extids)
 
         self.flush()
         self.loaded_snapshot_id = snapshot.id
@@ -498,6 +485,14 @@ class HgLoaderFromDisk(BaseLoader):
 
         self._revision_nodeid_to_sha1git[hg_nodeid] = revision.id
         self.storage.revision_add([revision])
+
+        # Save the mapping from SWHID to hg id
+        revision_swhid = identifiers.CoreSWHID(
+            object_type=identifiers.ObjectType.REVISION, object_id=revision.id,
+        )
+        self.storage.extid_add(
+            [ExtID(extid_type=EXTID_TYPE, extid=hg_nodeid, target=revision_swhid)]
+        )
 
     def store_release(self, name: bytes, target: Sha1Git) -> Sha1Git:
         """Store a release given its name and its target.

@@ -191,7 +191,9 @@ class HgLoaderFromDisk(BaseLoader):
         os.environ.clear()
         os.environ.update(self.old_environ)
 
-        if self._repo_directory and os.path.exists(self._repo_directory):
+        # Don't cleanup if loading from a local directory
+        was_remote = self.directory is None
+        if was_remote and self._repo_directory and os.path.exists(self._repo_directory):
             self.log.debug(f"Cleanup up repository {self._repo_directory}")
             rmtree(self._repo_directory)
 

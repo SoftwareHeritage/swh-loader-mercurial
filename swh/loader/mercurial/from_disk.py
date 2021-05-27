@@ -304,6 +304,15 @@ class HgLoaderFromDisk(BaseLoader):
                 except KeyError:  # the node does not exist anymore
                     pass
 
+            # Mercurial can have more than one head per branch, so we need to exclude
+            # local heads that have already been loaded as revisions but don't
+            # correspond to a SnapshotBranch.
+            # In the future, if the SnapshotBranch model evolves to support multiple
+            # heads per branch (or anything else that fixes this issue) this might
+            # become useless.
+            extids = self.storage.extid_get_from_extid(EXTID_TYPE, repo.heads())
+            known_heads = {extid.extid for extid in extids}
+            existing_heads.extend([repo[head].rev() for head in known_heads])
             # select revisions that are not ancestors of heads
             # and not the heads themselves
             new_revs = repo.revs("not ::(%ld)", existing_heads)
@@ -411,7 +420,7 @@ class HgLoaderFromDisk(BaseLoader):
         from_storage = self.storage.extid_get_from_extid(EXTID_TYPE, ids=[hg_nodeid])
 
         msg = "Expected 1 match from storage for hg node %r, got %d"
-        assert len(from_storage) == 1, msg % (hg_nodeid, len(from_storage))
+        assert len(from_storage) == 1, msg % (hg_nodeid.hex(), len(from_storage))
         return from_storage[0].target.object_id
 
     def get_revision_parents(self, rev_ctx: hgutil.BaseContext) -> Tuple[Sha1Git, ...]:

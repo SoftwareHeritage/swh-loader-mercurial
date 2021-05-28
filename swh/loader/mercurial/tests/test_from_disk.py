@@ -11,6 +11,7 @@ import subprocess
 import attr
 import pytest
 
+from swh.loader.mercurial.loader import HgBundle20Loader
 from swh.loader.mercurial.utils import parse_visit_date
 from swh.loader.tests import (
     assert_last_visit_matches,
@@ -83,16 +84,18 @@ def test_hg_directory_when_directory_replaces_file():
 #
 # With more work it should event be possible to know which part
 # of an object is faulty.
-def test_examples(swh_storage, datadir, tmp_path):
-    for archive_name in ("hello", "transplant", "the-sandbox", "example"):
-        archive_path = os.path.join(datadir, f"{archive_name}.tgz")
-        json_path = os.path.join(datadir, f"{archive_name}.json")
-        repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
+@pytest.mark.parametrize(
+    "archive_name", ("hello", "transplant", "the-sandbox", "example")
+)
+def test_examples(swh_storage, datadir, tmp_path, archive_name):
+    archive_path = Path(datadir, f"{archive_name}.tgz")
+    json_path = Path(datadir, f"{archive_name}.json")
+    repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
 
-        LoaderChecker(
-            loader=HgLoaderFromDisk(swh_storage, repo_url),
-            expected=ExpectedSwhids.load(json_path),
-        ).check()
+    LoaderChecker(
+        loader=HgLoaderFromDisk(swh_storage, repo_url),
+        expected=ExpectedSwhids.load(json_path),
+    ).check()
 
 
 # This test has as been adapted from the historical `HgBundle20Loader` tests
@@ -109,21 +112,40 @@ def test_loader_hg_new_visit_no_release(swh_storage, datadir, tmp_path):
 
     assert loader.load() == {"status": "eventful"}
 
-    tip_revision_develop = "a9c4534552df370f43f0ef97146f393ef2f2a08c"
-    tip_revision_default = "70e750bb046101fdced06f428e73fee471509c56"
+    mapping = {
+        b"default": "70e750bb046101fdced06f428e73fee471509c56",
+        b"develop": "a9c4534552df370f43f0ef97146f393ef2f2a08c",
+        b"feature/fun_time": "4d640e8064fe69b4c851dfd43915c431e80c7497",
+        b"feature/green2_loader": "94be9abcf9558213ff301af0ecd8223451ce991d",
+        b"feature/greenloader": "9f82d95bd3edfb7f18b1a21d6171170395ea44ce",
+        b"feature/my_test": "dafa445964230e808148db043c126063ea1dc9b6",
+        b"feature/read2_loader": "9e912851eb64e3a1e08fbb587de7a4c897ce5a0a",
+        b"feature/readloader": "ddecbc16f4c916c39eacfcb2302e15a9e70a231e",
+        b"feature/red": "cb36b894129ca7910bb81c457c72d69d5ff111bc",
+        b"feature/split5_loader": "3ed4b85d30401fe32ae3b1d650f215a588293a9e",
+        b"feature/split_causing": "c346f6ff7f42f2a8ff867f92ab83a6721057d86c",
+        b"feature/split_loader": "5f4eba626c3f826820c4475d2d81410759ec911b",
+        b"feature/split_loader5": "5017ce0b285351da09a2029ea2cf544f79b593c7",
+        b"feature/split_loading": "4e2dc6d6073f0b6d348f84ded52f9143b10344b9",
+        b"feature/split_redload": "2d4a801c9a9645fcd3a9f4c06418d8393206b1f3",
+        b"feature/splitloading": "88b80615ed8561be74a700b92883ec0374ddacb0",
+        b"feature/test": "61d762d65afb3150e2653d6735068241779c1fcf",
+        b"feature/test_branch": "be44d5e6cc66580f59c108f8bff5911ee91a22e4",
+        b"feature/test_branching": "d2164061453ecb03d4347a05a77db83f706b8e15",
+        b"feature/test_dog": "2973e5dc9568ac491b198f6b7f10c44ddc04e0a3",
+    }
+
+    expected_branches = {
+        k: SnapshotBranch(target=hash_to_bytes(v), target_type=TargetType.REVISION)
+        for k, v in mapping.items()
+    }
+    expected_branches[b"HEAD"] = SnapshotBranch(
+        target=b"develop", target_type=TargetType.ALIAS
+    )
+
     expected_snapshot = Snapshot(
-        id=hash_to_bytes("3b8fe58e467deb7597b12a5fd3b2c096b8c02028"),
-        branches={
-            b"develop": SnapshotBranch(
-                target=hash_to_bytes(tip_revision_develop),
-                target_type=TargetType.REVISION,
-            ),
-            b"default": SnapshotBranch(
-                target=hash_to_bytes(tip_revision_default),
-                target_type=TargetType.REVISION,
-            ),
-            b"HEAD": SnapshotBranch(target=b"develop", target_type=TargetType.ALIAS,),
-        },
+        id=hash_to_bytes("f5347d142821cc00f18fb4e2d3253cdefe6ad645"),
+        branches=expected_branches,
     )
 
     assert_last_visit_matches(
@@ -357,6 +379,64 @@ def test_load_unchanged_repo_should_be_uneventful(
             "skipped_content": 0,
             "snapshot": 1,
         }
+
+
+def test_closed_branch_incremental(swh_storage, datadir, tmp_path):
+    """Test that a repository with a closed branch does not trip an incremental load"""
+    archive_name = "example"
+    archive_path = os.path.join(datadir, f"{archive_name}.tgz")
+    repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
+    repo_path = repo_url.replace("file://", "")
+
+    loader = HgLoaderFromDisk(swh_storage, repo_path)
+
+    # Test 3 loads: full, and two incremental.
+    assert loader.load() == {"status": "eventful"}
+    expected_stats = {
+        "content": 7,
+        "directory": 16,
+        "origin": 1,
+        "origin_visit": 1,
+        "release": 0,
+        "revision": 9,
+        "skipped_content": 0,
+        "snapshot": 1,
+    }
+    assert get_stats(loader.storage) == expected_stats
+    assert loader.load() == {"status": "uneventful"}
+    assert get_stats(loader.storage) == {**expected_stats, "origin_visit": 1 + 1}
+    assert loader.load() == {"status": "uneventful"}
+    assert get_stats(loader.storage) == {**expected_stats, "origin_visit": 2 + 1}
+
+
+def test_old_loader_new_loader(swh_storage, datadir, tmp_path):
+    archive_name = "example"
+    archive_path = os.path.join(datadir, f"{archive_name}.tgz")
+    repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
+    repo_path = repo_url.replace("file://", "")
+
+    old_loader = HgBundle20Loader(swh_storage, repo_path)
+    assert old_loader.load() == {"status": "eventful"}
+
+    expected_stats = {
+        "content": 7,
+        "directory": 16,
+        "origin": 1,
+        "origin_visit": 1,
+        "release": 0,
+        "revision": 9,
+        "skipped_content": 0,
+        "snapshot": 1,
+    }
+    assert get_stats(old_loader.storage) == expected_stats
+
+    # Shouldn't pick up anything
+    loader = HgLoaderFromDisk(swh_storage, repo_path)
+    assert loader.load() == {"status": "uneventful"}
+
+    # Shouldn't pick up anything either
+    loader = HgLoaderFromDisk(swh_storage, repo_path)
+    assert loader.load() == {"status": "uneventful"}
 
 
 def test_load_unchanged_repo__dangling_extid(swh_storage, datadir, tmp_path):

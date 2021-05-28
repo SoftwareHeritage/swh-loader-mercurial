@@ -191,7 +191,9 @@ class HgLoaderFromDisk(BaseLoader):
         os.environ.clear()
         os.environ.update(self.old_environ)
 
-        if self._repo_directory and os.path.exists(self._repo_directory):
+        # Don't cleanup if loading from a local directory
+        was_remote = self.directory is None
+        if was_remote and self._repo_directory and os.path.exists(self._repo_directory):
             self.log.debug(f"Cleanup up repository {self._repo_directory}")
             rmtree(self._repo_directory)
 
@@ -302,6 +304,15 @@ class HgLoaderFromDisk(BaseLoader):
                 except KeyError:  # the node does not exist anymore
                     pass
 
+            # Mercurial can have more than one head per branch, so we need to exclude
+            # local heads that have already been loaded as revisions but don't
+            # correspond to a SnapshotBranch.
+            # In the future, if the SnapshotBranch model evolves to support multiple
+            # heads per branch (or anything else that fixes this issue) this might
+            # become useless.
+            extids = self.storage.extid_get_from_extid(EXTID_TYPE, repo.heads())
+            known_heads = {extid.extid for extid in extids}
+            existing_heads.extend([repo[head].rev() for head in known_heads])
             # select revisions that are not ancestors of heads
             # and not the heads themselves
             new_revs = repo.revs("not ::(%ld)", existing_heads)
@@ -353,8 +364,6 @@ class HgLoaderFromDisk(BaseLoader):
                     target_type=TargetType.RELEASE,
                 )
 
-        extids = []
-
         for hg_nodeid, revision_sha1git in self._revision_nodeid_to_sha1git.items():
             if hg_nodeid in branch_by_hg_nodeid:
                 name = branch_by_hg_nodeid[hg_nodeid]
@@ -369,19 +378,8 @@ class HgLoaderFromDisk(BaseLoader):
                     target=name, target_type=TargetType.ALIAS,
                 )
 
-            if hg_nodeid not in self._latest_heads:
-                revision_swhid = identifiers.CoreSWHID(
-                    object_type=identifiers.ObjectType.REVISION,
-                    object_id=revision_sha1git,
-                )
-                extids.append(
-                    ExtID(extid_type=EXTID_TYPE, extid=hg_nodeid, target=revision_swhid)
-                )
-
         snapshot = Snapshot(branches=snapshot_branches)
         self.storage.snapshot_add([snapshot])
-
-        self.storage.extid_add(extids)
 
         self.flush()
         self.loaded_snapshot_id = snapshot.id
@@ -422,7 +420,7 @@ class HgLoaderFromDisk(BaseLoader):
         from_storage = self.storage.extid_get_from_extid(EXTID_TYPE, ids=[hg_nodeid])
 
         msg = "Expected 1 match from storage for hg node %r, got %d"
-        assert len(from_storage) == 1, msg % (hg_nodeid, len(from_storage))
+        assert len(from_storage) == 1, msg % (hg_nodeid.hex(), len(from_storage))
         return from_storage[0].target.object_id
 
     def get_revision_parents(self, rev_ctx: hgutil.BaseContext) -> Tuple[Sha1Git, ...]:
@@ -498,6 +496,14 @@ class HgLoaderFromDisk(BaseLoader):
 
         self._revision_nodeid_to_sha1git[hg_nodeid] = revision.id
         self.storage.revision_add([revision])
+
+        # Save the mapping from SWHID to hg id
+        revision_swhid = identifiers.CoreSWHID(
+            object_type=identifiers.ObjectType.REVISION, object_id=revision.id,
+        )
+        self.storage.extid_add(
+            [ExtID(extid_type=EXTID_TYPE, extid=hg_nodeid, target=revision_swhid)]
+        )
 
     def store_release(self, name: bytes, target: Sha1Git) -> Sha1Git:
         """Store a release given its name and its target.

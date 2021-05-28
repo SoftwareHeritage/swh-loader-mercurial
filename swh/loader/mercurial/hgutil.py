@@ -35,8 +35,6 @@ def branches(repo: hg.localrepo) -> Dict[bytes, HgNodeId]:
     """List repository named branches and their tip node."""
     result = {}
     for tag, heads, tip, isclosed in repo.branchmap().iterbranches():
-        if isclosed:
-            continue
         result[tag] = tip
     return result
 

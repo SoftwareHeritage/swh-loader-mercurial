@@ -65,6 +65,9 @@ swh/loader/mercurial/tests/data/hello.json
 swh/loader/mercurial/tests/data/hello.tgz
 swh/loader/mercurial/tests/data/missing-filelog.sh
 swh/loader/mercurial/tests/data/missing-filelog.tgz
+swh/loader/mercurial/tests/data/multiple-heads.json
+swh/loader/mercurial/tests/data/multiple-heads.sh
+swh/loader/mercurial/tests/data/multiple-heads.tgz
 swh/loader/mercurial/tests/data/the-sandbox.json
 swh/loader/mercurial/tests/data/the-sandbox.tgz
 swh/loader/mercurial/tests/data/transplant.json

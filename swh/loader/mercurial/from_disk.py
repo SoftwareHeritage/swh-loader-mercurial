@@ -101,7 +101,33 @@ class HgDirectory(Directory):
 
 
 class HgLoaderFromDisk(BaseLoader):
-    """Load a mercurial repository from a local repository."""
+    """Load a mercurial repository from a local repository.
+
+    Mercurial's branching model is more complete than Git's; it allows for multiple
+    heads per branch, closed heads and bookmarks. The following mapping is used to
+    represent the branching state of a Mercurial project in a given snapshot:
+
+    - `HEAD` (optional) either the node pointed by the `@` bookmark or the tip of
+      the `default` branch
+    - `branch-tip/<branch-name>` (required) the first head of the branch, sorted by
+      nodeid if there are multiple heads.
+    - `bookmarks/<bookmark_name>` (optional) holds the bookmarks mapping if any
+    - `branch-heads/<branch_name>/0..n` (optional) for any branch with multiple open
+      heads, list all *open* heads
+    - `branch-closed-heads/<branch_name>/0..n` (optional) for any branch with at least
+      one closed head, list all *closed* heads
+    - `tags/<tag-name>` (optional) record tags
+
+    The format is not ambiguous regardless of branch name since we know it ends with a
+    `/<index>`, as long as we have a stable sorting of the heads (we sort by nodeid).
+    There may be some overlap between the refs, but it's simpler not to try to figure
+    out de-duplication.
+    However, to reduce the redundancy between snapshot branches in the most common case,
+    when a branch has a single open head, it will only be referenced as
+    `branch-tip/<branch-name>`. The `branch-heads/` hierarchy only appears when a branch
+    has multiple open heads, which we consistently sort by increasing nodeid.
+    The `branch-closed-heads/` hierarchy is also sorted by increasing nodeid.
+    """
 
     CONFIG_BASE_FILENAME = "loader/mercurial"
 
@@ -304,15 +330,6 @@ class HgLoaderFromDisk(BaseLoader):
                 except KeyError:  # the node does not exist anymore
                     pass
 
-            # Mercurial can have more than one head per branch, so we need to exclude
-            # local heads that have already been loaded as revisions but don't
-            # correspond to a SnapshotBranch.
-            # In the future, if the SnapshotBranch model evolves to support multiple
-            # heads per branch (or anything else that fixes this issue) this might
-            # become useless.
-            extids = self.storage.extid_get_from_extid(EXTID_TYPE, repo.heads())
-            known_heads = {extid.extid for extid in extids}
-            existing_heads.extend([repo[head].rev() for head in known_heads])
             # select revisions that are not ancestors of heads
             # and not the heads themselves
             new_revs = repo.revs("not ::(%ld)", existing_heads)
@@ -333,9 +350,9 @@ class HgLoaderFromDisk(BaseLoader):
         assert self._repo is not None
         repo = self._repo
 
-        blacklisted_revs: List[int] = []
+        ignored_revs: Set[int] = set()
         for rev in revs:
-            if rev in blacklisted_revs:
+            if rev in ignored_revs:
                 continue
             try:
                 self.store_revision(repo[rev])
@@ -343,41 +360,68 @@ class HgLoaderFromDisk(BaseLoader):
                 self._visit_status = "partial"
                 self.log.warning("Corrupted revision %s", e)
                 descendents = repo.revs("(%ld)::", [rev])
-                blacklisted_revs.extend(descendents)
+                ignored_revs.update(descendents)
 
-        branch_by_hg_nodeid: Dict[HgNodeId, bytes] = {
-            hg_nodeid: name for name, hg_nodeid in hgutil.branches(repo).items()
-        }
+        if len(ignored_revs) == len(revs):
+            # The repository is completely broken, nothing can be loaded
+            self._load_status = "uneventful"
+            return
+
+        branching_info = hgutil.branching_info(repo, ignored_revs)
         tags_by_name: Dict[bytes, HgNodeId] = repo.tags()
 
         snapshot_branches: Dict[bytes, SnapshotBranch] = {}
 
         for tag_name, hg_nodeid in tags_by_name.items():
             if tag_name == b"tip":
-                # tip is listed in the tags by the mercurial api
-                # but its not a tag defined by the user in `.hgtags`
+                # `tip` is listed in the tags by the Mercurial API but its not a tag
+                # defined by the user in `.hgtags`.
                 continue
             if hg_nodeid not in self._saved_tags:
-                revision_sha1git = self.get_revision_id_from_hg_nodeid(hg_nodeid)
-                snapshot_branches[tag_name] = SnapshotBranch(
-                    target=self.store_release(tag_name, revision_sha1git),
+                label = b"tags/%s" % tag_name
+                target = self.get_revision_id_from_hg_nodeid(hg_nodeid)
+                snapshot_branches[label] = SnapshotBranch(
+                    target=self.store_release(tag_name, target),
                     target_type=TargetType.RELEASE,
                 )
 
-        for hg_nodeid, revision_sha1git in self._revision_nodeid_to_sha1git.items():
-            if hg_nodeid in branch_by_hg_nodeid:
-                name = branch_by_hg_nodeid[hg_nodeid]
+        for branch_name, node_id in branching_info.tips.items():
+            name = b"branch-tip/%s" % branch_name
+            target = self.get_revision_id_from_hg_nodeid(node_id)
+            snapshot_branches[name] = SnapshotBranch(
+                target=target, target_type=TargetType.REVISION
+            )
+
+        for bookmark_name, node_id in branching_info.bookmarks.items():
+            name = b"bookmarks/%s" % bookmark_name
+            target = self.get_revision_id_from_hg_nodeid(node_id)
+            snapshot_branches[name] = SnapshotBranch(
+                target=target, target_type=TargetType.REVISION
+            )
+
+        for branch_name, branch_heads in branching_info.open_heads.items():
+            for index, head in enumerate(branch_heads):
+                name = b"branch-heads/%s/%d" % (branch_name, index)
+                target = self.get_revision_id_from_hg_nodeid(head)
                 snapshot_branches[name] = SnapshotBranch(
-                    target=revision_sha1git, target_type=TargetType.REVISION,
+                    target=target, target_type=TargetType.REVISION
                 )
 
-            # The tip is mapped to `HEAD` to match
-            # the historical implementation
-            if hg_nodeid == tags_by_name[b"tip"]:
-                snapshot_branches[b"HEAD"] = SnapshotBranch(
-                    target=name, target_type=TargetType.ALIAS,
+        for branch_name, closed_heads in branching_info.closed_heads.items():
+            for index, head in enumerate(closed_heads):
+                name = b"branch-closed-heads/%s/%d" % (branch_name, index)
+                target = self.get_revision_id_from_hg_nodeid(head)
+                snapshot_branches[name] = SnapshotBranch(
+                    target=target, target_type=TargetType.REVISION
                 )
 
+        # If the repo is broken enough or if it has none of the "normal" default
+        # mechanisms, we ignore `HEAD`.
+        default_branch_alias = branching_info.default_branch_alias
+        if default_branch_alias is not None:
+            snapshot_branches[b"HEAD"] = SnapshotBranch(
+                target=default_branch_alias, target_type=TargetType.ALIAS,
+            )
         snapshot = Snapshot(branches=snapshot_branches)
         self.storage.snapshot_add([snapshot])
 

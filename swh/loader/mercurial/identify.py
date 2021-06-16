@@ -314,7 +314,7 @@ def identify_directory(path: Path) -> CoreSWHID:
     """Return the SWHID of the given path."""
     return CoreSWHID.from_string(
         identify_object(
-            "directory", follow_symlinks=True, exclude_patterns=[".hg"], obj=str(path)
+            "directory", follow_symlinks=True, exclude_patterns=[b".hg"], obj=str(path)
         )
     )
 

@@ -112,9 +112,11 @@ def test_loader_hg_new_visit_no_release(swh_storage, datadir, tmp_path):
 
     assert loader.load() == {"status": "eventful"}
 
-    mapping = {
-        b"default": "70e750bb046101fdced06f428e73fee471509c56",
-        b"develop": "a9c4534552df370f43f0ef97146f393ef2f2a08c",
+    tips = {
+        b"branch-tip/default": "70e750bb046101fdced06f428e73fee471509c56",
+        b"branch-tip/develop": "a9c4534552df370f43f0ef97146f393ef2f2a08c",
+    }
+    closed = {
         b"feature/fun_time": "4d640e8064fe69b4c851dfd43915c431e80c7497",
         b"feature/green2_loader": "94be9abcf9558213ff301af0ecd8223451ce991d",
         b"feature/greenloader": "9f82d95bd3edfb7f18b1a21d6171170395ea44ce",
@@ -135,16 +137,19 @@ def test_loader_hg_new_visit_no_release(swh_storage, datadir, tmp_path):
         b"feature/test_dog": "2973e5dc9568ac491b198f6b7f10c44ddc04e0a3",
     }
 
+    mapping = {b"branch-closed-heads/%s/0" % b: n for b, n in closed.items()}
+    mapping.update(tips)
+
     expected_branches = {
         k: SnapshotBranch(target=hash_to_bytes(v), target_type=TargetType.REVISION)
         for k, v in mapping.items()
     }
     expected_branches[b"HEAD"] = SnapshotBranch(
-        target=b"develop", target_type=TargetType.ALIAS
+        target=b"branch-tip/default", target_type=TargetType.ALIAS
     )
 
     expected_snapshot = Snapshot(
-        id=hash_to_bytes("f5347d142821cc00f18fb4e2d3253cdefe6ad645"),
+        id=hash_to_bytes("cbc609dcdced34dbd9938fe81b555170f1abc96f"),
         branches=expected_branches,
     )
 
@@ -209,13 +214,17 @@ def test_loader_hg_new_visit_with_release(swh_storage, datadir, tmp_path):
     assert revision is not None
 
     expected_snapshot = Snapshot(
-        id=hash_to_bytes("d35668e02e2ba4321dc951cd308cf883786f918a"),
+        id=hash_to_bytes("7ef082aa8b53136b1bed97f734504be32679bbec"),
         branches={
-            b"default": SnapshotBranch(
+            b"branch-tip/default": SnapshotBranch(
                 target=tip_revision_default, target_type=TargetType.REVISION,
             ),
-            b"0.1": SnapshotBranch(target=tip_release, target_type=TargetType.RELEASE,),
-            b"HEAD": SnapshotBranch(target=b"default", target_type=TargetType.ALIAS,),
+            b"tags/0.1": SnapshotBranch(
+                target=tip_release, target_type=TargetType.RELEASE,
+            ),
+            b"HEAD": SnapshotBranch(
+                target=b"branch-tip/default", target_type=TargetType.ALIAS,
+            ),
         },
     )
 
@@ -430,11 +439,22 @@ def test_old_loader_new_loader(swh_storage, datadir, tmp_path):
     }
     assert get_stats(old_loader.storage) == expected_stats
 
-    # Shouldn't pick up anything
+    # Will pick up more branches, hence a different snapshot
+    loader = HgLoaderFromDisk(swh_storage, repo_path)
+    res = loader.load()
+    new_expected_stats = {
+        **expected_stats,
+        "origin_visit": 2,
+        "snapshot": 2,
+    }
+    assert get_stats(loader.storage) == new_expected_stats
+    assert res == {"status": "eventful"}
+
+    # Shouldn't pick up anything now
     loader = HgLoaderFromDisk(swh_storage, repo_path)
     assert loader.load() == {"status": "uneventful"}
 
-    # Shouldn't pick up anything either
+    # Shouldn't pick up anything either after another load
     loader = HgLoaderFromDisk(swh_storage, repo_path)
     assert loader.load() == {"status": "uneventful"}
 
@@ -515,6 +535,35 @@ def test_missing_filelog_should_not_crash(swh_storage, datadir, tmp_path):
     assert actual_load_status == {"status": "eventful"}
 
     assert_last_visit_matches(swh_storage, repo_url, status="partial", type="hg")
+
+
+def test_multiple_open_heads(swh_storage, datadir, tmp_path):
+    archive_name = "multiple-heads"
+    archive_path = os.path.join(datadir, f"{archive_name}.tgz")
+    repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
+
+    loader = HgLoaderFromDisk(storage=swh_storage, url=repo_url,)
+
+    actual_load_status = loader.load()
+    assert actual_load_status == {"status": "eventful"}
+
+    assert_last_visit_matches(swh_storage, repo_url, status="full", type="hg")
+
+    snapshot = snapshot_get_latest(swh_storage, repo_url)
+    expected_branches = [
+        b"HEAD",
+        b"branch-heads/default/0",
+        b"branch-heads/default/1",
+        b"branch-tip/default",
+    ]
+    assert sorted(snapshot.branches.keys()) == expected_branches
+
+    # Check that we don't load anything the second time
+    loader = HgLoaderFromDisk(storage=swh_storage, url=repo_url,)
+
+    actual_load_status = loader.load()
+
+    assert actual_load_status == {"status": "uneventful"}
 
 
 def hg_strip(repo: str, revset: str) -> None:

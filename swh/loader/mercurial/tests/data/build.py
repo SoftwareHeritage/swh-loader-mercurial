@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2020  The Software Heritage developers
+# Copyright (C) 2020-2021  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -27,7 +27,7 @@ Here is a minimal working example:
     set -euo pipefail
 
     # Allow direct call to call the script: `./myscript.sh repository-name`
-    if [ ! -z "$1" ]; then
+    if [ -n "$1" ]; then
         HG_REPO="$1"
     fi
 
@@ -35,8 +35,8 @@ Here is a minimal working example:
     hg init "$HG_REPO"
     cd "$HG_REPO"
     cat > .hg/hgrc << EOL
-        [ui]
-        username = Full Name<full.name@domain.tld>
+    [ui]
+    username = Full Name<full.name@domain.tld>
     EOL
 
     # Populate the repository
@@ -77,11 +77,11 @@ For existing repository without build scripts it is possible to extract
 the corresponding json file by running `./build.py json repository.tgz`
 """
 
+from datetime import datetime
 import json
+from pathlib import Path
 import shutil
 import subprocess
-from datetime import datetime
-from pathlib import Path
 
 import click
 
@@ -117,8 +117,9 @@ def _build_repository(script: str) -> Path:
         backup(repository_path)
 
     click.echo(f"Running build script: {str(script_path)!r}")
-    subprocess.call(
-        ["bash", "-euo", "pipefail", script_path], env={"HG_REPO": str(repository_path)}
+    subprocess.run(
+        ["bash", "-eo", "pipefail", script_path, repository_path.stem],
+        env={"HG_REPO": str(repository_path), "HGPLAIN": "", "HGRCPATH": ""},
     )
 
     return repository_path

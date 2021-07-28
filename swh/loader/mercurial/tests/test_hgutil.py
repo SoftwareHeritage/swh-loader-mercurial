@@ -15,12 +15,14 @@ from .. import hgutil
 def test_clone_timeout(monkeypatch):
     src = "https://www.mercurial-scm.org/repo/hello"
     dest = "/dev/null"
-    timeout = 0.1
+    timeout = 1
+    sleepy_time = 100 * timeout
+    assert sleepy_time > timeout
 
     def clone(*args, **kwargs):
         # ignore SIGTERM to force sigkill
         signal.signal(signal.SIGTERM, lambda signum, frame: None)
-        time.sleep(2)
+        time.sleep(sleepy_time)  # we make sure we exceed the timeout
 
     monkeypatch.setattr(hg, "clone", clone)
 

@@ -47,7 +47,7 @@ FLAG_PERMS = {
 TEMPORARY_DIR_PREFIX_PATTERN = "swh.loader.mercurial.from_disk"
 
 EXTID_TYPE = "hg-nodeid"
-
+EXTID_VERSION: int = 1
 
 T = TypeVar("T")
 
@@ -268,13 +268,13 @@ class HgLoaderFromDisk(BaseLoader):
         )
 
     def _get_extids_for_targets(self, targets: List[bytes]) -> List[ExtID]:
-        # Get all Mercurial ExtIDs for the targets in the latest snapshot
+        """Get all Mercurial ExtIDs for the targets in the latest snapshot"""
         extids = [
             extid
             for extid in self.storage.extid_get_from_target(
                 identifiers.ObjectType.REVISION, targets
             )
-            if extid.extid_type == EXTID_TYPE
+            if extid.extid_type == EXTID_TYPE and extid.extid_version == EXTID_VERSION
         ]
 
         if extids:
@@ -461,7 +461,11 @@ class HgLoaderFromDisk(BaseLoader):
         if from_cache is not None:
             return from_cache
         # The parent was not loaded in this run, get it from storage
-        from_storage = self.storage.extid_get_from_extid(EXTID_TYPE, ids=[hg_nodeid])
+        from_storage = [
+            extid
+            for extid in self.storage.extid_get_from_extid(EXTID_TYPE, ids=[hg_nodeid])
+            if extid.extid_version == EXTID_VERSION
+        ]
 
         msg = "Expected 1 match from storage for hg node %r, got %d"
         assert len(from_storage) == 1, msg % (hg_nodeid.hex(), len(from_storage))
@@ -546,7 +550,14 @@ class HgLoaderFromDisk(BaseLoader):
             object_type=identifiers.ObjectType.REVISION, object_id=revision.id,
         )
         self.storage.extid_add(
-            [ExtID(extid_type=EXTID_TYPE, extid=hg_nodeid, target=revision_swhid)]
+            [
+                ExtID(
+                    extid_type=EXTID_TYPE,
+                    extid_version=EXTID_VERSION,
+                    extid=hg_nodeid,
+                    target=revision_swhid,
+                )
+            ]
         )
 
     def store_release(self, name: bytes, target: Sha1Git) -> Sha1Git:

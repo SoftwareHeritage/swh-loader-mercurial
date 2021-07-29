@@ -7,6 +7,7 @@ from hashlib import sha1
 import os
 from pathlib import Path
 import subprocess
+import unittest
 
 import attr
 import pytest
@@ -26,7 +27,7 @@ from swh.model.model import RevisionType, Snapshot, SnapshotBranch, TargetType
 from swh.storage import get_storage
 from swh.storage.algos.snapshot import snapshot_get_latest
 
-from ..from_disk import HgDirectory, HgLoaderFromDisk
+from ..from_disk import EXTID_VERSION, HgDirectory, HgLoaderFromDisk
 from .loader_checker import ExpectedSwhids, LoaderChecker
 
 VISIT_DATE = parse_visit_date("2016-05-03 15:16:32+00")
@@ -613,3 +614,59 @@ def test_load_repo_with_new_commits(swh_storage, datadir, tmp_path):
         "skipped_content": 0,
         "snapshot": 2,
     }
+
+
+def test_load_repo_check_extids_write_version(swh_storage, datadir, tmp_path):
+    """ExtIDs should be stored with a given version when loading is done"""
+    archive_name = "hello"
+    archive_path = Path(datadir, f"{archive_name}.tgz")
+    repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
+
+    hg_strip(repo_url.replace("file://", ""), "tip")
+    loader = HgLoaderFromDisk(swh_storage, repo_url)
+    assert loader.load() == {"status": "eventful"}
+
+    # Ensure we write ExtIDs to a specific version.
+    snapshot = snapshot_get_latest(swh_storage, repo_url)
+
+    # First, filter out revisions from that snapshot
+    revision_ids = [
+        branch.target
+        for branch in snapshot.branches.values()
+        if branch.target_type == TargetType.REVISION
+    ]
+
+    assert len(revision_ids) > 0
+
+    # Those revisions should have their associated ExtID version set to EXTID_VERSION
+    extids = swh_storage.extid_get_from_target(ObjectType.REVISION, revision_ids)
+
+    assert len(extids) == len(revision_ids)
+    for extid in extids:
+        assert extid.extid_version == EXTID_VERSION
+
+
+def test_load_new_extid_should_be_eventful(swh_storage, datadir, tmp_path):
+    """Changing the extid version should make loaders ignore existing extids,
+    and load the repo again."""
+    archive_name = "hello"
+    archive_path = os.path.join(datadir, f"{archive_name}.tgz")
+    repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
+    repo_path = repo_url.replace("file://", "")
+
+    with unittest.mock.patch("swh.loader.mercurial.from_disk.EXTID_VERSION", 0):
+        loader = HgLoaderFromDisk(swh_storage, repo_path)
+        assert loader.load() == {"status": "eventful"}
+
+    loader = HgLoaderFromDisk(swh_storage, repo_path)
+    assert loader.load() == {"status": "eventful"}
+
+    loader = HgLoaderFromDisk(swh_storage, repo_path)
+    assert loader.load() == {"status": "uneventful"}
+
+    with unittest.mock.patch("swh.loader.mercurial.from_disk.EXTID_VERSION", 10000):
+        loader = HgLoaderFromDisk(swh_storage, repo_path)
+        assert loader.load() == {"status": "eventful"}
+
+        loader = HgLoaderFromDisk(swh_storage, repo_path)
+        assert loader.load() == {"status": "uneventful"}

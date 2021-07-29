@@ -2,6 +2,7 @@
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
+
 from collections import defaultdict
 from dataclasses import dataclass
 import io
@@ -154,7 +155,7 @@ def clone(src: str, dest: str, timeout: float) -> None:
 
     if process.is_alive():
         process.terminate()
-        # Give it a second (literally), then kill it
+        # Give it literally a second (in successive steps of 0.1 second), then kill it.
         # Can't use `process.join(1)` here, billiard appears to be bugged
         # https://github.com/celery/billiard/issues/270
         killed = False

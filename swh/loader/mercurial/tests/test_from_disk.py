@@ -685,3 +685,61 @@ def test_load_new_extid_should_be_eventful(swh_storage, datadir, tmp_path):
 
         loader = HgLoaderFromDisk(swh_storage, repo_path)
         assert loader.load() == {"status": "uneventful"}
+
+
+def test_loader_hg_extid_filtering(swh_storage, datadir, tmp_path):
+    """The first visit of a fork should filter already seen revisions (through extids)
+
+    """
+    archive_name = "the-sandbox"
+    archive_path = os.path.join(datadir, f"{archive_name}.tgz")
+    repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
+
+    loader = HgLoaderFromDisk(swh_storage, url=repo_url)
+
+    assert loader.load() == {"status": "eventful"}
+    stats = get_stats(loader.storage)
+    expected_stats = {
+        "content": 2,
+        "directory": 3,
+        "origin": 1,
+        "origin_visit": 1,
+        "release": 0,
+        "revision": 58,
+        "skipped_content": 0,
+        "snapshot": 1,
+    }
+    assert stats == expected_stats
+
+    visit_status = assert_last_visit_matches(
+        loader.storage, repo_url, status="full", type="hg",
+    )
+
+    # Make a fork of the first repository we ingested
+    fork_url = prepare_repository_from_archive(
+        archive_path, "the-sandbox-reloaded", tmp_path
+    )
+    loader2 = HgLoaderFromDisk(
+        swh_storage, url=fork_url, directory=str(tmp_path / archive_name)
+    )
+
+    assert loader2.load() == {"status": "uneventful"}
+
+    stats = get_stats(loader.storage)
+    expected_stats2 = expected_stats.copy()
+    expected_stats2.update(
+        {"origin": 1 + 1, "origin_visit": 1 + 1,}
+    )
+    assert stats == expected_stats2
+
+    visit_status2 = assert_last_visit_matches(
+        loader.storage, fork_url, status="full", type="hg",
+    )
+
+    assert visit_status.snapshot is not None
+    assert visit_status2.snapshot is None
+
+    # FIXME: Consistent behavior with filtering data out from already seen snapshot (on
+    # a given origin). But, the other fork origin has no snapshot at all. We should
+    # though, shouldn't we? Otherwise, that would mean fork could end up with no
+    # snapshot at all.

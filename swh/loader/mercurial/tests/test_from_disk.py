@@ -164,7 +164,7 @@ def test_loader_hg_new_visit_no_release(swh_storage, datadir, tmp_path):
     check_snapshot(expected_snapshot, loader.storage)
 
     stats = get_stats(loader.storage)
-    assert stats == {
+    expected_stats = {
         "content": 2,
         "directory": 3,
         "origin": 1,
@@ -174,6 +174,21 @@ def test_loader_hg_new_visit_no_release(swh_storage, datadir, tmp_path):
         "skipped_content": 0,
         "snapshot": 1,
     }
+    assert stats == expected_stats
+    loader2 = HgLoaderFromDisk(swh_storage, url=repo_url)
+
+    assert loader2.load() == {"status": "uneventful"}
+
+    stats2 = get_stats(loader2.storage)
+    expected_stats2 = expected_stats.copy()
+    expected_stats2["origin_visit"] = 2  # one new visit recorded
+    assert stats2 == expected_stats2
+    visit_status = assert_last_visit_matches(
+        loader2.storage, repo_url, status="full", type="hg",
+    )
+    assert visit_status.snapshot is None
+    # FIXME: Already seen objects are filtered out, so no new snapshot.
+    # Current behavior but is it ok?
 
 
 # This test has as been adapted from the historical `HgBundle20Loader` tests

@@ -188,11 +188,11 @@ class HgLoaderFromDisk(BaseLoader):
 
         # hg node id of the latest snapshot branch heads
         # used to find what are the new revisions since last snapshot
-        self._latest_heads: List[bytes] = []
+        self._latest_heads: List[HgNodeId] = []
         # hg node ids of all the tags recorded on previous runs
         # Used to compute which tags need to be added, even across incremental runs
         # that might separate a changeset introducing a tag from its target.
-        self._saved_tags: Set[bytes] = set()
+        self._saved_tags: Set[HgNodeId] = set()
 
         self._load_status = "eventful"
         # If set, will override the default value
@@ -262,21 +262,24 @@ class HgLoaderFromDisk(BaseLoader):
                 tags.append(branch.target)
 
         self._latest_heads.extend(
-            extid.extid for extid in self._get_extids_for_targets(heads)
+            HgNodeId(extid.extid) for extid in self._get_extids_for_targets(heads)
         )
         self._saved_tags.update(
-            extid.extid for extid in self._get_extids_for_targets(tags)
+            HgNodeId(extid.extid) for extid in self._get_extids_for_targets(tags)
         )
 
-    def _get_extids_for_targets(self, targets: List[bytes]) -> List[ExtID]:
+    def _get_extids_for_targets(self, targets: List[Sha1Git]) -> List[ExtID]:
         """Get all Mercurial ExtIDs for the targets in the latest snapshot"""
-        extids = [
-            extid
-            for extid in self.storage.extid_get_from_target(
-                identifiers.ObjectType.REVISION, targets
-            )
-            if extid.extid_type == EXTID_TYPE and extid.extid_version == EXTID_VERSION
-        ]
+        extids = []
+        for extid in self.storage.extid_get_from_target(
+            identifiers.ObjectType.REVISION, targets
+        ):
+            if extid.extid_type != EXTID_TYPE or extid.extid_version != EXTID_VERSION:
+                continue
+            extids.append(extid)
+            self._revision_nodeid_to_sha1git[
+                HgNodeId(extid.extid)
+            ] = extid.target.object_id
 
         if extids:
             # Filter out dangling extids, we need to load their target again
@@ -290,17 +293,21 @@ class HgLoaderFromDisk(BaseLoader):
             ]
         return extids
 
-    def _get_extids_for_hgnodes(self, hgnode_ids: List[bytes]) -> List[ExtID]:
+    def _get_extids_for_hgnodes(self, hgnode_ids: List[HgNodeId]) -> List[ExtID]:
         """Get all Mercurial ExtIDs for the mercurial nodes in the list which point to
            a known revision.
 
         """
         extids = []
+
         for group_ids in grouper(hgnode_ids, n=1000):
             for extid in self.storage.extid_get_from_extid(EXTID_TYPE, group_ids):
                 if extid.extid_version != EXTID_VERSION:
                     continue
                 extids.append(extid)
+                self._revision_nodeid_to_sha1git[
+                    HgNodeId(extid.extid)
+                ] = extid.target.object_id
 
         if extids:
             # Filter out dangling extids, we need to load their target again
@@ -342,7 +349,7 @@ class HgLoaderFromDisk(BaseLoader):
 
         return False
 
-    def _new_revs(self, heads: List[bytes]) -> Union[HgFilteredSet, HgSpanSet]:
+    def _new_revs(self, heads: List[HgNodeId]) -> Union[HgFilteredSet, HgSpanSet]:
         """Return unseen revisions. That is, filter out revisions that are not ancestors of
         heads"""
         assert self._repo is not None
@@ -384,7 +391,7 @@ class HgLoaderFromDisk(BaseLoader):
         hg_nodeids = [repo[nodeid].node() for nodeid in revs_left]
         yield from self._new_revs(
             [
-                extid.extid
+                HgNodeId(extid.extid)
                 for extid in self._get_extids_for_hgnodes(hg_nodeids)
             ]
         )
@@ -411,9 +418,9 @@ class HgLoaderFromDisk(BaseLoader):
                 ignored_revs.update(descendents)
 
         if length_ingested_revs == 0:
-            # The repository has nothing to ingest (either empty or broken repository)
+            # no new revision ingested, so uneventful
+            # still we'll make a snapshot, so we continue
             self._load_status = "uneventful"
-            return
 
         branching_info = hgutil.branching_info(repo, ignored_revs)
         tags_by_name: Dict[bytes, HgNodeId] = repo.tags()

@@ -177,18 +177,19 @@ def test_loader_hg_new_visit_no_release(swh_storage, datadir, tmp_path):
     assert stats == expected_stats
     loader2 = HgLoaderFromDisk(swh_storage, url=repo_url)
 
-    assert loader2.load() == {"status": "uneventful"}
+    assert loader2.load() == {"status": "uneventful"}  # nothing new happened
 
     stats2 = get_stats(loader2.storage)
     expected_stats2 = expected_stats.copy()
     expected_stats2["origin_visit"] = 2  # one new visit recorded
     assert stats2 == expected_stats2
-    visit_status = assert_last_visit_matches(
-        loader2.storage, repo_url, status="full", type="hg",
-    )
-    assert visit_status.snapshot is None
-    # FIXME: Already seen objects are filtered out, so no new snapshot.
-    # Current behavior but is it ok?
+    assert_last_visit_matches(
+        loader2.storage,
+        repo_url,
+        status="full",
+        type="hg",
+        snapshot=expected_snapshot.id,
+    )  # but we got a snapshot nonetheless
 
 
 # This test has as been adapted from the historical `HgBundle20Loader` tests
@@ -342,9 +343,8 @@ def _partial_copy_storage(
     return new_storage
 
 
-@pytest.mark.parametrize("mechanism", ("extid", "same storage"))
 def test_load_unchanged_repo_should_be_uneventful(
-    swh_storage, datadir, tmp_path, mechanism
+    swh_storage, datadir, tmp_path,
 ):
     """Checks the loader can find which revisions it already loaded, using ExtIDs."""
     archive_name = "hello"
@@ -365,45 +365,31 @@ def test_load_unchanged_repo_should_be_uneventful(
         "skipped_content": 0,
         "snapshot": 1,
     }
-
-    old_storage = swh_storage
-
-    # Create a new storage, and only copy ExtIDs or head revisions to it.
-    # This should be enough for the loader to know revisions were already loaded
-    new_storage = _partial_copy_storage(
-        old_storage, repo_path, mechanism=mechanism, copy_revisions=True
+    visit_status = assert_last_visit_matches(
+        loader.storage, repo_path, type=RevisionType.MERCURIAL.value, status="full",
     )
+    assert visit_status.snapshot is not None
 
     # Create a new loader (to start with a clean slate, eg. remove the caches),
     # with the new, partial, storage
-    loader = HgLoaderFromDisk(new_storage, repo_path)
-    assert loader.load() == {"status": "uneventful"}
+    loader2 = HgLoaderFromDisk(swh_storage, repo_path)
+    assert loader2.load() == {"status": "uneventful"}
 
-    if mechanism == "same storage":
-        # Should have all the objects
-        assert get_stats(loader.storage) == {
-            "content": 3,
-            "directory": 3,
-            "origin": 1,
-            "origin_visit": 2,
-            "release": 1,
-            "revision": 3,
-            "skipped_content": 0,
-            "snapshot": 1,
-        }
-    else:
-        # Should have only the objects we directly inserted from the test, plus
-        # a new visit
-        assert get_stats(loader.storage) == {
-            "content": 0,
-            "directory": 0,
-            "origin": 1,
-            "origin_visit": 2,
-            "release": 0,
-            "revision": 1,
-            "skipped_content": 0,
-            "snapshot": 1,
-        }
+    # Should have all the objects
+    assert get_stats(loader.storage) == {
+        "content": 3,
+        "directory": 3,
+        "origin": 1,
+        "origin_visit": 2,
+        "release": 1,
+        "revision": 3,
+        "skipped_content": 0,
+        "snapshot": 1,
+    }
+    visit_status2 = assert_last_visit_matches(
+        loader2.storage, repo_path, type=RevisionType.MERCURIAL.value, status="full",
+    )
+    assert visit_status2.snapshot == visit_status.snapshot
 
 
 def test_closed_branch_incremental(swh_storage, datadir, tmp_path):
@@ -735,11 +721,5 @@ def test_loader_hg_extid_filtering(swh_storage, datadir, tmp_path):
     visit_status2 = assert_last_visit_matches(
         loader.storage, fork_url, status="full", type="hg",
     )
-
     assert visit_status.snapshot is not None
-    assert visit_status2.snapshot is None
-
-    # FIXME: Consistent behavior with filtering data out from already seen snapshot (on
-    # a given origin). But, the other fork origin has no snapshot at all. We should
-    # though, shouldn't we? Otherwise, that would mean fork could end up with no
-    # snapshot at all.
+    assert visit_status2.snapshot == visit_status.snapshot

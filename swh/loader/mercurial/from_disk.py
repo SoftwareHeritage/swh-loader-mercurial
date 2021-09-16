@@ -272,10 +272,11 @@ class HgLoaderFromDisk(BaseLoader):
         """Get all Mercurial ExtIDs for the targets in the latest snapshot"""
         extids = []
         for extid in self.storage.extid_get_from_target(
-            identifiers.ObjectType.REVISION, targets
+            identifiers.ObjectType.REVISION,
+            targets,
+            extid_type=EXTID_TYPE,
+            extid_version=EXTID_VERSION,
         ):
-            if extid.extid_type != EXTID_TYPE or extid.extid_version != EXTID_VERSION:
-                continue
             extids.append(extid)
             self._revision_nodeid_to_sha1git[
                 HgNodeId(extid.extid)
@@ -301,9 +302,9 @@ class HgLoaderFromDisk(BaseLoader):
         extids = []
 
         for group_ids in grouper(hgnode_ids, n=1000):
-            for extid in self.storage.extid_get_from_extid(EXTID_TYPE, group_ids):
-                if extid.extid_version != EXTID_VERSION:
-                    continue
+            for extid in self.storage.extid_get_from_extid(
+                EXTID_TYPE, group_ids, version=EXTID_VERSION
+            ):
                 extids.append(extid)
                 self._revision_nodeid_to_sha1git[
                     HgNodeId(extid.extid)
@@ -518,8 +519,9 @@ class HgLoaderFromDisk(BaseLoader):
         # The parent was not loaded in this run, get it from storage
         from_storage = [
             extid
-            for extid in self.storage.extid_get_from_extid(EXTID_TYPE, ids=[hg_nodeid])
-            if extid.extid_version == EXTID_VERSION
+            for extid in self.storage.extid_get_from_extid(
+                EXTID_TYPE, ids=[hg_nodeid], version=EXTID_VERSION
+            )
         ]
 
         msg = "Expected 1 match from storage for hg node %r, got %d"

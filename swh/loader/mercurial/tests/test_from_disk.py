@@ -723,3 +723,17 @@ def test_loader_hg_extid_filtering(swh_storage, datadir, tmp_path):
     )
     assert visit_status.snapshot is not None
     assert visit_status2.snapshot == visit_status.snapshot
+
+
+@pytest.mark.xfail
+def test_loader_missing_hgnodeid_mapping(swh_storage, datadir, tmp_path):
+    """TODO: Analyze this issue and update the comment about the proper behavior.
+
+    """
+    archive_name = "anomad-d"
+    archive_path = os.path.join(datadir, f"{archive_name}.tgz")
+    repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
+
+    loader = HgLoaderFromDisk(swh_storage, url=repo_url)
+
+    assert loader.load() == {"status": "eventful"}

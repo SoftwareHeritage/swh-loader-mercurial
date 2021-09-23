@@ -725,9 +725,8 @@ def test_loader_hg_extid_filtering(swh_storage, datadir, tmp_path):
     assert visit_status2.snapshot == visit_status.snapshot
 
 
-@pytest.mark.xfail
-def test_loader_missing_hgnodeid_mapping(swh_storage, datadir, tmp_path):
-    """TODO: Analyze this issue and update the comment about the proper behavior.
+def test_loader_repository_with_bookmark_information(swh_storage, datadir, tmp_path):
+    """Repository with bookmark information should be ingested correctly
 
     """
     archive_name = "anomad-d"

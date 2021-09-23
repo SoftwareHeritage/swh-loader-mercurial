@@ -100,9 +100,16 @@ def branching_info(repo: hg.localrepo, ignored: Set[int]) -> BranchingInfo:
     for branch in branches_with_one_head:
         del branch_open_heads[branch]
 
+    # for bookmarks, the ids listed are not aligned with the rest, it's human
+    # readable id as bytes string instead of bytes string. Hence the extra mapping.
+    branch_bookmarks = {
+        branch: HgNodeId(bytes.fromhex(node_id.decode()))
+        for branch, node_id in all_bookmarks.items()
+    }
+
     return BranchingInfo(
         tips=branch_tips,
-        bookmarks=all_bookmarks,
+        bookmarks=branch_bookmarks,
         open_heads=branch_open_heads,
         closed_heads=branch_closed_heads,
         default_branch_alias=default_rev_alias,

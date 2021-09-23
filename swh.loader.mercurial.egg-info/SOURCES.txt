@@ -57,6 +57,7 @@ swh/loader/mercurial/tests/test_loader.py
 swh/loader/mercurial/tests/test_tasks.py
 swh/loader/mercurial/tests/test_tasks_from_disk.py
 swh/loader/mercurial/tests/test_utils.py
+swh/loader/mercurial/tests/data/anomad-d.tgz
 swh/loader/mercurial/tests/data/build.py
 swh/loader/mercurial/tests/data/example.json
 swh/loader/mercurial/tests/data/example.sh

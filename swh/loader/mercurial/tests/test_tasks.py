@@ -1,4 +1,4 @@
-# Copyright (C) 2018-2020  The Software Heritage developers
+# Copyright (C) 2018-2021  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -7,11 +7,11 @@
 def test_loader(
     mocker, swh_config, swh_scheduler_celery_app, swh_scheduler_celery_worker
 ):
-    mock_loader = mocker.patch("swh.loader.mercurial.from_disk.HgLoaderFromDisk.load")
+    mock_loader = mocker.patch("swh.loader.mercurial.loader.HgLoader.load")
     mock_loader.return_value = {"status": "eventful"}
 
     res = swh_scheduler_celery_app.send_task(
-        "swh.loader.mercurial.tasks_from_disk.LoadMercurialFromDisk",
+        "swh.loader.mercurial.tasks.LoadMercurial",
         kwargs={"url": "origin_url", "directory": "/some/repo", "visit_date": "now",},
     )
 
@@ -26,13 +26,11 @@ def test_loader(
 def test_archive_loader(
     mocker, swh_config, swh_scheduler_celery_app, swh_scheduler_celery_worker
 ):
-    mock_loader = mocker.patch(
-        "swh.loader.mercurial.from_disk.HgArchiveLoaderFromDisk.load"
-    )
+    mock_loader = mocker.patch("swh.loader.mercurial.loader.HgArchiveLoader.load")
     mock_loader.return_value = {"status": "uneventful"}
 
     res = swh_scheduler_celery_app.send_task(
-        "swh.loader.mercurial.tasks_from_disk.LoadArchiveMercurialFromDisk",
+        "swh.loader.mercurial.tasks.LoadArchiveMercurial",
         kwargs={
             "url": "another_url",
             "archive_path": "/some/tar.tgz",

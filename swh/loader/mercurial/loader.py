@@ -3,6 +3,12 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+"""Loaders for ingesting Mercurial repositories either local from disk, or remote, see
+:class:`swh.loader.mercurial.loader.HgLoader` or from an archive, see
+:class:`swh.loader.mercurial.from_disk.HgArchiveLoader`.
+
+"""
+
 from collections import deque
 from datetime import datetime
 import os
@@ -13,7 +19,7 @@ from typing import Deque, Dict, Iterator, List, Optional, Set, Tuple, TypeVar, U
 from swh.core.utils import grouper
 from swh.loader.core.loader import BaseLoader
 from swh.loader.core.utils import clean_dangling_folders
-from swh.loader.mercurial.utils import get_minimum_env, parse_visit_date
+from swh.loader.mercurial.utils import get_minimum_env
 from swh.model import identifiers
 from swh.model.from_disk import Content, DentryPerms, Directory
 from swh.model.hashutil import hash_to_bytehex
@@ -45,7 +51,7 @@ FLAG_PERMS = {
     b"": DentryPerms.content,
 }  # type: Dict[bytes, DentryPerms]
 
-TEMPORARY_DIR_PREFIX_PATTERN = "swh.loader.mercurial.from_disk"
+TEMPORARY_DIR_PREFIX_PATTERN = "swh.loader.mercurial.loader"
 
 EXTID_TYPE = "hg-nodeid"
 EXTID_VERSION: int = 1
@@ -101,7 +107,7 @@ class HgDirectory(Directory):
             return default
 
 
-class HgLoaderFromDisk(BaseLoader):
+class HgLoader(BaseLoader):
     """Load a mercurial repository from a local repository.
 
     Mercurial's branching model is more complete than Git's; it allows for multiple
@@ -139,7 +145,7 @@ class HgLoaderFromDisk(BaseLoader):
         storage: StorageInterface,
         url: str,
         directory: Optional[str] = None,
-        logging_class: str = "swh.loader.mercurial.LoaderFromDisk",
+        logging_class: str = "swh.loader.mercurial.loader.HgLoader",
         visit_date: Optional[datetime] = None,
         temp_directory: str = "/tmp",
         clone_timeout_seconds: int = 7200,
@@ -747,7 +753,7 @@ class HgLoaderFromDisk(BaseLoader):
         return self._last_root.hash
 
 
-class HgArchiveLoaderFromDisk(HgLoaderFromDisk):
+class HgArchiveLoader(HgLoader):
     """Mercurial loader for repository wrapped within tarballs."""
 
     def __init__(
@@ -763,7 +769,7 @@ class HgArchiveLoaderFromDisk(HgLoaderFromDisk):
             storage=storage,
             url=url,
             visit_date=visit_date,
-            logging_class="swh.loader.mercurial.ArchiveLoaderFromDisk",
+            logging_class="swh.loader.mercurial.loader.ArchiveLoader",
             temp_directory=temp_directory,
             max_content_size=max_content_size,
         )
@@ -784,32 +790,3 @@ class HgArchiveLoaderFromDisk(HgLoaderFromDisk):
         repo_name = os.listdir(self.temp_dir)[0]
         self.directory = os.path.join(self.archive_extract_temp_dir, repo_name)
         super().prepare()
-
-
-# Allow direct usage of the loader from the command line with
-# `python -m swh.loader.mercurial.from_disk $ORIGIN_URL`
-if __name__ == "__main__":
-    import logging
-
-    import click
-
-    logging.basicConfig(
-        level=logging.DEBUG, format="%(asctime)s %(process)d %(message)s"
-    )
-
-    @click.command()
-    @click.option("--origin-url", help="origin url")
-    @click.option("--hg-directory", help="Path to mercurial repository to load")
-    @click.option("--visit-date", default=None, help="Visit date")
-    def main(origin_url, hg_directory, visit_date):
-        from swh.storage import get_storage
-
-        storage = get_storage(cls="memory")
-        return HgLoaderFromDisk(
-            storage,
-            origin_url,
-            directory=hg_directory,
-            visit_date=parse_visit_date(visit_date),
-        ).load()
-
-    main()

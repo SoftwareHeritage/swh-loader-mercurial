@@ -26,7 +26,7 @@ from swh.model.model import RevisionType, Snapshot, SnapshotBranch, TargetType
 from swh.storage import get_storage
 from swh.storage.algos.snapshot import snapshot_get_latest
 
-from ..from_disk import EXTID_VERSION, HgDirectory, HgLoaderFromDisk
+from ..loader import EXTID_VERSION, HgDirectory, HgLoader
 from .loader_checker import ExpectedSwhids, LoaderChecker
 
 VISIT_DATE = parse_visit_date("2016-05-03 15:16:32+00")
@@ -93,13 +93,12 @@ def test_examples(swh_storage, datadir, tmp_path, archive_name):
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
 
     LoaderChecker(
-        loader=HgLoaderFromDisk(swh_storage, repo_url),
-        expected=ExpectedSwhids.load(json_path),
+        loader=HgLoader(swh_storage, repo_url), expected=ExpectedSwhids.load(json_path),
     ).check()
 
 
 # This test has as been adapted from the historical `HgBundle20Loader` tests
-# to ensure compatibility of `HgLoaderFromDisk`.
+# to ensure compatibility of `HgLoader`.
 # Hashes as been produced by copy pasting the result of the implementation
 # to prevent regressions.
 def test_loader_hg_new_visit_no_release(swh_storage, datadir, tmp_path):
@@ -108,7 +107,7 @@ def test_loader_hg_new_visit_no_release(swh_storage, datadir, tmp_path):
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
 
-    loader = HgLoaderFromDisk(swh_storage, url=repo_url)
+    loader = HgLoader(swh_storage, url=repo_url)
 
     assert loader.load() == {"status": "eventful"}
 
@@ -174,7 +173,7 @@ def test_loader_hg_new_visit_no_release(swh_storage, datadir, tmp_path):
         "snapshot": 1,
     }
     assert stats == expected_stats
-    loader2 = HgLoaderFromDisk(swh_storage, url=repo_url)
+    loader2 = HgLoader(swh_storage, url=repo_url)
 
     assert loader2.load() == {"status": "uneventful"}  # nothing new happened
 
@@ -192,7 +191,7 @@ def test_loader_hg_new_visit_no_release(swh_storage, datadir, tmp_path):
 
 
 # This test has as been adapted from the historical `HgBundle20Loader` tests
-# to ensure compatibility of `HgLoaderFromDisk`.
+# to ensure compatibility of `HgLoader`.
 # Hashes as been produced by copy pasting the result of the implementation
 # to prevent regressions.
 def test_loader_hg_new_visit_with_release(swh_storage, datadir, tmp_path):
@@ -202,7 +201,7 @@ def test_loader_hg_new_visit_with_release(swh_storage, datadir, tmp_path):
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
 
-    loader = HgLoaderFromDisk(swh_storage, url=repo_url, visit_date=VISIT_DATE,)
+    loader = HgLoader(swh_storage, url=repo_url, visit_date=VISIT_DATE,)
 
     actual_load_status = loader.load()
     assert actual_load_status == {"status": "eventful"}
@@ -255,7 +254,7 @@ def test_loader_hg_new_visit_with_release(swh_storage, datadir, tmp_path):
 
 
 # This test has as been adapted from the historical `HgBundle20Loader` tests
-# to ensure compatibility of `HgLoaderFromDisk`.
+# to ensure compatibility of `HgLoader`.
 # Hashes as been produced by copy pasting the result of the implementation
 # to prevent regressions.
 def test_visit_repository_with_transplant_operations(swh_storage, datadir, tmp_path):
@@ -268,7 +267,7 @@ def test_visit_repository_with_transplant_operations(swh_storage, datadir, tmp_p
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
 
-    loader = HgLoaderFromDisk(swh_storage, url=repo_url, visit_date=VISIT_DATE,)
+    loader = HgLoader(swh_storage, url=repo_url, visit_date=VISIT_DATE,)
 
     # load hg repository
     actual_load_status = loader.load()
@@ -351,7 +350,7 @@ def test_load_unchanged_repo_should_be_uneventful(
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
     repo_path = repo_url.replace("file://", "")
 
-    loader = HgLoaderFromDisk(swh_storage, repo_path)
+    loader = HgLoader(swh_storage, repo_path)
 
     assert loader.load() == {"status": "eventful"}
     assert get_stats(loader.storage) == {
@@ -371,7 +370,7 @@ def test_load_unchanged_repo_should_be_uneventful(
 
     # Create a new loader (to start with a clean slate, eg. remove the caches),
     # with the new, partial, storage
-    loader2 = HgLoaderFromDisk(swh_storage, repo_path)
+    loader2 = HgLoader(swh_storage, repo_path)
     assert loader2.load() == {"status": "uneventful"}
 
     # Should have all the objects
@@ -398,7 +397,7 @@ def test_closed_branch_incremental(swh_storage, datadir, tmp_path):
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
     repo_path = repo_url.replace("file://", "")
 
-    loader = HgLoaderFromDisk(swh_storage, repo_path)
+    loader = HgLoader(swh_storage, repo_path)
 
     # Test 3 loads: full, and two incremental.
     assert loader.load() == {"status": "eventful"}
@@ -427,7 +426,7 @@ def test_load_unchanged_repo__dangling_extid(swh_storage, datadir, tmp_path):
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
     repo_path = repo_url.replace("file://", "")
 
-    loader = HgLoaderFromDisk(swh_storage, repo_path)
+    loader = HgLoader(swh_storage, repo_path)
 
     assert loader.load() == {"status": "eventful"}
     assert get_stats(loader.storage) == {
@@ -451,7 +450,7 @@ def test_load_unchanged_repo__dangling_extid(swh_storage, datadir, tmp_path):
 
     # Create a new loader (to start with a clean slate, eg. remove the caches),
     # with the new, partial, storage
-    loader = HgLoaderFromDisk(new_storage, repo_path)
+    loader = HgLoader(new_storage, repo_path)
 
     assert get_stats(loader.storage) == {
         "content": 0,
@@ -484,7 +483,7 @@ def test_missing_filelog_should_not_crash(swh_storage, datadir, tmp_path):
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
     directory = repo_url.replace("file://", "")
 
-    loader = HgLoaderFromDisk(
+    loader = HgLoader(
         storage=swh_storage,
         url=repo_url,
         directory=directory,  # specify directory to avoid clone
@@ -502,7 +501,7 @@ def test_multiple_open_heads(swh_storage, datadir, tmp_path):
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
 
-    loader = HgLoaderFromDisk(storage=swh_storage, url=repo_url,)
+    loader = HgLoader(storage=swh_storage, url=repo_url,)
 
     actual_load_status = loader.load()
     assert actual_load_status == {"status": "eventful"}
@@ -519,7 +518,7 @@ def test_multiple_open_heads(swh_storage, datadir, tmp_path):
     assert sorted(snapshot.branches.keys()) == expected_branches
 
     # Check that we don't load anything the second time
-    loader = HgLoaderFromDisk(storage=swh_storage, url=repo_url,)
+    loader = HgLoader(storage=swh_storage, url=repo_url,)
 
     actual_load_status = loader.load()
 
@@ -543,7 +542,7 @@ def test_load_repo_with_new_commits(swh_storage, datadir, tmp_path):
 
     # first load with missing commits
     hg_strip(repo_url.replace("file://", ""), "tip")
-    loader = HgLoaderFromDisk(swh_storage, repo_url)
+    loader = HgLoader(swh_storage, repo_url)
     assert loader.load() == {"status": "eventful"}
     assert get_stats(loader.storage) == {
         "content": 2,
@@ -558,7 +557,7 @@ def test_load_repo_with_new_commits(swh_storage, datadir, tmp_path):
 
     # second load with all commits
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
-    loader = HgLoaderFromDisk(swh_storage, repo_url)
+    loader = HgLoader(swh_storage, repo_url)
     checker = LoaderChecker(loader=loader, expected=ExpectedSwhids.load(json_path),)
 
     checker.check()
@@ -582,7 +581,7 @@ def test_load_repo_check_extids_write_version(swh_storage, datadir, tmp_path):
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
 
     hg_strip(repo_url.replace("file://", ""), "tip")
-    loader = HgLoaderFromDisk(swh_storage, repo_url)
+    loader = HgLoader(swh_storage, repo_url)
     assert loader.load() == {"status": "eventful"}
 
     # Ensure we write ExtIDs to a specific version.
@@ -613,21 +612,21 @@ def test_load_new_extid_should_be_eventful(swh_storage, datadir, tmp_path):
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
     repo_path = repo_url.replace("file://", "")
 
-    with unittest.mock.patch("swh.loader.mercurial.from_disk.EXTID_VERSION", 0):
-        loader = HgLoaderFromDisk(swh_storage, repo_path)
+    with unittest.mock.patch("swh.loader.mercurial.loader.EXTID_VERSION", 0):
+        loader = HgLoader(swh_storage, repo_path)
         assert loader.load() == {"status": "eventful"}
 
-    loader = HgLoaderFromDisk(swh_storage, repo_path)
+    loader = HgLoader(swh_storage, repo_path)
     assert loader.load() == {"status": "eventful"}
 
-    loader = HgLoaderFromDisk(swh_storage, repo_path)
+    loader = HgLoader(swh_storage, repo_path)
     assert loader.load() == {"status": "uneventful"}
 
-    with unittest.mock.patch("swh.loader.mercurial.from_disk.EXTID_VERSION", 10000):
-        loader = HgLoaderFromDisk(swh_storage, repo_path)
+    with unittest.mock.patch("swh.loader.mercurial.loader.EXTID_VERSION", 10000):
+        loader = HgLoader(swh_storage, repo_path)
         assert loader.load() == {"status": "eventful"}
 
-        loader = HgLoaderFromDisk(swh_storage, repo_path)
+        loader = HgLoader(swh_storage, repo_path)
         assert loader.load() == {"status": "uneventful"}
 
 
@@ -639,7 +638,7 @@ def test_loader_hg_extid_filtering(swh_storage, datadir, tmp_path):
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
 
-    loader = HgLoaderFromDisk(swh_storage, url=repo_url)
+    loader = HgLoader(swh_storage, url=repo_url)
 
     assert loader.load() == {"status": "eventful"}
     stats = get_stats(loader.storage)
@@ -663,7 +662,7 @@ def test_loader_hg_extid_filtering(swh_storage, datadir, tmp_path):
     fork_url = prepare_repository_from_archive(
         archive_path, "the-sandbox-reloaded", tmp_path
     )
-    loader2 = HgLoaderFromDisk(
+    loader2 = HgLoader(
         swh_storage, url=fork_url, directory=str(tmp_path / archive_name)
     )
 
@@ -691,6 +690,6 @@ def test_loader_repository_with_bookmark_information(swh_storage, datadir, tmp_p
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
 
-    loader = HgLoaderFromDisk(swh_storage, url=repo_url)
+    loader = HgLoader(swh_storage, url=repo_url)
 
     assert loader.load() == {"status": "eventful"}

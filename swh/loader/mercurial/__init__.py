@@ -7,11 +7,11 @@
 from typing import Any, Mapping
 
 
-def register_from_disk() -> Mapping[str, Any]:
+def register() -> Mapping[str, Any]:
     """Register the current worker module's definition"""
-    from .from_disk import HgLoaderFromDisk
+    from .loader import HgLoader
 
     return {
-        "task_modules": [f"{__name__}.tasks_from_disk"],
-        "loader": HgLoaderFromDisk,
+        "task_modules": [f"{__name__}.tasks"],
+        "loader": HgLoader,
     }

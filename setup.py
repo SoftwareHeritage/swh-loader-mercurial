@@ -53,7 +53,7 @@ setup(
     include_package_data=True,
     entry_points="""
         [swh.workers]
-        loader.mercurial_from_disk=swh.loader.mercurial:register_from_disk
+        loader.mercurial=swh.loader.mercurial:register
         [console_scripts]
         swh-hg-identify=swh.loader.mercurial.identify:main
     """,

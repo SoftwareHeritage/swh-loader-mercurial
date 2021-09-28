@@ -12,7 +12,6 @@ import unittest
 import attr
 import pytest
 
-from swh.loader.mercurial.loader import HgBundle20Loader
 from swh.loader.mercurial.utils import parse_visit_date
 from swh.loader.tests import (
     assert_last_visit_matches,
@@ -418,47 +417,6 @@ def test_closed_branch_incremental(swh_storage, datadir, tmp_path):
     assert get_stats(loader.storage) == {**expected_stats, "origin_visit": 1 + 1}
     assert loader.load() == {"status": "uneventful"}
     assert get_stats(loader.storage) == {**expected_stats, "origin_visit": 2 + 1}
-
-
-def test_old_loader_new_loader(swh_storage, datadir, tmp_path):
-    archive_name = "example"
-    archive_path = os.path.join(datadir, f"{archive_name}.tgz")
-    repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
-    repo_path = repo_url.replace("file://", "")
-
-    old_loader = HgBundle20Loader(swh_storage, repo_path)
-    assert old_loader.load() == {"status": "eventful"}
-
-    expected_stats = {
-        "content": 7,
-        "directory": 16,
-        "origin": 1,
-        "origin_visit": 1,
-        "release": 0,
-        "revision": 9,
-        "skipped_content": 0,
-        "snapshot": 1,
-    }
-    assert get_stats(old_loader.storage) == expected_stats
-
-    # Will pick up more branches, hence a different snapshot
-    loader = HgLoaderFromDisk(swh_storage, repo_path)
-    res = loader.load()
-    new_expected_stats = {
-        **expected_stats,
-        "origin_visit": 2,
-        "snapshot": 2,
-    }
-    assert get_stats(loader.storage) == new_expected_stats
-    assert res == {"status": "eventful"}
-
-    # Shouldn't pick up anything now
-    loader = HgLoaderFromDisk(swh_storage, repo_path)
-    assert loader.load() == {"status": "uneventful"}
-
-    # Shouldn't pick up anything either after another load
-    loader = HgLoaderFromDisk(swh_storage, repo_path)
-    assert loader.load() == {"status": "uneventful"}
 
 
 def test_load_unchanged_repo__dangling_extid(swh_storage, datadir, tmp_path):

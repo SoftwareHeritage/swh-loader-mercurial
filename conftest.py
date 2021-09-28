@@ -15,6 +15,5 @@ pytest_plugins = [
 @pytest.fixture(scope="session")
 def swh_scheduler_celery_includes(swh_scheduler_celery_includes):
     return swh_scheduler_celery_includes + [
-        "swh.loader.mercurial.tasks",
         "swh.loader.mercurial.tasks_from_disk",
     ]

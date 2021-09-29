@@ -1,4 +1,4 @@
-# Copyright (C) 2017-2021  The Software Heritage developers
+# Copyright (C) 2020-2021  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -9,7 +9,7 @@ from celery import shared_task
 
 from swh.loader.mercurial.utils import parse_visit_date
 
-from .from_disk import HgArchiveLoaderFromDisk, HgLoaderFromDisk
+from .loader import HgArchiveLoader, HgLoader
 
 
 @shared_task(name=__name__ + ".LoadMercurial")
@@ -20,11 +20,10 @@ def load_hg(
 
     Import a mercurial tarball into swh.
 
-    Args: see :func:`HgLoaderFromDisk.load`.
+    Args: see :func:`HgLoader` constructor.
 
     """
-
-    loader = HgLoaderFromDisk.from_configfile(
+    loader = HgLoader.from_configfile(
         url=url, directory=directory, visit_date=parse_visit_date(visit_date)
     )
     return loader.load()
@@ -36,9 +35,9 @@ def load_hg_from_archive(
 ):
     """Import a mercurial tarball into swh.
 
-    Args: see :func:`HgArchiveLoaderFromDisk.load`.
+    Args: see :func:`HgArchiveLoader` constructor.
     """
-    loader = HgArchiveLoaderFromDisk.from_configfile(
+    loader = HgArchiveLoader.from_configfile(
         url=url, archive_path=archive_path, visit_date=parse_visit_date(visit_date)
     )
     return loader.load()

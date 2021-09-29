@@ -6,13 +6,10 @@ repository and inject into the SWH dataset all contained files that weren't know
 before.
 
 The main entry points are:
-- :class:`swh.loader.mercurial.loader.HgBundle20Loader` which reads and loads a remote
-  repository (or local).
-
-- :class:`swh.loader.mercurial.from_disk.HgLoaderFromDisk` which reads and loads a local
+- :class:`swh.loader.mercurial.loader.HgLoader` which reads and loads a local
   repository into an SWH archive.
 
-- :class:`swh.loader.mercurial.from_disk.HgArchiveLoaderFromDisk` which reads and loads
+- :class:`swh.loader.mercurial.loader.HgArchiveLoader` which reads and loads
   a local repository wrapped within a tarball
 
 # CLI run
@@ -32,4 +29,3 @@ storage:
 ``` bash
 swh loader --C /tmp/mercurial.yml run mercurial https://www.mercurial-scm.org/repo/hello
 ```
-or `mercurial_from_disk`

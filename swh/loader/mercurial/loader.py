@@ -20,7 +20,7 @@ from swh.core.utils import grouper
 from swh.loader.core.loader import BaseLoader
 from swh.loader.core.utils import clean_dangling_folders
 from swh.loader.mercurial.utils import get_minimum_env
-from swh.model import identifiers
+from swh.model import swhids
 from swh.model.from_disk import Content, DentryPerms, Directory
 from swh.model.hashutil import hash_to_bytehex
 from swh.model.model import (
@@ -278,7 +278,7 @@ class HgLoader(BaseLoader):
         """Get all Mercurial ExtIDs for the targets in the latest snapshot"""
         extids = []
         for extid in self.storage.extid_get_from_target(
-            identifiers.ObjectType.REVISION,
+            swhids.ObjectType.REVISION,
             targets,
             extid_type=EXTID_TYPE,
             extid_version=EXTID_VERSION,
@@ -612,8 +612,8 @@ class HgLoader(BaseLoader):
         self.storage.revision_add([revision])
 
         # Save the mapping from SWHID to hg id
-        revision_swhid = identifiers.CoreSWHID(
-            object_type=identifiers.ObjectType.REVISION, object_id=revision.id,
+        revision_swhid = swhids.CoreSWHID(
+            object_type=swhids.ObjectType.REVISION, object_id=revision.id,
         )
         self.storage.extid_add(
             [

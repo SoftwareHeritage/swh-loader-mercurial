@@ -21,8 +21,8 @@ from swh.loader.tests import (
 )
 from swh.model.from_disk import Content, DentryPerms
 from swh.model.hashutil import hash_to_bytes, hash_to_hex
-from swh.model.identifiers import ObjectType
 from swh.model.model import RevisionType, Snapshot, SnapshotBranch, TargetType
+from swh.model.swhids import ObjectType
 from swh.storage import get_storage
 from swh.storage.algos.snapshot import snapshot_get_latest
 

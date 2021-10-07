@@ -16,9 +16,10 @@ import click
 
 from swh.loader.mercurial.utils import get_minimum_env
 from swh.model.cli import identify_object
+from swh.model.git_objects import normalize_timestamp
 from swh.model.hashutil import hash_to_bytehex
-from swh.model.identifiers import CoreSWHID, ObjectType, normalize_timestamp
 from swh.model.model import RevisionType
+from swh.model.swhids import CoreSWHID, ObjectType
 
 TAG_PATTERN = re.compile(b"([0-9A-Fa-f]{40}) +(.+)")
 

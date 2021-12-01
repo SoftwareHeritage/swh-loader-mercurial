@@ -43,7 +43,7 @@ from swh.storage.interface import StorageInterface
 
 from . import hgutil
 from .archive_extract import tmp_extract
-from .hgutil import HgFilteredSet, HgNodeId, HgSpanSet
+from .hgutil import NULLID, HgFilteredSet, HgNodeId, HgSpanSet
 
 FLAG_PERMS = {
     b"l": DentryPerms.symlink,
@@ -708,6 +708,37 @@ class HgLoader(BaseLoader):
         # Here we make sure to return only necessary data.
         return Content({"sha1_git": sha1_git, "perms": perms})
 
+    def _store_tree(self) -> Sha1Git:
+        """Save the current in-memory tree to storage."""
+        directories: Deque[Directory] = deque([self._last_root])
+        while directories:
+            directory = directories.pop()
+            self.storage.directory_add([directory.to_model()])
+            directories.extend(
+                [item for item in directory.values() if isinstance(item, Directory)]
+            )
+
+        return self._last_root.hash
+
+    def _store_directories_slow(self, rev_ctx: hgutil.BaseContext) -> Sha1Git:
+        """Store a revision directories given its hg nodeid.
+
+        This is the slow variant: it does not use a diff from the last revision
+        but lists all the files. It is used for the first revision in every run
+        (nullid for non-incremental, any other for incremental runs)."""
+        try:
+            files = rev_ctx.manifest().iterkeys()
+        except hgutil.error.LookupError:
+            raise CorruptedRevision(rev_ctx.node())
+
+        for file_path in files:
+            content = self.store_content(rev_ctx, file_path)
+            self._last_root[file_path] = content
+
+        self._last_hg_nodeid = rev_ctx.node()
+
+        return self._store_tree()
+
     def store_directories(self, rev_ctx: hgutil.BaseContext) -> Sha1Git:
         """Store a revision directories given its hg nodeid.
 
@@ -721,6 +752,11 @@ class HgLoader(BaseLoader):
             the sha1_git of the top level directory.
         """
         repo: hgutil.Repository = self._repo  # mypy can't infer that repo is not None
+        if self._last_hg_nodeid == NULLID:
+            # We need to build the caches from scratch, do a full listing of
+            # that revision.
+            return self._store_directories_slow(rev_ctx)
+
         prev_ctx = repo[self._last_hg_nodeid]
 
         # TODO maybe do diff on parents
@@ -745,15 +781,7 @@ class HgLoader(BaseLoader):
 
         self._last_hg_nodeid = rev_ctx.node()
 
-        directories: Deque[Directory] = deque([self._last_root])
-        while directories:
-            directory = directories.pop()
-            self.storage.directory_add([directory.to_model()])
-            directories.extend(
-                [item for item in directory.values() if isinstance(item, Directory)]
-            )
-
-        return self._last_root.hash
+        return self._store_tree()
 
 
 class HgArchiveLoader(HgLoader):

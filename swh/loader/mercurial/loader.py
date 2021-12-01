@@ -396,12 +396,15 @@ class HgLoader(BaseLoader):
         # across hg origins
         revs_left = repo.revs("all() - ::(%ld)", seen_revs)
         hg_nodeids = [repo[nodeid].node() for nodeid in revs_left]
-        yield from self._new_revs(
-            [
-                HgNodeId(extid.extid)
-                for extid in self._get_extids_for_hgnodes(hg_nodeids)
-            ]
-        )
+        if hg_nodeids:
+            # Don't filter revs if there are none, otherwise it'll load
+            # everything
+            yield from self._new_revs(
+                [
+                    HgNodeId(extid.extid)
+                    for extid in self._get_extids_for_hgnodes(hg_nodeids)
+                ]
+            )
 
     def store_data(self):
         """Store fetched data in the database."""

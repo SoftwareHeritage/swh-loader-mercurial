@@ -343,7 +343,7 @@ class HgLoader(BaseLoader):
                 dir=self._temp_directory,
             )
             self.log.debug(
-                f"Cloning {self.origin_url} to {self.directory} "
+                f"Cloning {self.origin_url} to {self._repo_directory} "
                 f"with timeout {self._clone_timeout} seconds"
             )
             hgutil.clone(self.origin_url, self._repo_directory, self._clone_timeout)

@@ -12,7 +12,7 @@ import unittest
 import attr
 import pytest
 
-from swh.loader.mercurial.utils import parse_visit_date
+from swh.loader.core.utils import parse_visit_date
 from swh.loader.tests import (
     assert_last_visit_matches,
     check_snapshot,

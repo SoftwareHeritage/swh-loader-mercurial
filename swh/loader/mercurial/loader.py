@@ -302,7 +302,7 @@ class HgLoader(BaseLoader):
 
     def _get_extids_for_hgnodes(self, hgnode_ids: List[HgNodeId]) -> List[ExtID]:
         """Get all Mercurial ExtIDs for the mercurial nodes in the list which point to
-           a known revision.
+        a known revision.
 
         """
         extids = []
@@ -379,9 +379,7 @@ class HgLoader(BaseLoader):
         return new_revs
 
     def get_hg_revs_to_load(self) -> Iterator[int]:
-        """Yield hg revision numbers to load.
-
-        """
+        """Yield hg revision numbers to load."""
         assert self._repo is not None
         repo: hgutil.Repository = self._repo
 
@@ -485,7 +483,8 @@ class HgLoader(BaseLoader):
         default_branch_alias = branching_info.default_branch_alias
         if default_branch_alias is not None:
             snapshot_branches[b"HEAD"] = SnapshotBranch(
-                target=default_branch_alias, target_type=TargetType.ALIAS,
+                target=default_branch_alias,
+                target_type=TargetType.ALIAS,
             )
         snapshot = Snapshot(branches=snapshot_branches)
         self.storage.snapshot_add([snapshot])
@@ -581,7 +580,10 @@ class HgLoader(BaseLoader):
         rev_date = TimestampWithTimezone.from_dict(int(timestamp))
 
         extra_headers = [
-            (b"time_offset_seconds", str(offset).encode(),),
+            (
+                b"time_offset_seconds",
+                str(offset).encode(),
+            ),
         ]
         for key, value in rev_ctx.extra().items():
             # The default branch is skipped to match
@@ -613,7 +615,8 @@ class HgLoader(BaseLoader):
 
         # Save the mapping from SWHID to hg id
         revision_swhid = swhids.CoreSWHID(
-            object_type=swhids.ObjectType.REVISION, object_id=revision.id,
+            object_type=swhids.ObjectType.REVISION,
+            object_id=revision.id,
         )
         self.storage.extid_add(
             [

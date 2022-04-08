@@ -93,7 +93,8 @@ def test_examples(swh_storage, datadir, tmp_path, archive_name):
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
 
     LoaderChecker(
-        loader=HgLoader(swh_storage, repo_url), expected=ExpectedSwhids.load(json_path),
+        loader=HgLoader(swh_storage, repo_url),
+        expected=ExpectedSwhids.load(json_path),
     ).check()
 
 
@@ -201,7 +202,11 @@ def test_loader_hg_new_visit_with_release(swh_storage, datadir, tmp_path):
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
 
-    loader = HgLoader(swh_storage, url=repo_url, visit_date=VISIT_DATE,)
+    loader = HgLoader(
+        swh_storage,
+        url=repo_url,
+        visit_date=VISIT_DATE,
+    )
 
     actual_load_status = loader.load()
     assert actual_load_status == {"status": "eventful"}
@@ -232,13 +237,16 @@ def test_loader_hg_new_visit_with_release(swh_storage, datadir, tmp_path):
         id=hash_to_bytes("7ef082aa8b53136b1bed97f734504be32679bbec"),
         branches={
             b"branch-tip/default": SnapshotBranch(
-                target=tip_revision_default, target_type=TargetType.REVISION,
+                target=tip_revision_default,
+                target_type=TargetType.REVISION,
             ),
             b"tags/0.1": SnapshotBranch(
-                target=tip_release, target_type=TargetType.RELEASE,
+                target=tip_release,
+                target_type=TargetType.RELEASE,
             ),
             b"HEAD": SnapshotBranch(
-                target=b"branch-tip/default", target_type=TargetType.ALIAS,
+                target=b"branch-tip/default",
+                target_type=TargetType.ALIAS,
             ),
         },
     )
@@ -267,7 +275,11 @@ def test_visit_repository_with_transplant_operations(swh_storage, datadir, tmp_p
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
 
-    loader = HgLoader(swh_storage, url=repo_url, visit_date=VISIT_DATE,)
+    loader = HgLoader(
+        swh_storage,
+        url=repo_url,
+        visit_date=VISIT_DATE,
+    )
 
     # load hg repository
     actual_load_status = loader.load()
@@ -342,7 +354,9 @@ def _partial_copy_storage(
 
 
 def test_load_unchanged_repo_should_be_uneventful(
-    swh_storage, datadir, tmp_path,
+    swh_storage,
+    datadir,
+    tmp_path,
 ):
     """Checks the loader can find which revisions it already loaded, using ExtIDs."""
     archive_name = "hello"
@@ -364,7 +378,10 @@ def test_load_unchanged_repo_should_be_uneventful(
         "snapshot": 1,
     }
     visit_status = assert_last_visit_matches(
-        loader.storage, repo_path, type=RevisionType.MERCURIAL.value, status="full",
+        loader.storage,
+        repo_path,
+        type=RevisionType.MERCURIAL.value,
+        status="full",
     )
     assert visit_status.snapshot is not None
 
@@ -385,7 +402,10 @@ def test_load_unchanged_repo_should_be_uneventful(
         "snapshot": 1,
     }
     visit_status2 = assert_last_visit_matches(
-        loader2.storage, repo_path, type=RevisionType.MERCURIAL.value, status="full",
+        loader2.storage,
+        repo_path,
+        type=RevisionType.MERCURIAL.value,
+        status="full",
     )
     assert visit_status2.snapshot == visit_status.snapshot
 
@@ -501,7 +521,10 @@ def test_multiple_open_heads(swh_storage, datadir, tmp_path):
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
 
-    loader = HgLoader(storage=swh_storage, url=repo_url,)
+    loader = HgLoader(
+        storage=swh_storage,
+        url=repo_url,
+    )
 
     actual_load_status = loader.load()
     assert actual_load_status == {"status": "eventful"}
@@ -518,7 +541,10 @@ def test_multiple_open_heads(swh_storage, datadir, tmp_path):
     assert sorted(snapshot.branches.keys()) == expected_branches
 
     # Check that we don't load anything the second time
-    loader = HgLoader(storage=swh_storage, url=repo_url,)
+    loader = HgLoader(
+        storage=swh_storage,
+        url=repo_url,
+    )
 
     actual_load_status = loader.load()
 
@@ -558,7 +584,10 @@ def test_load_repo_with_new_commits(swh_storage, datadir, tmp_path):
     # second load with all commits
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
     loader = HgLoader(swh_storage, repo_url)
-    checker = LoaderChecker(loader=loader, expected=ExpectedSwhids.load(json_path),)
+    checker = LoaderChecker(
+        loader=loader,
+        expected=ExpectedSwhids.load(json_path),
+    )
 
     checker.check()
 
@@ -631,9 +660,7 @@ def test_load_new_extid_should_be_eventful(swh_storage, datadir, tmp_path):
 
 
 def test_loader_hg_extid_filtering(swh_storage, datadir, tmp_path):
-    """The first visit of a fork should filter already seen revisions (through extids)
-
-    """
+    """The first visit of a fork should filter already seen revisions (through extids)"""
     archive_name = "the-sandbox"
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
@@ -655,7 +682,10 @@ def test_loader_hg_extid_filtering(swh_storage, datadir, tmp_path):
     assert stats == expected_stats
 
     visit_status = assert_last_visit_matches(
-        loader.storage, repo_url, status="full", type="hg",
+        loader.storage,
+        repo_url,
+        status="full",
+        type="hg",
     )
 
     # Make a fork of the first repository we ingested
@@ -671,21 +701,25 @@ def test_loader_hg_extid_filtering(swh_storage, datadir, tmp_path):
     stats = get_stats(loader.storage)
     expected_stats2 = expected_stats.copy()
     expected_stats2.update(
-        {"origin": 1 + 1, "origin_visit": 1 + 1,}
+        {
+            "origin": 1 + 1,
+            "origin_visit": 1 + 1,
+        }
     )
     assert stats == expected_stats2
 
     visit_status2 = assert_last_visit_matches(
-        loader.storage, fork_url, status="full", type="hg",
+        loader.storage,
+        fork_url,
+        status="full",
+        type="hg",
     )
     assert visit_status.snapshot is not None
     assert visit_status2.snapshot == visit_status.snapshot
 
 
 def test_loader_repository_with_bookmark_information(swh_storage, datadir, tmp_path):
-    """Repository with bookmark information should be ingested correctly
-
-    """
+    """Repository with bookmark information should be ingested correctly"""
     archive_name = "anomad-d"
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
     repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)

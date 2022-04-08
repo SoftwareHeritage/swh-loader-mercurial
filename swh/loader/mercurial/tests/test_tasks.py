@@ -12,7 +12,11 @@ def test_loader(
 
     res = swh_scheduler_celery_app.send_task(
         "swh.loader.mercurial.tasks.LoadMercurial",
-        kwargs={"url": "origin_url", "directory": "/some/repo", "visit_date": "now",},
+        kwargs={
+            "url": "origin_url",
+            "directory": "/some/repo",
+            "visit_date": "now",
+        },
     )
 
     assert res

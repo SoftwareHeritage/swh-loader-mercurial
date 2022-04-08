@@ -404,7 +404,8 @@ class ReleaseIdentity(NamedTuple):
 
 
 def identify_release(
-    hg: Hg, node_id_2_swhid: Optional[Dict[bytes, CoreSWHID]] = None,
+    hg: Hg,
+    node_id_2_swhid: Optional[Dict[bytes, CoreSWHID]] = None,
 ) -> Iterator[ReleaseIdentity]:
     """Return the repository's release identities.
 
@@ -437,7 +438,9 @@ def identify_release(
         release_swhid = Release.from_dict(data).swhid()
 
         yield ReleaseIdentity(
-            swhid=release_swhid, node_id=tag.node_id, name=tag.name,
+            swhid=release_swhid,
+            node_id=tag.node_id,
+            name=tag.name,
         )
 
 

@@ -221,7 +221,11 @@ def build_json(source: str):
 
 @main.command("archive")
 @click.option(
-    "--clean", "-c", default=False, is_flag=True, help="Remove created artifacts",
+    "--clean",
+    "-c",
+    default=False,
+    is_flag=True,
+    help="Remove created artifacts",
 )
 @click.argument("source")
 def build_archive(source: str, clean: bool = False):

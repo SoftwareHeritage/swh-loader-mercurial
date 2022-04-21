@@ -14,7 +14,18 @@ from datetime import datetime
 import os
 from shutil import rmtree
 from tempfile import mkdtemp
-from typing import Deque, Dict, Iterator, List, Optional, Set, Tuple, TypeVar, Union
+from typing import (
+    Any,
+    Deque,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 from swh.core.utils import grouper
 from swh.loader.core.loader import BaseLoader
@@ -26,7 +37,6 @@ from swh.model.hashutil import hash_to_bytehex
 from swh.model.model import (
     ExtID,
     ObjectType,
-    Origin,
     Person,
     Release,
     Revision,
@@ -145,12 +155,11 @@ class HgLoader(BaseLoader):
         storage: StorageInterface,
         url: str,
         directory: Optional[str] = None,
-        logging_class: str = "swh.loader.mercurial.loader.HgLoader",
         visit_date: Optional[datetime] = None,
         temp_directory: str = "/tmp",
         clone_timeout_seconds: int = 7200,
         content_cache_size: int = 10_000,
-        max_content_size: Optional[int] = None,
+        **kwargs: Any,
     ):
         """Initialize the loader.
 
@@ -161,17 +170,12 @@ class HgLoader(BaseLoader):
             visit_date: visit date of the repository
             config: loader configuration
         """
-        super().__init__(
-            storage=storage,
-            logging_class=logging_class,
-            max_content_size=max_content_size,
-        )
+        super().__init__(storage=storage, origin_url=url, **kwargs)
 
         self._temp_directory = temp_directory
         self._clone_timeout = clone_timeout_seconds
 
-        self.origin_url = url
-        self.visit_date = visit_date
+        self.visit_date = visit_date or self.visit_date
         self.directory = directory
 
         self._repo: Optional[hgutil.Repository] = None
@@ -230,14 +234,6 @@ class HgLoader(BaseLoader):
             self.log.debug(f"Cleanup up repository {self._repo_directory}")
             rmtree(self._repo_directory)
 
-    def prepare_origin_visit(self) -> None:
-        """First step executed by the loader to prepare origin and visit
-        references. Set/update self.origin, and
-        optionally self.origin_url, self.visit_date.
-
-        """
-        self.origin = Origin(url=self.origin_url)
-
     def prepare(self) -> None:
         """Second step executed by the loader to prepare some state needed by
         the loader.
@@ -246,7 +242,7 @@ class HgLoader(BaseLoader):
         # Set here to allow multiple calls to load on the same loader instance
         self._latest_heads = []
 
-        latest_snapshot = snapshot_get_latest(self.storage, self.origin_url)
+        latest_snapshot = snapshot_get_latest(self.storage, self.origin.url)
         if latest_snapshot:
             self._set_recorded_state(latest_snapshot)
 
@@ -343,10 +339,10 @@ class HgLoader(BaseLoader):
                 dir=self._temp_directory,
             )
             self.log.debug(
-                f"Cloning {self.origin_url} to {self._repo_directory} "
+                f"Cloning {self.origin.url} to {self._repo_directory} "
                 f"with timeout {self._clone_timeout} seconds"
             )
-            hgutil.clone(self.origin_url, self._repo_directory, self._clone_timeout)
+            hgutil.clone(self.origin.url, self._repo_directory, self._clone_timeout)
         else:  # existing local repository
             # Allow to load on disk repository without cloning
             # for testing purpose.
@@ -818,7 +814,7 @@ class HgArchiveLoader(HgLoader):
             prefix=TEMPORARY_DIR_PREFIX_PATTERN,
             suffix=f".dump-{os.getpid()}",
             log=self.log,
-            source=self.origin_url,
+            source=self.origin.url,
         )
 
         repo_name = os.listdir(self.temp_dir)[0]

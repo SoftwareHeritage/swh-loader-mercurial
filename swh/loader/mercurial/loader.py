@@ -14,19 +14,29 @@ from datetime import datetime
 import os
 from shutil import rmtree
 from tempfile import mkdtemp
-from typing import Deque, Dict, Iterator, List, Optional, Set, Tuple, TypeVar, Union
+from typing import (
+    Any,
+    Deque,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 from swh.core.utils import grouper
 from swh.loader.core.loader import BaseLoader
 from swh.loader.core.utils import clean_dangling_folders
 from swh.loader.mercurial.utils import get_minimum_env
-from swh.model import identifiers
+from swh.model import swhids
 from swh.model.from_disk import Content, DentryPerms, Directory
 from swh.model.hashutil import hash_to_bytehex
 from swh.model.model import (
     ExtID,
     ObjectType,
-    Origin,
     Person,
     Release,
     Revision,
@@ -43,7 +53,7 @@ from swh.storage.interface import StorageInterface
 
 from . import hgutil
 from .archive_extract import tmp_extract
-from .hgutil import HgFilteredSet, HgNodeId, HgSpanSet
+from .hgutil import NULLID, HgFilteredSet, HgNodeId, HgSpanSet
 
 FLAG_PERMS = {
     b"l": DentryPerms.symlink,
@@ -145,12 +155,11 @@ class HgLoader(BaseLoader):
         storage: StorageInterface,
         url: str,
         directory: Optional[str] = None,
-        logging_class: str = "swh.loader.mercurial.loader.HgLoader",
         visit_date: Optional[datetime] = None,
         temp_directory: str = "/tmp",
         clone_timeout_seconds: int = 7200,
         content_cache_size: int = 10_000,
-        max_content_size: Optional[int] = None,
+        **kwargs: Any,
     ):
         """Initialize the loader.
 
@@ -161,17 +170,12 @@ class HgLoader(BaseLoader):
             visit_date: visit date of the repository
             config: loader configuration
         """
-        super().__init__(
-            storage=storage,
-            logging_class=logging_class,
-            max_content_size=max_content_size,
-        )
+        super().__init__(storage=storage, origin_url=url, **kwargs)
 
         self._temp_directory = temp_directory
         self._clone_timeout = clone_timeout_seconds
 
-        self.origin_url = url
-        self.visit_date = visit_date
+        self.visit_date = visit_date or self.visit_date
         self.directory = directory
 
         self._repo: Optional[hgutil.Repository] = None
@@ -230,14 +234,6 @@ class HgLoader(BaseLoader):
             self.log.debug(f"Cleanup up repository {self._repo_directory}")
             rmtree(self._repo_directory)
 
-    def prepare_origin_visit(self) -> None:
-        """First step executed by the loader to prepare origin and visit
-        references. Set/update self.origin, and
-        optionally self.origin_url, self.visit_date.
-
-        """
-        self.origin = Origin(url=self.origin_url)
-
     def prepare(self) -> None:
         """Second step executed by the loader to prepare some state needed by
         the loader.
@@ -246,7 +242,7 @@ class HgLoader(BaseLoader):
         # Set here to allow multiple calls to load on the same loader instance
         self._latest_heads = []
 
-        latest_snapshot = snapshot_get_latest(self.storage, self.origin_url)
+        latest_snapshot = snapshot_get_latest(self.storage, self.origin.url)
         if latest_snapshot:
             self._set_recorded_state(latest_snapshot)
 
@@ -278,7 +274,7 @@ class HgLoader(BaseLoader):
         """Get all Mercurial ExtIDs for the targets in the latest snapshot"""
         extids = []
         for extid in self.storage.extid_get_from_target(
-            identifiers.ObjectType.REVISION,
+            swhids.ObjectType.REVISION,
             targets,
             extid_type=EXTID_TYPE,
             extid_version=EXTID_VERSION,
@@ -302,7 +298,7 @@ class HgLoader(BaseLoader):
 
     def _get_extids_for_hgnodes(self, hgnode_ids: List[HgNodeId]) -> List[ExtID]:
         """Get all Mercurial ExtIDs for the mercurial nodes in the list which point to
-           a known revision.
+        a known revision.
 
         """
         extids = []
@@ -343,10 +339,10 @@ class HgLoader(BaseLoader):
                 dir=self._temp_directory,
             )
             self.log.debug(
-                f"Cloning {self.origin_url} to {self.directory} "
+                f"Cloning {self.origin.url} to {self._repo_directory} "
                 f"with timeout {self._clone_timeout} seconds"
             )
-            hgutil.clone(self.origin_url, self._repo_directory, self._clone_timeout)
+            hgutil.clone(self.origin.url, self._repo_directory, self._clone_timeout)
         else:  # existing local repository
             # Allow to load on disk repository without cloning
             # for testing purpose.
@@ -379,9 +375,7 @@ class HgLoader(BaseLoader):
         return new_revs
 
     def get_hg_revs_to_load(self) -> Iterator[int]:
-        """Yield hg revision numbers to load.
-
-        """
+        """Yield hg revision numbers to load."""
         assert self._repo is not None
         repo: hgutil.Repository = self._repo
 
@@ -396,12 +390,15 @@ class HgLoader(BaseLoader):
         # across hg origins
         revs_left = repo.revs("all() - ::(%ld)", seen_revs)
         hg_nodeids = [repo[nodeid].node() for nodeid in revs_left]
-        yield from self._new_revs(
-            [
-                HgNodeId(extid.extid)
-                for extid in self._get_extids_for_hgnodes(hg_nodeids)
-            ]
-        )
+        if hg_nodeids:
+            # Don't filter revs if there are none, otherwise it'll load
+            # everything
+            yield from self._new_revs(
+                [
+                    HgNodeId(extid.extid)
+                    for extid in self._get_extids_for_hgnodes(hg_nodeids)
+                ]
+            )
 
     def store_data(self):
         """Store fetched data in the database."""
@@ -482,7 +479,8 @@ class HgLoader(BaseLoader):
         default_branch_alias = branching_info.default_branch_alias
         if default_branch_alias is not None:
             snapshot_branches[b"HEAD"] = SnapshotBranch(
-                target=default_branch_alias, target_type=TargetType.ALIAS,
+                target=default_branch_alias,
+                target_type=TargetType.ALIAS,
             )
         snapshot = Snapshot(branches=snapshot_branches)
         self.storage.snapshot_add([snapshot])
@@ -578,7 +576,10 @@ class HgLoader(BaseLoader):
         rev_date = TimestampWithTimezone.from_dict(int(timestamp))
 
         extra_headers = [
-            (b"time_offset_seconds", str(offset).encode(),),
+            (
+                b"time_offset_seconds",
+                str(offset).encode(),
+            ),
         ]
         for key, value in rev_ctx.extra().items():
             # The default branch is skipped to match
@@ -609,8 +610,9 @@ class HgLoader(BaseLoader):
         self.storage.revision_add([revision])
 
         # Save the mapping from SWHID to hg id
-        revision_swhid = identifiers.CoreSWHID(
-            object_type=identifiers.ObjectType.REVISION, object_id=revision.id,
+        revision_swhid = swhids.CoreSWHID(
+            object_type=swhids.ObjectType.REVISION,
+            object_id=revision.id,
         )
         self.storage.extid_add(
             [
@@ -705,6 +707,37 @@ class HgLoader(BaseLoader):
         # Here we make sure to return only necessary data.
         return Content({"sha1_git": sha1_git, "perms": perms})
 
+    def _store_tree(self) -> Sha1Git:
+        """Save the current in-memory tree to storage."""
+        directories: Deque[Directory] = deque([self._last_root])
+        while directories:
+            directory = directories.pop()
+            self.storage.directory_add([directory.to_model()])
+            directories.extend(
+                [item for item in directory.values() if isinstance(item, Directory)]
+            )
+
+        return self._last_root.hash
+
+    def _store_directories_slow(self, rev_ctx: hgutil.BaseContext) -> Sha1Git:
+        """Store a revision directories given its hg nodeid.
+
+        This is the slow variant: it does not use a diff from the last revision
+        but lists all the files. It is used for the first revision in every run
+        (nullid for non-incremental, any other for incremental runs)."""
+        try:
+            files = rev_ctx.manifest().iterkeys()
+        except hgutil.error.LookupError:
+            raise CorruptedRevision(rev_ctx.node())
+
+        for file_path in files:
+            content = self.store_content(rev_ctx, file_path)
+            self._last_root[file_path] = content
+
+        self._last_hg_nodeid = rev_ctx.node()
+
+        return self._store_tree()
+
     def store_directories(self, rev_ctx: hgutil.BaseContext) -> Sha1Git:
         """Store a revision directories given its hg nodeid.
 
@@ -718,6 +751,11 @@ class HgLoader(BaseLoader):
             the sha1_git of the top level directory.
         """
         repo: hgutil.Repository = self._repo  # mypy can't infer that repo is not None
+        if self._last_hg_nodeid == NULLID:
+            # We need to build the caches from scratch, do a full listing of
+            # that revision.
+            return self._store_directories_slow(rev_ctx)
+
         prev_ctx = repo[self._last_hg_nodeid]
 
         # TODO maybe do diff on parents
@@ -742,15 +780,7 @@ class HgLoader(BaseLoader):
 
         self._last_hg_nodeid = rev_ctx.node()
 
-        directories: Deque[Directory] = deque([self._last_root])
-        while directories:
-            directory = directories.pop()
-            self.storage.directory_add([directory.to_model()])
-            directories.extend(
-                [item for item in directory.values() if isinstance(item, Directory)]
-            )
-
-        return self._last_root.hash
+        return self._store_tree()
 
 
 class HgArchiveLoader(HgLoader):
@@ -784,7 +814,7 @@ class HgArchiveLoader(HgLoader):
             prefix=TEMPORARY_DIR_PREFIX_PATTERN,
             suffix=f".dump-{os.getpid()}",
             log=self.log,
-            source=self.origin_url,
+            source=self.origin.url,
         )
 
         repo_name = os.listdir(self.temp_dir)[0]

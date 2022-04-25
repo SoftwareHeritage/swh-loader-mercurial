@@ -16,9 +16,10 @@ import click
 
 from swh.loader.mercurial.utils import get_minimum_env
 from swh.model.cli import identify_object
+from swh.model.git_objects import normalize_timestamp
 from swh.model.hashutil import hash_to_bytehex
-from swh.model.identifiers import CoreSWHID, ObjectType, normalize_timestamp
 from swh.model.model import RevisionType
+from swh.model.swhids import CoreSWHID, ObjectType
 
 TAG_PATTERN = re.compile(b"([0-9A-Fa-f]{40}) +(.+)")
 
@@ -403,7 +404,8 @@ class ReleaseIdentity(NamedTuple):
 
 
 def identify_release(
-    hg: Hg, node_id_2_swhid: Optional[Dict[bytes, CoreSWHID]] = None,
+    hg: Hg,
+    node_id_2_swhid: Optional[Dict[bytes, CoreSWHID]] = None,
 ) -> Iterator[ReleaseIdentity]:
     """Return the repository's release identities.
 
@@ -436,7 +438,9 @@ def identify_release(
         release_swhid = Release.from_dict(data).swhid()
 
         yield ReleaseIdentity(
-            swhid=release_swhid, node_id=tag.node_id, name=tag.name,
+            swhid=release_swhid,
+            node_id=tag.node_id,
+            name=tag.name,
         )
 
 

@@ -1,3 +1,4 @@
+.git-blame-ignore-revs
 .gitignore
 .pre-commit-config.yaml
 AUTHORS
@@ -37,7 +38,6 @@ swh/loader/mercurial/converters.py
 swh/loader/mercurial/hgutil.py
 swh/loader/mercurial/identify.py
 swh/loader/mercurial/loader.py
-swh/loader/mercurial/objects.py
 swh/loader/mercurial/py.typed
 swh/loader/mercurial/tasks.py
 swh/loader/mercurial/utils.py
@@ -45,11 +45,9 @@ swh/loader/mercurial/tests/__init__.py
 swh/loader/mercurial/tests/conftest.py
 swh/loader/mercurial/tests/loader_checker.py
 swh/loader/mercurial/tests/test_converters.py
-swh/loader/mercurial/tests/test_hgutil.py
 swh/loader/mercurial/tests/test_identify.py
 swh/loader/mercurial/tests/test_loader.py
 swh/loader/mercurial/tests/test_tasks.py
-swh/loader/mercurial/tests/test_utils.py
 swh/loader/mercurial/tests/data/anomad-d.tgz
 swh/loader/mercurial/tests/data/build.py
 swh/loader/mercurial/tests/data/example.json

@@ -6,5 +6,4 @@ click
 patool
 python-dateutil
 python-hglib
-sqlitedict
 mercurial

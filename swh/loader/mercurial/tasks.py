@@ -1,4 +1,4 @@
-# Copyright (C) 2020-2021  The Software Heritage developers
+# Copyright (C) 2020-2022  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -7,7 +7,7 @@ from typing import Optional
 
 from celery import shared_task
 
-from swh.loader.mercurial.utils import parse_visit_date
+from swh.loader.core.utils import parse_visit_date
 
 from .loader import HgArchiveLoader, HgLoader
 

@@ -3,31 +3,8 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-from datetime import datetime, timezone
 import os
-from typing import Dict, Optional, Union
-
-from dateutil.parser import parse
-
-
-def parse_visit_date(visit_date: Optional[Union[datetime, str]]) -> Optional[datetime]:
-    """Convert visit date from either None, a string or a datetime to either None or
-       datetime.
-
-    """
-    if visit_date is None:
-        return None
-
-    if isinstance(visit_date, datetime):
-        return visit_date
-
-    if visit_date == "now":
-        return datetime.now(tz=timezone.utc)
-
-    if isinstance(visit_date, str):
-        return parse(visit_date)
-
-    raise ValueError(f"invalid visit date {visit_date!r}")
+from typing import Dict
 
 
 def get_minimum_env() -> Dict[str, str]:

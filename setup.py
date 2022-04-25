@@ -68,6 +68,6 @@ setup(
         "Bug Reports": "https://forge.softwareheritage.org/maniphest",
         "Funding": "https://www.softwareheritage.org/donate",
         "Source": ("https://forge.softwareheritage.org/source/swh-loader-mercurial"),
-        "Documentation": "https://docs.softwareheritage.org/devel/swh-loader-mercurial/",  # NoQA: E501
+        "Documentation": "https://docs.softwareheritage.org/devel/swh-loader-mercurial/",  # NoQA: B950
     },
 )

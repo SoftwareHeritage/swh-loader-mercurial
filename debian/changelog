@@ -1,3 +1,16 @@
+swh-loader-mercurial (3.1.0-1~swh1) unstable-swh; urgency=medium
+
+  * New upstream release 3.1.0     - (tagged by Valentin Lorentz
+    <vlorentz@softwareheritage.org> on 2022-04-25 11:43:25 +0200)
+  * Upstream changes:     - v3.1.0     - * Update for swh.loader.core
+    3.0.0     - * pre-commit maintainance     - * Bug fixes:     - *
+    Don't accidentally do a full run on incremental     - * Fix context
+    for the first revision in a run     - * Refactor clone util with the
+    one in core     - * Log the correct target directory when cloning
+    - * Use the now refactored visit date util from core
+
+ -- Software Heritage autobuilder (on jenkins-debian1) <jenkins@jenkins-debian1.internal.softwareheritage.org>  Mon, 25 Apr 2022 09:48:06 +0000
+
 swh-loader-mercurial (3.0.0-1~swh1) unstable-swh; urgency=medium
 
   * New upstream release 3.0.0     - (tagged by Antoine R. Dumont

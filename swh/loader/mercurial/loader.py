@@ -1,4 +1,4 @@
-# Copyright (C) 2020-2021  The Software Heritage developers
+# Copyright (C) 2020-2022  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -793,7 +793,7 @@ class HgArchiveLoader(HgLoader):
         visit_date: Optional[datetime] = None,
         archive_path: str = None,
         temp_directory: str = "/tmp",
-        max_content_size: Optional[int] = None,
+        **kwargs: Any,
     ):
         super().__init__(
             storage=storage,
@@ -801,7 +801,7 @@ class HgArchiveLoader(HgLoader):
             visit_date=visit_date,
             logging_class="swh.loader.mercurial.loader.ArchiveLoader",
             temp_directory=temp_directory,
-            max_content_size=max_content_size,
+            **kwargs,
         )
         self.archive_extract_temp_dir = None
         self.archive_path = archive_path

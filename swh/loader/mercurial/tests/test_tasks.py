@@ -8,12 +8,8 @@ import uuid
 import pytest
 
 from swh.scheduler.model import ListedOrigin, Lister
-from swh.scheduler.utils import create_origin_task_dict
 
-
-@pytest.fixture(autouse=True)
-def celery_worker_and_swh_config(swh_scheduler_celery_worker, swh_config):
-    pass
+NAMESPACE = "swh.loader.mercurial"
 
 
 @pytest.fixture
@@ -28,95 +24,41 @@ def hg_listed_origin(hg_lister):
     )
 
 
-def test_loader(
-    mocker,
-    swh_scheduler_celery_app,
-):
-    mock_loader = mocker.patch("swh.loader.mercurial.loader.HgLoader.load")
-    mock_loader.return_value = {"status": "eventful"}
-
-    res = swh_scheduler_celery_app.send_task(
-        "swh.loader.mercurial.tasks.LoadMercurial",
-        kwargs={"url": "origin_url", "visit_date": "now"},
-    )
-
-    assert res
-    res.wait()
-    assert res.successful()
-
-    assert res.result == {"status": "eventful"}
-    mock_loader.assert_called_once_with()
-
-
-def test_loader_for_listed_origin(
-    mocker,
-    swh_scheduler_celery_app,
+@pytest.mark.parametrize("extra_loader_arguments", [{}, {"visit_date": "now"}])
+def test_mercurial_loader_for_listed_origin(
+    loading_task_creation_for_listed_origin_test,
     hg_lister,
     hg_listed_origin,
+    extra_loader_arguments,
 ):
-    mock_loader = mocker.patch("swh.loader.mercurial.loader.HgLoader.load")
-    mock_loader.return_value = {"status": "eventful"}
+    hg_listed_origin.extra_loader_arguments = extra_loader_arguments
 
-    task_dict = create_origin_task_dict(hg_listed_origin, hg_lister)
-
-    res = swh_scheduler_celery_app.send_task(
-        "swh.loader.mercurial.tasks.LoadMercurial",
-        kwargs=task_dict["arguments"]["kwargs"],
+    loading_task_creation_for_listed_origin_test(
+        loader_class_name=f"{NAMESPACE}.loader.HgLoader",
+        task_function_name=f"{NAMESPACE}.tasks.LoadMercurial",
+        lister=hg_lister,
+        listed_origin=hg_listed_origin,
     )
 
-    assert res
-    res.wait()
-    assert res.successful()
 
-    assert res.result == {"status": "eventful"}
-    mock_loader.assert_called_once_with()
-
-
-def test_archive_loader(
-    mocker,
-    swh_scheduler_celery_app,
-):
-    mock_loader = mocker.patch("swh.loader.mercurial.loader.HgArchiveLoader.load")
-    mock_loader.return_value = {"status": "uneventful"}
-
-    res = swh_scheduler_celery_app.send_task(
-        "swh.loader.mercurial.tasks.LoadArchiveMercurial",
-        kwargs={
-            "url": "another_url",
-            "archive_path": "/some/tar.tgz",
-            "visit_date": "now",
-        },
-    )
-    assert res
-    res.wait()
-    assert res.successful()
-
-    assert res.result == {"status": "uneventful"}
-    mock_loader.assert_called_once_with()
-
-
-def test_archive_loader_for_listed_origin(
-    mocker,
-    swh_scheduler_celery_app,
+@pytest.mark.parametrize(
+    "extra_loader_arguments",
+    [
+        {"archive_path": "/some/tar.tgz"},
+        {"archive_path": "/some/tar.tgz", "visit_date": "now"},
+    ],
+)
+def test_mercurial_archive_loader_for_listed_origin(
+    loading_task_creation_for_listed_origin_test,
     hg_lister,
     hg_listed_origin,
+    extra_loader_arguments,
 ):
-    mock_loader = mocker.patch("swh.loader.mercurial.loader.HgArchiveLoader.load")
-    mock_loader.return_value = {"status": "uneventful"}
+    hg_listed_origin.extra_loader_arguments = extra_loader_arguments
 
-    hg_listed_origin.extra_loader_arguments = {
-        "archive_path": "/some/tar.tgz",
-    }
-
-    task_dict = create_origin_task_dict(hg_listed_origin, hg_lister)
-
-    res = swh_scheduler_celery_app.send_task(
-        "swh.loader.mercurial.tasks.LoadArchiveMercurial",
-        kwargs=task_dict["arguments"]["kwargs"],
+    loading_task_creation_for_listed_origin_test(
+        loader_class_name=f"{NAMESPACE}.loader.HgArchiveLoader",
+        task_function_name=f"{NAMESPACE}.tasks.LoadArchiveMercurial",
+        lister=hg_lister,
+        listed_origin=hg_listed_origin,
     )
-    assert res
-    res.wait()
-    assert res.successful()
-
-    assert res.result == {"status": "uneventful"}
-    mock_loader.assert_called_once_with()

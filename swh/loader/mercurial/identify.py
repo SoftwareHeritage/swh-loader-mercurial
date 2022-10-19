@@ -197,7 +197,7 @@ class Hg:
         self._root = repository_root
 
     def _output(self, *args) -> bytes:
-        """Return the outpout of a `hg` call."""
+        """Return the output of a `hg` call."""
         return subprocess.check_output(
             ["hg", *args], cwd=self._root, env=get_minimum_env()
         )

@@ -3,7 +3,7 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-from codecs import escape_decode  # type: ignore
+from codecs import escape_decode
 import json
 from pathlib import Path
 import re

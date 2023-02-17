@@ -791,7 +791,7 @@ class HgArchiveLoader(HgLoader):
         storage: StorageInterface,
         url: str,
         visit_date: Optional[datetime] = None,
-        archive_path: str = None,
+        archive_path: Optional[str] = None,
         temp_directory: str = "/tmp",
         **kwargs: Any,
     ):

@@ -362,7 +362,7 @@ class HgLoader(BaseLoader):
             try:
                 rev = self._repo[hg_nodeid].rev()
                 existing_heads.append(rev)
-            except KeyError:  # the node does not exist anymore
+            except hgutil.error.RepoLookupError:  # the node does not exist anymore
                 pass
 
         # select revisions that are not ancestors of heads

@@ -112,7 +112,14 @@ def branching_info(repo: hg.localrepo, ignored: Set[int]) -> BranchingInfo:
     )
 
 
-def clone(src: str, dest: str, timeout: float):
+def clone(src: str, dest: str, timeout: float = 7200, rev: Optional[str] = None):
+    """Clone a hg repository `src` in `dest`. Optionally, this can clone at the specific
+    revision if provided.
+
+    Raises:
+        CloneFailure: when there is an issue during the cloning step
+
+    """
     closure = partial(
         hg.clone,
         ui=mercurial.ui.ui.load(),
@@ -120,5 +127,6 @@ def clone(src: str, dest: str, timeout: float):
         source=src.encode(),
         dest=dest.encode(),
         update=False,
+        revs=None if not rev else [rev.encode()],
     )
     clone_with_timeout(src, dest, closure, timeout)

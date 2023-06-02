@@ -749,3 +749,16 @@ def test_loader_missing_hg_node_on_reload(swh_storage, datadir, tmp_path):
     loader._latest_heads.append(hash_to_bytes("1" * 40))
     # check it is filtered out by the get_hg_revs_to_load method
     assert list(loader.get_hg_revs_to_load()) == []
+
+
+def test_loader_not_found_hg_repository(swh_storage, datadir, tmp_path):
+    """Ingesting an inexistent repository should be a not-found uneventful visit"""
+    repo_url = "file:///origin/not/found"
+    loader = HgLoader(swh_storage, url=repo_url)
+    assert loader.load() == {"status": "uneventful"}
+    assert_last_visit_matches(
+        swh_storage,
+        repo_url,
+        status="not_found",
+        type="hg",
+    )

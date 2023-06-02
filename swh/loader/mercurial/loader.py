@@ -1,4 +1,4 @@
-# Copyright (C) 2020-2022  The Software Heritage developers
+# Copyright (C) 2020-2023  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -30,7 +30,7 @@ from typing import (
 from swh.core.utils import grouper
 from swh.loader.core.loader import BaseLoader
 from swh.loader.core.utils import clean_dangling_folders
-from swh.loader.mercurial.utils import get_minimum_env
+from swh.loader.mercurial.utils import get_minimum_env, raise_not_found_repository
 from swh.model import swhids
 from swh.model.from_disk import Content, DentryPerms, Directory
 from swh.model.hashutil import hash_to_bytehex
@@ -342,7 +342,8 @@ class HgLoader(BaseLoader):
                 f"Cloning {self.origin.url} to {self._repo_directory} "
                 f"with timeout {self._clone_timeout} seconds"
             )
-            hgutil.clone(self.origin.url, self._repo_directory, self._clone_timeout)
+            with raise_not_found_repository():
+                hgutil.clone(self.origin.url, self._repo_directory, self._clone_timeout)
         else:  # existing local repository
             # Allow to load on disk repository without cloning
             # for testing purpose.

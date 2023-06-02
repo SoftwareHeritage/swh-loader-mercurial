@@ -9,9 +9,8 @@ import tempfile
 from typing import Iterator
 
 from swh.loader.core.loader import BaseDirectoryLoader
-from swh.loader.core.utils import CloneFailure
-from swh.loader.exception import NotFound
 from swh.loader.mercurial.hgutil import clone
+from swh.loader.mercurial.utils import raise_not_found_repository
 
 
 def clone_repository(repo_url: str, hg_changeset: str, target: Path) -> Path:
@@ -34,10 +33,9 @@ def clone_repository(repo_url: str, hg_changeset: str, target: Path) -> Path:
     local_clone_dir = target / local_name
     local_clone_dir.mkdir()
 
-    try:
+    with raise_not_found_repository():
         clone(repo_url, str(local_clone_dir), rev=hg_changeset)
-    except CloneFailure as e:
-        raise NotFound(e)
+
     return local_clone_dir
 
 

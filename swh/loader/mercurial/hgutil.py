@@ -1,4 +1,4 @@
-# Copyright (C) 2020-2021  The Software Heritage developers
+# Copyright (C) 2020-2023  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -9,8 +9,8 @@ from functools import partial
 from typing import Dict, List, Mapping, NewType, Optional, Set
 
 # The internal Mercurial API is not guaranteed to be stable.
-from mercurial import bookmarks, context, error, hg, smartset, util  # type: ignore
-import mercurial.ui  # type: ignore
+from mercurial import bookmarks, context, error, hg, smartset, util
+import mercurial.ui
 
 from swh.loader.core.utils import clone_with_timeout
 

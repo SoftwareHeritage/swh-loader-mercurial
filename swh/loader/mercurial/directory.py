@@ -11,6 +11,7 @@ from typing import Iterator
 from swh.loader.core.loader import BaseDirectoryLoader
 from swh.loader.mercurial.hgutil import clone
 from swh.loader.mercurial.utils import raise_not_found_repository
+from swh.model.model import Snapshot, SnapshotBranch, TargetType
 
 
 def clone_repository(repo_url: str, hg_changeset: str, target: Path) -> Path:
@@ -50,6 +51,9 @@ class HgDirectoryLoader(BaseDirectoryLoader):
        id: <bytes>
        branches:
          HEAD:
+           target_type: alias
+           target: <mercurial-reference>
+         <mercurial-reference>:
            target_type: directory
            target: <directory-id>
 
@@ -67,3 +71,20 @@ class HgDirectoryLoader(BaseDirectoryLoader):
                 self.origin.url, self.hg_changeset, target=Path(tmpdir)
             )
             yield repo
+
+    def build_snapshot(self) -> Snapshot:
+        """Build snapshot without losing the hg reference context."""
+        assert self.directory is not None
+        branch_name = self.hg_changeset.encode()
+        return Snapshot(
+            branches={
+                b"HEAD": SnapshotBranch(
+                    target_type=TargetType.ALIAS,
+                    target=branch_name,
+                ),
+                branch_name: SnapshotBranch(
+                    target_type=TargetType.DIRECTORY,
+                    target=self.directory.hash,
+                ),
+            }
+        )

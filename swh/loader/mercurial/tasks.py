@@ -1,4 +1,4 @@
-# Copyright (C) 2020-2022  The Software Heritage developers
+# Copyright (C) 2020-2023  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -6,6 +6,7 @@
 from celery import shared_task
 
 from swh.loader.core.utils import parse_visit_date
+from swh.loader.mercurial.directory import HgDirectoryLoader
 
 from .loader import HgArchiveLoader, HgLoader
 
@@ -36,4 +37,14 @@ def load_hg_from_archive(**kwargs):
     Args: see :func:`HgArchiveLoader` constructor.
     """
     loader = HgArchiveLoader.from_configfile(**_process_kwargs(kwargs))
+    return loader.load()
+
+
+@shared_task(name=__name__ + ".LoadMercurialDirectory")
+def load_hg_directory(**kwargs):
+    """Import a mercurial tree into swh.
+
+    Args: see :func:`HgDirectoryLoader` constructor.
+    """
+    loader = HgDirectoryLoader.from_configfile(**_process_kwargs(kwargs))
     return loader.load()

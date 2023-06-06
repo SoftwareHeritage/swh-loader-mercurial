@@ -12,6 +12,9 @@ The main entry points are:
 - :class:`swh.loader.mercurial.loader.HgArchiveLoader` which reads and loads
   a local repository wrapped within a tarball
 
+- :class:`swh.loader.mercurial.directory.HgDirectoryLoader` which ingests the hg tree at
+  a specific changeset or tag.
+
 # CLI run
 
 ## Configuration file

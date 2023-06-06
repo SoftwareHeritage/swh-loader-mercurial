@@ -1,16 +1,14 @@
 Metadata-Version: 2.1
 Name: swh.loader.mercurial
-Version: 3.1.1
+Version: 3.3.0
 Summary: Software Heritage Mercurial Loader
 Home-page: https://forge.softwareheritage.org/diffusion/DLDHG/
 Author: Software Heritage developers
 Author-email: swh-devel@inria.fr
-License: UNKNOWN
 Project-URL: Bug Reports, https://forge.softwareheritage.org/maniphest
 Project-URL: Funding, https://www.softwareheritage.org/donate
 Project-URL: Source, https://forge.softwareheritage.org/source/swh-loader-mercurial
 Project-URL: Documentation, https://docs.softwareheritage.org/devel/swh-loader-mercurial/
-Platform: UNKNOWN
 Classifier: Programming Language :: Python :: 3
 Classifier: Intended Audience :: Developers
 Classifier: License :: OSI Approved :: GNU General Public License v3 (GPLv3)
@@ -36,6 +34,9 @@ The main entry points are:
 - :class:`swh.loader.mercurial.loader.HgArchiveLoader` which reads and loads
   a local repository wrapped within a tarball
 
+- :class:`swh.loader.mercurial.directory.HgDirectoryLoader` which ingests the hg tree at
+  a specific changeset or tag.
+
 # CLI run
 
 ## Configuration file
@@ -53,5 +54,3 @@ storage:
 ``` bash
 swh loader --C /tmp/mercurial.yml run mercurial https://www.mercurial-scm.org/repo/hello
 ```
-
-

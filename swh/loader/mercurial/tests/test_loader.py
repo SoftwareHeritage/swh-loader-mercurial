@@ -727,3 +727,38 @@ def test_loader_repository_with_bookmark_information(swh_storage, datadir, tmp_p
     loader = HgLoader(swh_storage, url=repo_url)
 
     assert loader.load() == {"status": "eventful"}
+
+
+def test_loader_missing_hg_node_on_reload(swh_storage, datadir, tmp_path):
+    """hg node previously seen in a first load but whose does not exist in second load
+    must be filtered out"""
+    archive_name = "the-sandbox"
+    archive_path = os.path.join(datadir, f"{archive_name}.tgz")
+    repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
+
+    # first load
+    loader = HgLoader(swh_storage, url=repo_url)
+    assert loader.load() == {"status": "eventful"}
+
+    # second load to populate the _latest_heads list
+    loader = HgLoader(swh_storage, url=repo_url)
+    assert loader.load() == {"status": "uneventful"}
+    assert loader._latest_heads
+
+    # add an unknown hg node to the latest heads list
+    loader._latest_heads.append(hash_to_bytes("1" * 40))
+    # check it is filtered out by the get_hg_revs_to_load method
+    assert list(loader.get_hg_revs_to_load()) == []
+
+
+def test_loader_not_found_hg_repository(swh_storage, datadir, tmp_path):
+    """Ingesting an inexistent repository should be a not-found uneventful visit"""
+    repo_url = "file:///origin/not/found"
+    loader = HgLoader(swh_storage, url=repo_url)
+    assert loader.load() == {"status": "uneventful"}
+    assert_last_visit_matches(
+        swh_storage,
+        repo_url,
+        status="not_found",
+        type="hg",
+    )

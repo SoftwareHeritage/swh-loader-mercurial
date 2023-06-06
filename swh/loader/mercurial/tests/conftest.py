@@ -1,12 +1,22 @@
-# Copyright (C) 2019-2021  The Software Heritage developers
+# Copyright (C) 2019-2023  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
 import os
 from typing import Any, Dict
+import uuid
 
 import pytest
+
+from swh.scheduler.model import Lister
+
+NAMESPACE = "swh.loader.mercurial"
+
+
+@pytest.fixture
+def hg_lister():
+    return Lister(name="hg-lister", instance_name="example", id=uuid.uuid4())
 
 
 @pytest.fixture

@@ -35,6 +35,7 @@ swh/loader/__init__.py
 swh/loader/mercurial/__init__.py
 swh/loader/mercurial/archive_extract.py
 swh/loader/mercurial/converters.py
+swh/loader/mercurial/directory.py
 swh/loader/mercurial/hgutil.py
 swh/loader/mercurial/identify.py
 swh/loader/mercurial/loader.py
@@ -45,9 +46,11 @@ swh/loader/mercurial/tests/__init__.py
 swh/loader/mercurial/tests/conftest.py
 swh/loader/mercurial/tests/loader_checker.py
 swh/loader/mercurial/tests/test_converters.py
+swh/loader/mercurial/tests/test_directory.py
 swh/loader/mercurial/tests/test_identify.py
 swh/loader/mercurial/tests/test_loader.py
 swh/loader/mercurial/tests/test_tasks.py
+swh/loader/mercurial/tests/test_tasks_directory.py
 swh/loader/mercurial/tests/data/anomad-d.tgz
 swh/loader/mercurial/tests/data/build.py
 swh/loader/mercurial/tests/data/example.json

@@ -10,7 +10,7 @@ import pytest
 
 from swh.loader.core.nar import Nar
 from swh.loader.exception import NotFound
-from swh.loader.mercurial.directory import HgDirectoryLoader, clone_repository
+from swh.loader.mercurial.directory import HgCheckoutLoader, clone_repository
 from swh.loader.mercurial.hgutil import repository
 from swh.loader.tests import (
     assert_last_visit_matches,
@@ -95,7 +95,7 @@ def test_hg_directory_loader(swh_storage, datadir, tmp_path, reference):
     hash_algo = "sha256"
     nar_ref = compute_nar_hash_for_ref(repo_url, reference, hash_algo, tmp_path)
     checksums = {hash_algo: nar_ref}
-    loader = HgDirectoryLoader(
+    loader = HgCheckoutLoader(
         swh_storage,
         repo_url,
         ref=reference,
@@ -141,7 +141,7 @@ def test_hg_directory_loader_hash_mismatch(swh_storage, datadir, tmp_path):
     reference = "default"
     truthy_checksums = compute_nar_hash_for_ref(repo_url, reference, "sha256", tmp_path)
     faulty_checksums = {"sha256": truthy_checksums.replace("5", "0")}
-    loader = HgDirectoryLoader(
+    loader = HgCheckoutLoader(
         swh_storage,
         repo_url,
         ref=reference,
@@ -179,7 +179,7 @@ def test_hg_directory_loader_hash_mismatch(swh_storage, datadir, tmp_path):
 def test_hg_directory_loader_not_found(swh_storage, datadir, tmp_path):
     """Loading a hg tree from an unknown origin should result in a not-found visit"""
     repo_url = "file:///origin/does/not/exist"
-    loader = HgDirectoryLoader(
+    loader = HgCheckoutLoader(
         swh_storage,
         repo_url,
         ref="not-important",

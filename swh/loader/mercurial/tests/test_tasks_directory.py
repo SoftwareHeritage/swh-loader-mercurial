@@ -44,8 +44,8 @@ def test_hg_directory_loader_for_listed_origin(
     hg_listed_origin.extra_loader_arguments = extra_loader_arguments
 
     loading_task_creation_for_listed_origin_test(
-        loader_class_name=f"{NAMESPACE}.directory.HgDirectoryLoader",
-        task_function_name=f"{NAMESPACE}.tasks.LoadMercurialDirectory",
+        loader_class_name=f"{NAMESPACE}.directory.HgCheckoutLoader",
+        task_function_name=f"{NAMESPACE}.tasks.LoadMercurialCheckout",
         lister=hg_lister,
         listed_origin=hg_listed_origin,
     )

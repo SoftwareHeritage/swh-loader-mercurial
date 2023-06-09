@@ -6,7 +6,7 @@
 from celery import shared_task
 
 from swh.loader.core.utils import parse_visit_date
-from swh.loader.mercurial.directory import HgDirectoryLoader
+from swh.loader.mercurial.directory import HgCheckoutLoader
 
 from .loader import HgArchiveLoader, HgLoader
 
@@ -40,11 +40,11 @@ def load_hg_from_archive(**kwargs):
     return loader.load()
 
 
-@shared_task(name=__name__ + ".LoadMercurialDirectory")
-def load_hg_directory(**kwargs):
+@shared_task(name=f"{__name__}.LoadMercurialCheckout")
+def load_hg_checkout(**kwargs):
     """Import a mercurial tree into swh.
 
-    Args: see :func:`HgDirectoryLoader` constructor.
+    Args: see :func:`HgCheckoutLoader` constructor.
     """
-    loader = HgDirectoryLoader.from_configfile(**_process_kwargs(kwargs))
+    loader = HgCheckoutLoader.from_configfile(**_process_kwargs(kwargs))
     return loader.load()

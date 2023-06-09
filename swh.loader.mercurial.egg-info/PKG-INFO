@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: swh.loader.mercurial
-Version: 3.3.0
+Version: 3.4.0
 Summary: Software Heritage Mercurial Loader
 Home-page: https://forge.softwareheritage.org/diffusion/DLDHG/
 Author: Software Heritage developers
@@ -34,7 +34,7 @@ The main entry points are:
 - :class:`swh.loader.mercurial.loader.HgArchiveLoader` which reads and loads
   a local repository wrapped within a tarball
 
-- :class:`swh.loader.mercurial.directory.HgDirectoryLoader` which ingests the hg tree at
+- :class:`swh.loader.mercurial.directory.HgCheckoutLoader` which ingests the hg tree at
   a specific changeset or tag.
 
 # CLI run

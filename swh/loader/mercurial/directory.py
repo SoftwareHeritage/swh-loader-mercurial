@@ -40,7 +40,7 @@ def clone_repository(repo_url: str, hg_changeset: str, target: Path) -> Path:
     return local_clone_dir
 
 
-class HgDirectoryLoader(BaseDirectoryLoader):
+class HgCheckoutLoader(BaseDirectoryLoader):
     """Hg directory loader in charge of ingesting a mercurial tree at a specific
     changeset, tag or branch into the swh archive.
 

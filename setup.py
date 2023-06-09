@@ -54,6 +54,7 @@ setup(
     entry_points="""
         [swh.workers]
         loader.mercurial=swh.loader.mercurial:register
+        loader.mercurial-checkout=swh.loader.mercurial:register_checkout
         [console_scripts]
         swh-hg-identify=swh.loader.mercurial.identify:main
     """,

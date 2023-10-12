@@ -28,7 +28,7 @@ def compute_nar_hash_for_ref(
     tmp_path = Path(os.path.join(temp_dir, "compute-nar"))
     tmp_path.mkdir(exist_ok=True)
     repo = clone_repository(repo_url, ref, tmp_path)
-    nar = Nar(hash_names=[hash_name], exclude_vcs=True)
+    nar = Nar(hash_names=[hash_name], exclude_vcs=True, vcs_type="hg")
     nar.serialize(repo)
     return nar.hexdigest()[hash_name]
 

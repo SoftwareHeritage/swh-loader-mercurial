@@ -1,10 +1,6 @@
 .. _swh-loader-mercurial:
 
-Software Heritage - Mercurial loader
-====================================
-
-Loader for `Mercurial <https://www.mercurial-scm.org/>`_ repositories.
-
+.. include:: README.rst
 
 Reference Documentation
 -----------------------

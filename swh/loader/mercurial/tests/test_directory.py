@@ -77,14 +77,19 @@ def test_clone_repository_notfound(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "reference",
+    "reference,expected_nar_checksum",
     [
-        "default",
-        "0.1",
-        "0a04b987be5ae354b710cefeba0e2d9de7ad41a9",
+        ("default", "e14330e8cc00a1ec3d4b0aac7dd64a27315ab8f89aacbf8c48dff412859a9e99"),
+        ("0.1", "e7aae74512b72ea6e6c2f5a3de4660fff0d993ed6a690141a3164aace80f4a0d"),
+        (
+            "0a04b987be5ae354b710cefeba0e2d9de7ad41a9",
+            "8be8c3e290bd3467a352d7afb9f43c9bb6f0c1d8445c0383e7e668af5e717ad4",
+        ),
     ],
 )
-def test_hg_directory_loader(swh_storage, datadir, tmp_path, reference):
+def test_hg_directory_loader(
+    swh_storage, datadir, tmp_path, reference, expected_nar_checksum
+):
     """Loading a hg directory should be eventful"""
     archive_name = "hello"
     archive_path = os.path.join(datadir, f"{archive_name}.tgz")
@@ -93,8 +98,7 @@ def test_hg_directory_loader(swh_storage, datadir, tmp_path, reference):
     )
 
     hash_algo = "sha256"
-    nar_ref = compute_nar_hash_for_ref(repo_url, reference, hash_algo, tmp_path)
-    checksums = {hash_algo: nar_ref}
+    checksums = {hash_algo: expected_nar_checksum}
     loader = HgCheckoutLoader(
         swh_storage,
         repo_url,

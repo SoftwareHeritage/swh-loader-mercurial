@@ -126,7 +126,7 @@ def clone(src: str, dest: str, timeout: float = 7200, rev: Optional[str] = None)
         peeropts={},
         source=src.encode(),
         dest=dest.encode(),
-        update=False,
+        update=True,
         revs=None if not rev else [rev.encode()],
     )
     clone_with_timeout(src, dest, closure, timeout)

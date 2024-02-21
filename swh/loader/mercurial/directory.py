@@ -3,6 +3,7 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+from datetime import datetime
 from os.path import basename
 from pathlib import Path
 import tempfile
@@ -74,7 +75,9 @@ class HgCheckoutLoader(BaseDirectoryLoader):
         super().__init__(*args, dir_filter=list_hg_tree, **kwargs)
 
     def fetch_artifact(self) -> Iterator[Path]:
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory(
+            suffix="-" + datetime.now().isoformat()
+        ) as tmpdir:
             repo = clone_repository(
                 self.origin.url, self.hg_changeset, target=Path(tmpdir)
             )

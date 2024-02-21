@@ -6,11 +6,12 @@
 from os.path import basename
 from pathlib import Path
 import tempfile
-from typing import Iterator
+from typing import Any, Iterable, Iterator
 
 from swh.loader.core.loader import BaseDirectoryLoader
 from swh.loader.mercurial.hgutil import clone
 from swh.loader.mercurial.utils import raise_not_found_repository
+from swh.model.from_disk import ignore_empty_directories, ignore_named_directories
 from swh.model.model import Snapshot, SnapshotBranch, TargetType
 
 
@@ -40,6 +41,13 @@ def clone_repository(repo_url: str, hg_changeset: str, target: Path) -> Path:
     return local_clone_dir
 
 
+def list_hg_tree(dirpath: bytes, dirname: bytes, entries: Iterable[Any]) -> bool:
+    """List a mercurial tree. This ignores any repo_path/.hg/* and empty folders."""
+    return ignore_named_directories([b".hg"])(
+        dirpath, dirname, entries
+    ) and ignore_empty_directories(dirpath, dirname, entries)
+
+
 class HgCheckoutLoader(BaseDirectoryLoader):
     """Hg directory loader in charge of ingesting a mercurial tree at a specific
     changeset, tag or branch into the swh archive.
@@ -63,7 +71,7 @@ class HgCheckoutLoader(BaseDirectoryLoader):
 
     def __init__(self, *args, **kwargs):
         self.hg_changeset = kwargs.pop("ref")
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, dir_filter=list_hg_tree, **kwargs)
 
     def fetch_artifact(self) -> Iterator[Path]:
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -137,6 +137,11 @@ def test_hg_directory_loader(
         assert extid.extid_type == f"nar-{hash_algo}"
         assert extid.extid_version == loader.extid_version
         assert extid.extid == hash_to_bytes(checksums[hash_algo])
+        assert ".hg" not in [
+            entry["name"]
+            for entry in swh_storage.directory_ls(extid.target.object_id)
+            if entry["type"] == "dir"
+        ]
 
 
 def test_hg_directory_loader_hash_mismatch(swh_storage, datadir, tmp_path):

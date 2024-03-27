@@ -21,7 +21,7 @@ from swh.loader.tests import (
 )
 from swh.model.from_disk import Content, DentryPerms
 from swh.model.hashutil import hash_to_bytes, hash_to_hex
-from swh.model.model import RevisionType, Snapshot, SnapshotBranch, TargetType
+from swh.model.model import Revision, RevisionType, Snapshot, SnapshotBranch, TargetType
 from swh.model.swhids import ObjectType
 from swh.storage import get_storage
 from swh.storage.algos.snapshot import snapshot_get_latest
@@ -300,7 +300,13 @@ def test_visit_repository_with_transplant_operations(swh_storage, datadir, tmp_p
     # extract original changesets info and the transplant sources
     hg_changesets = set()
     transplant_sources = set()
-    for rev in loader.storage.revision_log(revisions):
+    for rev_d in loader.storage.revision_log(revisions):
+        if isinstance(rev_d, Revision):
+            # TODO: Remove this conditional after swh-storage fully migrated to
+            # returning revision objects instead of dicts.
+            rev = rev_d
+        else:
+            rev = Revision.from_dict(rev_d)
         extids = list(
             loader.storage.extid_get_from_target(ObjectType.REVISION, [rev["id"]])
         )

@@ -21,7 +21,7 @@ from swh.loader.tests import (
 )
 from swh.model.from_disk import Content, DentryPerms
 from swh.model.hashutil import hash_to_bytes, hash_to_hex
-from swh.model.model import RevisionType, Snapshot, SnapshotBranch, TargetType
+from swh.model.model import RevisionType, Snapshot, SnapshotBranch, SnapshotTargetType
 from swh.model.swhids import ObjectType
 from swh.storage import get_storage
 from swh.storage.algos.snapshot import snapshot_get_latest
@@ -141,11 +141,13 @@ def test_loader_hg_new_visit_no_release(swh_storage, datadir, tmp_path):
     mapping.update(tips)
 
     expected_branches = {
-        k: SnapshotBranch(target=hash_to_bytes(v), target_type=TargetType.REVISION)
+        k: SnapshotBranch(
+            target=hash_to_bytes(v), target_type=SnapshotTargetType.REVISION
+        )
         for k, v in mapping.items()
     }
     expected_branches[b"HEAD"] = SnapshotBranch(
-        target=b"branch-tip/default", target_type=TargetType.ALIAS
+        target=b"branch-tip/default", target_type=SnapshotTargetType.ALIAS
     )
 
     expected_snapshot = Snapshot(
@@ -238,15 +240,15 @@ def test_loader_hg_new_visit_with_release(swh_storage, datadir, tmp_path):
         branches={
             b"branch-tip/default": SnapshotBranch(
                 target=tip_revision_default,
-                target_type=TargetType.REVISION,
+                target_type=SnapshotTargetType.REVISION,
             ),
             b"tags/0.1": SnapshotBranch(
                 target=tip_release,
-                target_type=TargetType.RELEASE,
+                target_type=SnapshotTargetType.RELEASE,
             ),
             b"HEAD": SnapshotBranch(
                 target=b"branch-tip/default",
-                target_type=TargetType.ALIAS,
+                target_type=SnapshotTargetType.ALIAS,
             ),
         },
     )
@@ -620,7 +622,7 @@ def test_load_repo_check_extids_write_version(swh_storage, datadir, tmp_path):
     revision_ids = [
         branch.target
         for branch in snapshot.branches.values()
-        if branch.target_type == TargetType.REVISION
+        if branch.target_type == SnapshotTargetType.REVISION
     ]
 
     assert len(revision_ids) > 0

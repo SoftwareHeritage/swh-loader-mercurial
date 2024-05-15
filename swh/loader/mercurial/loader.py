@@ -44,7 +44,7 @@ from swh.model.model import (
     Sha1Git,
     Snapshot,
     SnapshotBranch,
-    TargetType,
+    SnapshotTargetType,
     TimestampWithTimezone,
 )
 from swh.model.model import Content as ModelContent
@@ -258,9 +258,9 @@ class HgLoader(BaseLoader):
         tags = []
 
         for branch in latest_snapshot.branches.values():
-            if branch.target_type == TargetType.REVISION:
+            if branch.target_type == SnapshotTargetType.REVISION:
                 heads.append(branch.target)
-            elif branch.target_type == TargetType.RELEASE:
+            elif branch.target_type == SnapshotTargetType.RELEASE:
                 tags.append(branch.target)
 
         self._latest_heads.extend(
@@ -442,21 +442,21 @@ class HgLoader(BaseLoader):
                 target = self.get_revision_id_from_hg_nodeid(hg_nodeid)
                 snapshot_branches[label] = SnapshotBranch(
                     target=self.store_release(tag_name, target),
-                    target_type=TargetType.RELEASE,
+                    target_type=SnapshotTargetType.RELEASE,
                 )
 
         for branch_name, node_id in branching_info.tips.items():
             name = b"branch-tip/%s" % branch_name
             target = self.get_revision_id_from_hg_nodeid(node_id)
             snapshot_branches[name] = SnapshotBranch(
-                target=target, target_type=TargetType.REVISION
+                target=target, target_type=SnapshotTargetType.REVISION
             )
 
         for bookmark_name, node_id in branching_info.bookmarks.items():
             name = b"bookmarks/%s" % bookmark_name
             target = self.get_revision_id_from_hg_nodeid(node_id)
             snapshot_branches[name] = SnapshotBranch(
-                target=target, target_type=TargetType.REVISION
+                target=target, target_type=SnapshotTargetType.REVISION
             )
 
         for branch_name, branch_heads in branching_info.open_heads.items():
@@ -464,7 +464,7 @@ class HgLoader(BaseLoader):
                 name = b"branch-heads/%s/%d" % (branch_name, index)
                 target = self.get_revision_id_from_hg_nodeid(head)
                 snapshot_branches[name] = SnapshotBranch(
-                    target=target, target_type=TargetType.REVISION
+                    target=target, target_type=SnapshotTargetType.REVISION
                 )
 
         for branch_name, closed_heads in branching_info.closed_heads.items():
@@ -472,7 +472,7 @@ class HgLoader(BaseLoader):
                 name = b"branch-closed-heads/%s/%d" % (branch_name, index)
                 target = self.get_revision_id_from_hg_nodeid(head)
                 snapshot_branches[name] = SnapshotBranch(
-                    target=target, target_type=TargetType.REVISION
+                    target=target, target_type=SnapshotTargetType.REVISION
                 )
 
         # If the repo is broken enough or if it has none of the "normal" default
@@ -481,7 +481,7 @@ class HgLoader(BaseLoader):
         if default_branch_alias is not None:
             snapshot_branches[b"HEAD"] = SnapshotBranch(
                 target=default_branch_alias,
-                target_type=TargetType.ALIAS,
+                target_type=SnapshotTargetType.ALIAS,
             )
         snapshot = Snapshot(branches=snapshot_branches)
         self.storage.snapshot_add([snapshot])

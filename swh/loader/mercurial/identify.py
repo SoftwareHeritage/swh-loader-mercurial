@@ -457,7 +457,7 @@ def identify_snapshot(
         release: an optional list of `ReleaseIdentity`.
             If not provided it will be computed using `identify_release`.
     """
-    from swh.model.model import Snapshot, TargetType
+    from swh.model.model import Snapshot, SnapshotTargetType
 
     if node_id_2_swhid is None:
         node_id_2_swhid = {
@@ -472,21 +472,21 @@ def identify_snapshot(
     tip = hg.tip()
     branches[b"HEAD"] = {
         "target": tip.branch(),
-        "target_type": TargetType.ALIAS.value,
+        "target_type": SnapshotTargetType.ALIAS.value,
     }
 
     for branch in hg.branches():
         assert node_id_2_swhid[branch.node_id].object_type == ObjectType.REVISION
         branches[branch.name] = {
             "target": node_id_2_swhid[branch.node_id].object_id,
-            "target_type": TargetType.REVISION.value,
+            "target_type": SnapshotTargetType.REVISION.value,
         }
 
     for release in releases:
         assert release.swhid.object_type == ObjectType.RELEASE
         branches[release.name] = {
             "target": release.swhid.object_id,
-            "target_type": TargetType.RELEASE.value,
+            "target_type": SnapshotTargetType.RELEASE.value,
         }
 
     return Snapshot.from_dict({"branches": branches}).swhid()

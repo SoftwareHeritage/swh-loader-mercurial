@@ -414,8 +414,7 @@ def identify_release(
         node_id_2_swhid: An optional cache mapping hg node ids to SWHIDs
             If not provided it will be computed using `identify_revision`.
     """
-    from swh.model.model import ObjectType as ModelObjectType
-    from swh.model.model import Release
+    from swh.model.model import Release, ReleaseTargetType
 
     if node_id_2_swhid is None:
         node_id_2_swhid = {
@@ -427,7 +426,7 @@ def identify_release(
         data = {
             "name": tag.name,
             "target": node_id_2_swhid[tag.node_id].object_id,
-            "target_type": ModelObjectType.REVISION.value,
+            "target_type": ReleaseTargetType.REVISION.value,
             "message": None,
             "metadata": None,
             "synthetic": False,

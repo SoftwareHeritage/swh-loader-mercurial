@@ -13,7 +13,7 @@ from swh.loader.core.loader import BaseDirectoryLoader
 from swh.loader.mercurial.hgutil import clone
 from swh.loader.mercurial.utils import raise_not_found_repository
 from swh.model.from_disk import ignore_empty_directories, ignore_named_directories
-from swh.model.model import Snapshot, SnapshotBranch, TargetType
+from swh.model.model import Snapshot, SnapshotBranch, SnapshotTargetType
 
 
 def clone_repository(repo_url: str, hg_changeset: str, target: Path) -> Path:
@@ -90,11 +90,11 @@ class HgCheckoutLoader(BaseDirectoryLoader):
         return Snapshot(
             branches={
                 b"HEAD": SnapshotBranch(
-                    target_type=TargetType.ALIAS,
+                    target_type=SnapshotTargetType.ALIAS,
                     target=branch_name,
                 ),
                 branch_name: SnapshotBranch(
-                    target_type=TargetType.DIRECTORY,
+                    target_type=SnapshotTargetType.DIRECTORY,
                     target=self.directory.hash,
                 ),
             }

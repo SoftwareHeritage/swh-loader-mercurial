@@ -242,7 +242,11 @@ class HgLoader(BaseLoader):
         # Set here to allow multiple calls to load on the same loader instance
         self._latest_heads = []
 
-        latest_snapshot = snapshot_get_latest(self.storage, self.origin.url)
+        latest_snapshot = snapshot_get_latest(
+            self.storage,
+            self.origin.url,
+            visit_type=self.visit_type,
+        )
         if latest_snapshot:
             self._set_recorded_state(latest_snapshot)
 

@@ -72,7 +72,7 @@ class HgCheckoutLoader(BaseDirectoryLoader):
 
     def __init__(self, *args, **kwargs):
         self.hg_changeset = kwargs.pop("ref")
-        super().__init__(*args, dir_filter=list_hg_tree, **kwargs)
+        super().__init__(*args, path_filter=list_hg_tree, **kwargs)
 
     def fetch_artifact(self) -> Iterator[Path]:
         with tempfile.TemporaryDirectory(

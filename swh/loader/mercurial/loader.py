@@ -284,9 +284,9 @@ class HgLoader(BaseLoader):
             extid_version=EXTID_VERSION,
         ):
             extids.append(extid)
-            self._revision_nodeid_to_sha1git[
-                HgNodeId(extid.extid)
-            ] = extid.target.object_id
+            self._revision_nodeid_to_sha1git[HgNodeId(extid.extid)] = (
+                extid.target.object_id
+            )
 
         if extids:
             # Filter out dangling extids, we need to load their target again
@@ -312,9 +312,9 @@ class HgLoader(BaseLoader):
                 EXTID_TYPE, group_ids, version=EXTID_VERSION
             ):
                 extids.append(extid)
-                self._revision_nodeid_to_sha1git[
-                    HgNodeId(extid.extid)
-                ] = extid.target.object_id
+                self._revision_nodeid_to_sha1git[HgNodeId(extid.extid)] = (
+                    extid.target.object_id
+                )
 
         if extids:
             # Filter out dangling extids, we need to load their target again

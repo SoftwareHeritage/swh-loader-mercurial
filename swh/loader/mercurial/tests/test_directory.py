@@ -166,7 +166,7 @@ def test_hg_directory_loader_hash_mismatch(swh_storage, datadir, tmp_path):
     actual_result = loader.load()
 
     # Ingestion fails because the hash checksums check failed
-    assert actual_result == {"status": "failed"}
+    assert actual_result["status"] == "failed"
     assert_last_visit_matches(
         swh_storage,
         repo_url,

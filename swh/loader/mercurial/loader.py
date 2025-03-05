@@ -309,7 +309,7 @@ class HgLoader(BaseLoader):
 
         for group_ids in grouper(hgnode_ids, n=1000):
             for extid in self.storage.extid_get_from_extid(
-                EXTID_TYPE, group_ids, version=EXTID_VERSION
+                EXTID_TYPE, list(group_ids), version=EXTID_VERSION
             ):
                 extids.append(extid)
                 self._revision_nodeid_to_sha1git[HgNodeId(extid.extid)] = (

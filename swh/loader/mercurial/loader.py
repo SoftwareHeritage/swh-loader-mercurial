@@ -1,4 +1,4 @@
-# Copyright (C) 2020-2023  The Software Heritage developers
+# Copyright (C) 2020-2025  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -42,6 +42,7 @@ from swh.model.model import (
     Revision,
     RevisionType,
     Sha1Git,
+    SkippedContent,
     Snapshot,
     SnapshotBranch,
     SnapshotTargetType,
@@ -702,11 +703,16 @@ class HgLoader(BaseLoader):
                 # See above use of `CorruptedRevision`
                 raise CorruptedRevision(hg_nodeid)
 
-            content = ModelContent.from_data(data)
-
-            self.storage.content_add([content])
-
-            sha1_git = content.sha1_git
+            if self.max_content_size is not None and len(data) > self.max_content_size:
+                skipped_content = SkippedContent.from_data(
+                    data, reason="Content too large"
+                )
+                self.storage.skipped_content_add([skipped_content])
+                sha1_git = skipped_content.sha1_git
+            else:
+                content = ModelContent.from_data(data)
+                self.storage.content_add([content])
+                sha1_git = content.sha1_git
             self._content_hash_cache[cache_key] = sha1_git
 
         # Here we make sure to return only necessary data.

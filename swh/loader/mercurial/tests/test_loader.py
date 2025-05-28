@@ -1,7 +1,8 @@
-# Copyright (C) 2020-2021  The Software Heritage developers
+# Copyright (C) 2020-2025  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
+
 from datetime import datetime
 from hashlib import sha1
 import os
@@ -764,3 +765,25 @@ def test_loader_not_found_hg_repository(swh_storage, datadir, tmp_path):
         status="not_found",
         type="hg",
     )
+
+
+def test_loader_max_content_size(swh_storage, datadir, tmp_path):
+    """Contents whose size is greater than 1 byte should be skipped."""
+    archive_name = "example"
+    archive_path = os.path.join(datadir, f"{archive_name}.tgz")
+    repo_url = prepare_repository_from_archive(archive_path, archive_name, tmp_path)
+    repo_path = repo_url.replace("file://", "")
+
+    loader = HgLoader(swh_storage, repo_path, max_content_size=1)
+
+    assert loader.load() == {"status": "eventful"}
+    assert get_stats(loader.storage) == {
+        "content": 0,
+        "directory": 16,
+        "origin": 1,
+        "origin_visit": 1,
+        "release": 0,
+        "revision": 9,
+        "skipped_content": 7,
+        "snapshot": 1,
+    }

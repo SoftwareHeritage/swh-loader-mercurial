@@ -1,7 +1,7 @@
 celery-types
 pytest
 pytest-mock
-swh.core[http] >= 0.0.61
+swh.core[http] >= 4.5.0
 swh.loader.core[testing] >= 5.18.1
 swh.scheduler[pytest] >= 3.1.0
 swh.storage[pytest] >= 3.1.0

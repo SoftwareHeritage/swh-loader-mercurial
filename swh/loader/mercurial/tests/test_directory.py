@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from swh.core.nar import Nar
+from swh.core.nar import Nar, NarHashAlgo
 from swh.loader.exception import NotFound
 from swh.loader.mercurial.directory import HgCheckoutLoader, clone_repository
 from swh.loader.mercurial.hgutil import repository
@@ -22,7 +22,7 @@ from swh.model.hashutil import hash_to_bytes
 
 
 def compute_nar_hash_for_ref(
-    repo_url: str, ref: str, hash_name: str = "sha256", temp_dir: str = "/tmp"
+    repo_url: str, ref: str, hash_name: NarHashAlgo = "sha256", temp_dir: str = "/tmp"
 ) -> str:
     """Compute the nar from a hg checked out by hg."""
     tmp_path = Path(os.path.join(temp_dir, "compute-nar"))

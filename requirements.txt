@@ -5,4 +5,4 @@ click
 patool
 python-dateutil
 python-hglib
-mercurial
+mercurial >= 7.2

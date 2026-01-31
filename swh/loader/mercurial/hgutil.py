@@ -1,4 +1,4 @@
-# Copyright (C) 2020-2023  The Software Heritage developers
+# Copyright (C) 2020-2026  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -9,10 +9,12 @@ from functools import partial
 from typing import Dict, List, Mapping, NewType, Optional, Set
 
 # The internal Mercurial API is not guaranteed to be stable.
-from mercurial import bookmarks, context, error, hg, smartset, util
+from mercurial import bookmarks, context, error, hg, initialization, smartset, util
 import mercurial.ui
 
 from swh.loader.core.utils import clone_with_timeout
+
+initialization.init()
 
 NULLID = mercurial.node.nullid
 HgNodeId = NewType("HgNodeId", bytes)
@@ -57,10 +59,11 @@ def branching_info(repo: hg.localrepo, ignored: Set[int]) -> BranchingInfo:
     branch_closed_heads = defaultdict(list)
     all_bookmarks = bookmarks.listbookmarks(repo)
 
-    for branch_name, heads in repo.branchmap().items():
+    branchmap = repo.branchmap()
+    for branch_name in branchmap:
         # Sort the heads by node id since it's stable and doesn't depend on local
         # topology like cloning order.
-        for head in sorted(heads):
+        for head in sorted(branchmap.branchheads(branch_name, closed=True)):
             head = repo[head]
             if head.rev() in ignored:
                 # This revision or one of its ancestors is corrupted, ignore it

@@ -1,4 +1,4 @@
-# Copyright (C) 2020-2025  The Software Heritage developers
+# Copyright (C) 2020-2026  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -575,7 +575,7 @@ class HgLoader(BaseLoader):
         # as fullname is what is used in revision hash when available.
         author = Person.from_fullname(rev_ctx.user())
 
-        (timestamp, offset) = rev_ctx.date()
+        timestamp, offset = rev_ctx.date()
 
         # TimestampWithTimezone.from_dict will change name
         # as it accept more than just dicts
